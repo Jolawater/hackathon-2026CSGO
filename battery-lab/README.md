@@ -6,6 +6,12 @@ Two local tools share one deterministic energy model:
 2. **使用沙盒 / Sandbox** — repeated daily use, seeded variation, playback, task failures, and a separate evidence-gated cell-aging experiment.
 3. **模型与证据 / Evidence** — sources, limitations and executable checks.
 
+### Chart and input controls
+
+All numeric inputs pair a horizontal slider with an editable number box, including task times and cell experiment inputs. Both stay synchronized. Slider ranges adapt to the device; typing can extend beyond the suggested slider range, while the API still validates physical limits. Run the simulation again after changing inputs.
+
+Charts show a reserve line for device SOC, a labeled vertical range for cell SOH, distinct solid/dashed A/B lines and end values. Hover or tap for sampled values; focus a chart and use arrow keys, Home or End for keyboard inspection. Lines connect computed samples without smoothing away thresholds. The accompanying Chinese/English explanation describes feasibility, trade-offs, final stored energy, winter effects and the distinction between charge level and capacity health.
+
 ## Start on Windows
 
 Double-click `start.cmd`. Requires Python 3.12; the script detects the existing Codex Python runtime on this computer. First installation needs internet; all subsequent simulation runs use local assets and computation. The local server listens only on `127.0.0.1:8765`.

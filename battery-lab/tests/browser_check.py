@@ -14,9 +14,29 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e: errors.append(str(e)))
     page.goto('http://127.0.0.1:8765')
     page.locator('[data-device="phone"]').wait_for()
+    target=page.locator('[data-key="target"]')
+    slider=target.locator('..').locator('input[type="range"]')
+    target.fill('94.5')
+    assert float(slider.input_value())==94.5
+    target.fill('90')
+    slider.focus()
+    slider.press('ArrowLeft')
+    assert float(target.input_value())==89
+    target.fill('90')
+    assert page.locator('#tasks .value-slider').count()==9
     page.locator('#run').click()
     page.locator('table').wait_for()
     assert page.locator('.metric').count()>=8
+    assert '够不够用' in page.locator('.result-explainer').inner_text()
+    plot=page.locator('#socChart .interactive-chart')
+    plot.hover(position={'x':200,'y':100})
+    assert plot.locator('.chart-tooltip').is_visible()
+    plot.focus()
+    plot.press('Home')
+    assert '00:00' in plot.locator('.chart-tooltip').inner_text()
+    plot.press('End')
+    assert '第2天' in plot.locator('.chart-tooltip').inner_text()
+    assert plot.locator('.reference-line').count()==1
     page.screenshot(path=str(OUT/'compare-desktop.png'),full_page=True)
     # All three devices, journeys, winter, bilingual UI.
     for device in ['scooter','car']:
@@ -39,6 +59,13 @@ with sync_playwright() as p:
     page.locator('#runAging').click()
     page.locator('#ageCsv').wait_for(timeout=30000)
     assert 'Capacity retention' in page.locator('#ageOutput').inner_text()
+    assert 'not charge level' in page.locator('#ageOutput .result-explainer').inner_text()
+    health_plot=page.locator('#ageOutput .interactive-chart').first
+    health_plot.hover(position={'x':150,'y':100})
+    assert health_plot.locator('.chart-tooltip').is_visible()
+    # Both plots created in one render must retain their interaction data.
+    page.locator('#ageOutput .interactive-chart').last.hover(position={'x':150,'y':100})
+    assert page.locator('#ageOutput .interactive-chart').last.locator('.chart-tooltip').is_visible()
     page.screenshot(path=str(OUT/'sandbox-desktop.png'),full_page=True)
     page.locator('[data-aging="temperature_c"]').fill('0')
     page.locator('#runAging').click()
@@ -58,10 +85,16 @@ with sync_playwright() as p:
     page.screenshot(path=str(OUT/'evidence-desktop.png'),full_page=True)
     page.set_viewport_size({'width':390,'height':844})
     page.locator('a[href="#sandbox"]').click()
+    page.locator('#run').click()
+    page.locator('#socChart .interactive-chart').wait_for()
+    mobile_plot=page.locator('#socChart .interactive-chart')
+    mobile_plot.click(position={'x':120,'y':100})
+    assert mobile_plot.locator('.chart-tooltip').is_visible()
+    mobile_plot.screenshot(path=str(OUT/'chart-mobile.png'))
     page.screenshot(path=str(OUT/'mobile.png'),full_page=True)
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
     assert not errors,errors
-    report={'passed':True,'browser':'Microsoft Edge / Playwright','console_errors':errors,'checks':['3 device scenarios','winter inputs','bilingual UI','comparison table','playback','supported aging','unsupported aging gate','profile transfer','JSON export/import','validation page','390px responsive layout']}
+    report={'passed':True,'browser':'Microsoft Edge / Playwright','console_errors':errors,'checks':['3 device scenarios','winter inputs','bilingual UI','comparison table','playback','supported aging','unsupported aging gate','profile transfer','JSON export/import','validation page','390px responsive layout','slider-number synchronization including decimals','keyboard slider changes','task timeline sliders','chart hover and keyboard inspection','reserve reference line','device and aging explanations','multiple aging-chart interactions']}
     (OUT/'browser-report.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report))
     browser.close()

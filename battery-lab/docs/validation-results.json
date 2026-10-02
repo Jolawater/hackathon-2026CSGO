@@ -83,7 +83,14 @@
       "profile transfer",
       "JSON export/import",
       "validation page",
-      "390px responsive layout"
+      "390px responsive layout",
+      "slider-number synchronization including decimals",
+      "keyboard slider changes",
+      "task timeline sliders",
+      "chart hover and keyboard inspection",
+      "reserve reference line",
+      "device and aging explanations",
+      "multiple aging-chart interactions"
     ]
   },
   "model_package_version": "1.1.0",
@@ -91,5 +98,6 @@
   "test_summary": {
     "passed": 20,
     "failed": 0
-  }
+  },
+  "ui_validation_date": "2026-10-03"
 }
