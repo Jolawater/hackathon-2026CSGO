@@ -1,0 +1,9 @@
+item,value,unit,source_url,accessed,note
+consumer_test_shower_flow,5,L/min,https://www.consumer.org.hk/en/press-release/504-electric-water-heaters,2026-10-02,Consumer Council 2018 test description
+consumer_test_target_temperature,45,degC,https://www.consumer.org.hk/en/press-release/504-electric-water-heaters,2026-10-02,Hot water delivered at around this temperature
+consumer_test_stop_temperature,40,degC,https://www.consumer.org.hk/en/press-release/504-electric-water-heaters,2026-10-02,Delivery time ends when hot water dropped to this temperature
+consumer_test_nominal_heater_power,3000,W,https://www.consumer.org.hk/en/press-release/504-electric-water-heaters,2026-10-02,Rated power of the 12 tested models; generic grid assumption
+emsd_berlin_25l_measured_standing_loss,0.86,kWh/24h,https://www.emsd.gov.hk/energylabel/doc/STEWH%20Test%20Results%20-%20Web%20%282025.10%29.pdf,2026-10-02,One product reference point; not a market average
+emsd_standing_loss_normalization,45,K,https://www.emsd.gov.hk/energylabel/en/doc/COP%202024%20%28ENG%29.pdf,2026-10-02,Code section 13.5.4 normalizes standing loss to a 45 K difference
+emsd_test_ambient,20,degC,https://www.emsd.gov.hk/energylabel/en/doc/COP%202024%20%28ENG%29.pdf,2026-10-02,Code section 13.5.1 specifies 20 plus or minus 2 degC
+emsd_test_cold_inlet,15,degC,https://www.emsd.gov.hk/energylabel/en/doc/COP%202024%20%28ENG%29.pdf,2026-10-02,Code section 13.5.1 specifies 15 plus or minus 2 degC

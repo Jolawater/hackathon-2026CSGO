@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TankWise | 小單位熱水器決策工具</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", sans-serif; color: #173044; background: #f5f8fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: linear-gradient(115deg, #102f43, #155a76); color: white; padding: 30px max(22px, calc((100vw - 1160px)/2)); }
+    .eyebrow { font-size: 12px; letter-spacing: .13em; text-transform: uppercase; color: #a8d5e4; font-weight: 750; }
+    h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.2; margin: 8px 0 10px; }
+    header p { color: #d4e7ee; max-width: 710px; margin: 0; line-height: 1.6; }
+    main { max-width: 1204px; min-width: 0; padding: 24px 22px 48px; margin: auto; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+    .card { min-width: 0; background: white; border: 1px solid #dde8ec; border-radius: 16px; box-shadow: 0 5px 20px rgba(13, 46, 64, .055); }
+    form { padding: 22px; }
+    h2 { font-size: 18px; margin: 0 0 17px; }
+    h3 { font-size: 15px; margin: 0 0 12px; }
+    label { display: block; font-size: 13px; font-weight: 680; margin: 14px 0 6px; }
+    input, select { width: 100%; height: 42px; border: 1px solid #b8cbd3; border-radius: 9px; background: #fff; color: #173044; padding: 0 12px; font: inherit; font-size: 15px; }
+    input:focus, select:focus { outline: 3px solid #c9e8f4; border-color: #1686af; }
+    small, .small { font-size: 12px; color: #617787; line-height: 1.45; }
+    .duration-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 10px; }
+    .form-divider { border-top: 1px solid #e3ecef; margin: 21px 0; }
+    button { width: 100%; border: 0; border-radius: 10px; background: #087d9f; color: white; height: 46px; font: inherit; font-weight: 750; cursor: pointer; margin-top: 22px; }
+    button:hover { background: #076c8a; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .results { display: grid; min-width: 0; gap: 18px; }
+    .panel { padding: 22px; }
+    .placeholder { color: #637d8c; line-height: 1.6; }
+    .badge { display: inline-flex; color: #126b4a; background: #e1f5ea; border-radius: 50px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
+    .badge.warn { color: #945c0e; background: #fff1d4; }
+    .recommend { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: start; }
+    .recommend strong { display: block; font-size: clamp(23px, 3vw, 30px); line-height: 1.25; margin: 10px 0 6px; }
+    .metric { text-align: right; }
+    .metric b { display: block; font-size: 25px; }
+    .metric span { font-size: 12px; color: #617787; }
+    .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+    .fact { background: #f1f7f9; border-radius: 10px; padding: 12px; }
+    .fact span { display: block; font-size: 11px; color: #627c8b; }
+    .fact b { display: block; font-size: 17px; margin-top: 4px; }
+    .person-list { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .person-list li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; border-bottom: 1px solid #e8eff1; padding-bottom: 7px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+    th { color: #617787; font-size: 11px; letter-spacing: .02em; text-align: left; background: #f4f8fa; }
+    th, td { padding: 10px 9px; border-bottom: 1px solid #e8eff1; }
+    tr.selected-row { background: #e8f7fb; font-weight: 730; }
+    .plot { width: 100%; height: auto; display: block; background: #fbfdfe; border-radius: 10px; }
+    .legend { display: flex; gap: 14px; font-size: 12px; color: #617787; margin: 12px 0 0; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+    .notes { font-size: 12px; line-height: 1.65; color: #587080; margin: 0; padding-left: 18px; }
+    .error { color: #b13838; background: #fff3f3; border: 1px solid #f3cccc; border-radius: 10px; padding: 12px; }
+    @media (max-width: 850px) { main { grid-template-columns: minmax(0, 1fr); } .recommend { grid-template-columns: 1fr; } .metric { text-align: left; } }
+    @media (max-width: 510px) { .facts { grid-template-columns: 1fr 1fr; } header { padding: 26px 22px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">TankWise · HacKU 2026 · Prototype</div>
+    <h1>小單位熱水器，先算再買</h1>
+    <p>輸入全家的洗澡需求，比較水箱容量、設溫和開機時間。結果是物理模型的模擬估算，仍須用實際產品資料校準。</p>
+  </header>
+  <main>
+    <form id="needs-form" class="card">
+      <h2>家庭需求</h2>
+      <label for="people">洗澡人數</label>
+      <select id="people"><option>1</option><option selected>2</option><option>3</option><option>4</option></select>
+      <div id="durations" class="duration-grid"></div>
+      <label for="wait">每人最多可等候回溫</label>
+      <select id="wait"><option value="0">不等候</option><option value="5">5 分鐘</option><option value="10">10 分鐘</option><option value="15" selected>15 分鐘</option></select>
+      <div class="form-divider"></div>
+      <label for="flow">花灑總流量（L／分鐘）</label>
+      <input id="flow" type="number" min="4" max="12" step="0.5" value="5">
+      <small>可用水桶計時測量；預設 5 L／分鐘是消委會測試流量。</small>
+      <label for="inlet">入水溫度（°C）</label>
+      <input id="inlet" type="number" min="5" max="35" step="1" value="15">
+      <label for="volume">可接受最大水箱容量（L）</label>
+      <input id="volume" type="number" min="15" max="50" step="1" value="50">
+      <small>容量只是空間與滿水重量的粗略代理；安裝尺寸及牆體承重須另查。</small>
+      <label for="tariff">電價假設（HK$／kWh）</label>
+      <input id="tariff" type="number" min="0" max="5" step="0.01" value="1.40">
+      <small>可按自己的電費單修改；下方只估算待機熱損失電費。</small>
+      <button id="run-button" type="submit">比較並推薦配置</button>
+    </form>
+
+    <section class="results">
+      <article class="card panel" id="recommendation"><p class="placeholder">正在計算預設的兩人洗澡場景…</p></article>
+      <article class="card panel" id="chart-panel" hidden>
+        <h2>候選配置的取捨</h2>
+        <svg id="plot" class="plot" viewBox="0 0 680 290" role="img" aria-label="水箱容量與估算待機電費散點圖"></svg>
+        <div class="legend"><span><i class="dot" style="background:#1c9c70"></i>能滿足需求</span><span><i class="dot" style="background:#c5d0d6"></i>未滿足</span><span><i class="dot" style="background:#ef9b35"></i>推薦</span></div>
+      </article>
+      <article class="card panel" id="alternatives-panel" hidden>
+        <h2>其他可行配置</h2>
+        <div class="table-wrap"><table><thead><tr><th>容量</th><th>設溫</th><th>開機策略</th><th>總等待</th><th>估算年待機電費</th></tr></thead><tbody id="alternatives"></tbody></table></div>
+      </article>
+      <article class="card panel">
+        <h2>模型假設與限制</h2>
+        <ul class="notes">
+          <li>結果均為「模擬」。以 45°C 作花灑目標、降至 40°C 判為不夠熱水；水箱分成 12 層，暫未完成實測標定。</li>
+          <li>比較 15、25、38、50 L，設溫 60–75°C，額定加熱功率假設 3 kW；定時開機方案按完全冷水箱開始預熱。</li>
+          <li>待機損失按機電工程署一款 25 L 產品的測試值推估，再按容量的 2／3 次方外推。實際產品保溫效能可以差很多。</li>
+          <li>年待機電費是展示取捨的估算，不包含洗澡用水加熱能量、實際分級電價、管道散熱或安裝費。</li>
+          <li>花灑式與非開口式產品的安裝及出水限制不同；購買前須由合資格人士核對型號、尺寸、線路及安裝條件。</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const fmt = (n, digits = 1) => Number(n).toFixed(digits);
+    const policy = c => c.policy === "timed" ? `洗澡前 ${c.preheat_minutes} 分鐘開` : "常開";
+    function updateDurations() {
+      const container = $("durations");
+      const old = [...container.querySelectorAll("input")].map(input => input.value);
+      container.replaceChildren();
+      for (let i = 0; i < Number($("people").value); i++) {
+        const wrap = document.createElement("div");
+        const label = document.createElement("label");
+        label.textContent = `第 ${i + 1} 人洗澡（分鐘）`;
+        const input = document.createElement("input");
+        input.type = "number"; input.min = "1"; input.max = "30"; input.step = "0.5";
+        input.value = old[i] || "8"; input.required = true;
+        label.append(input); wrap.append(label); container.append(wrap);
+      }
+    }
+    function renderPlot(results, chosen) {
+      const svg = $("plot");
+      const costs = results.map(r => r.estimated_annual_standby_hkd);
+      const upper = Math.max(60, ...costs) * 1.08;
+      const x = v => 56 + (v - 10) / 45 * 585;
+      const y = v => 247 - v / upper * 205;
+      const lines = [
+        `<line x1="56" y1="247" x2="641" y2="247" stroke="#a9bac2"/>`,
+        `<line x1="56" y1="42" x2="56" y2="247" stroke="#a9bac2"/>`,
+        `<text x="350" y="282" text-anchor="middle" fill="#647b88" font-size="12">水箱容量 L</text>`,
+        `<text x="9" y="20" fill="#647b88" font-size="12">年待機電費 HK$</text>`
+      ];
+      for (const volume of [15, 25, 38, 50]) lines.push(`<text x="${x(volume)}" y="266" text-anchor="middle" fill="#647b88" font-size="11">${volume}</text>`);
+      for (const fraction of [0, .5, 1]) lines.push(`<text x="48" y="${y(upper * fraction) + 4}" text-anchor="end" fill="#647b88" font-size="11">${Math.round(upper * fraction)}</text>`);
+      for (const r of results) {
+        const isSelected = chosen && r.configuration.volume_l === chosen.configuration.volume_l && r.configuration.setpoint_c === chosen.configuration.setpoint_c && r.configuration.policy === chosen.configuration.policy && r.configuration.preheat_minutes === chosen.configuration.preheat_minutes;
+        const color = isSelected ? "#ef9b35" : r.feasible ? "#1c9c70" : "#c5d0d6";
+        const radius = isSelected ? 7 : 3.7;
+        const title = `${r.configuration.volume_l} L / ${r.configuration.setpoint_c}°C / ${policy(r.configuration)} / ${r.feasible ? "可行" : "不足"}`;
+        lines.push(`<circle cx="${x(r.configuration.volume_l)}" cy="${y(r.estimated_annual_standby_hkd)}" r="${radius}" fill="${color}" fill-opacity=".85"><title>${title}</title></circle>`);
+      }
+      svg.innerHTML = lines.join("");
+    }
+    function render(data) {
+      $("chart-panel").hidden = false;
+      renderPlot(data.evaluated, data.selected);
+      if (!data.selected) {
+        $("recommendation").innerHTML = `<span class="badge warn">目前沒有可行配置</span><h2>這組需求超出目前的候選範圍</h2><p>已比較 ${data.evaluated_count} 組配置。可增加可用容量、降低花灑流量或延長兩人之間的等待時間，再重新模擬。</p>`;
+        $("alternatives-panel").hidden = true;
+        return;
+      }
+      const r = data.selected, c = r.configuration;
+      const people = r.people.map((p, i) => `<li><span>第 ${i + 1} 人：需要 ${fmt(p.requested_minutes)} 分鐘</span><b>可洗 ${fmt(p.usable_minutes)} 分鐘；等待 ${p.wait_minutes} 分鐘</b></li>`).join("");
+      $("recommendation").innerHTML = `
+        <div class="recommend"><div><span class="badge">模擬推薦 · ${data.feasible_count}／${data.evaluated_count} 組可行</span>
+          <strong>${fmt(c.volume_l, 0)} L 水箱 · ${fmt(c.setpoint_c, 0)}°C</strong>
+          <div>${policy(c)}</div></div>
+          <div class="metric"><b>HK$ ${fmt(r.estimated_annual_standby_hkd, 0)}</b><span>估算年待機熱損失電費</span></div></div>
+        <div class="facts"><div class="fact"><span>全家合計等待</span><b>${r.total_wait_minutes} 分鐘</b></div>
+          <div class="fact"><span>估算年待機熱損失</span><b>${fmt(r.estimated_annual_standby_kwh)} kWh</b></div>
+          <div class="fact"><span>滿水重量下限</span><b>約 ${fmt(c.volume_l, 0)} kg</b></div></div>
+        <ul class="person-list">${people}</ul>
+        <p class="small">推薦規則：先確保每人洗澡時間及等待限制都達標，再選估算待機損失最低者；同分時選較小水箱。重量只計水，未計機身。</p>`;
+      $("alternatives-panel").hidden = false;
+      $("alternatives").innerHTML = data.alternatives.map((item, i) => {
+        const option = item.configuration;
+        return `<tr class="${i === 0 ? "selected-row" : ""}"><td>${fmt(option.volume_l, 0)} L</td><td>${fmt(option.setpoint_c, 0)}°C</td><td>${policy(option)}</td><td>${item.total_wait_minutes} 分鐘</td><td>HK$ ${fmt(item.estimated_annual_standby_hkd, 0)}</td></tr>`;
+      }).join("");
+    }
+    async function run(event) {
+      if (event) event.preventDefault();
+      const button = $("run-button");
+      button.disabled = true; button.textContent = "正在模擬…";
+      const body = {
+        shower_minutes: [...$("durations").querySelectorAll("input")].map(input => Number(input.value)),
+        max_wait_minutes: Number($("wait").value), flow_l_min: Number($("flow").value),
+        inlet_c: Number($("inlet").value), max_volume_l: Number($("volume").value),
+        tariff_hkd_per_kwh: Number($("tariff").value)
+      };
+      try {
+        const response = await fetch("/api/recommend", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "無法計算");
+        render(data);
+      } catch (error) { $("recommendation").innerHTML = `<p class="error">${error.message}</p>`; }
+      finally { button.disabled = false; button.textContent = "比較並推薦配置"; }
+    }
+    $("people").addEventListener("change", updateDurations);
+    $("needs-form").addEventListener("submit", run);
+    updateDurations(); run();
+  </script>
+</body>
+</html>

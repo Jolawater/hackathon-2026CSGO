@@ -138,19 +138,18 @@ class TankSimulator:
             self.heater_on = True
 
     def _remove_inversions(self) -> None:
-        # Equal-volume adjacent layers are mixed until temperature is monotone
-        # from bottom to top. Mixing preserves their combined thermal energy.
-        temperatures = self.temperatures_c
-        while True:
-            changed = False
-            for i in range(len(temperatures) - 1):
-                if temperatures[i] > temperatures[i + 1]:
-                    average = (temperatures[i] + temperatures[i + 1]) / 2.0
-                    temperatures[i] = average
-                    temperatures[i + 1] = average
-                    changed = True
-            if not changed:
-                break
+        # Pool adjacent unstable blocks in linear time. Every block's sum is
+        # preserved, so this correction does not create or destroy heat.
+        blocks: list[tuple[float, int]] = []
+        for temperature in self.temperatures_c:
+            blocks.append((temperature, 1))
+            while len(blocks) >= 2 and blocks[-2][0] / blocks[-2][1] > blocks[-1][0] / blocks[-1][1]:
+                upper_sum, upper_count = blocks.pop()
+                lower_sum, lower_count = blocks.pop()
+                blocks.append((lower_sum + upper_sum, lower_count + upper_count))
+        self.temperatures_c = [
+            total / count for total, count in blocks for _ in range(count)
+        ]
 
     def step(self, dt_s: float, shower_on: bool, heater_enabled: bool) -> float:
         """Advance one time step and return the pre-step delivered temperature."""
