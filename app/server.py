@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from model.optimize import recommend_configuration
+from model.products import PurchaseConstraints, recommend_products
 from model.scenario import Configuration, HouseholdNeeds, simulate_household
 
 
@@ -49,8 +50,15 @@ class Handler(BaseHTTPRequestHandler):
                 max_volume_l=float(request.get("max_volume_l", 50)),
                 tariff_hkd_per_kwh=float(request.get("tariff_hkd_per_kwh", 1.4)),
             )
+            constraints = PurchaseConstraints(
+                width_cm=float(request["space_width_cm"]),
+                height_cm=float(request["space_height_cm"]),
+                depth_cm=float(request["space_depth_cm"]),
+                budget_hkd=float(request["budget_hkd"]),
+            )
             result = recommend_configuration(needs)
             response = asdict(result)
+            response["real_products"] = asdict(recommend_products(needs, constraints))
             current_input = request.get("current_configuration")
             if current_input is None:
                 response["current"] = None

@@ -57,6 +57,12 @@
     .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
     .notes { font-size: 12px; line-height: 1.65; color: #587080; margin: 0; padding-left: 18px; }
     .error { color: #b13838; background: #fff3f3; border: 1px solid #f3cccc; border-radius: 10px; padding: 12px; }
+    .space-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+    .space-grid label { margin-top: 8px; }
+    .product-card { border: 1px solid #cfe7dd; background: #f5fbf8; border-radius: 12px; padding: 16px; margin-top: 14px; }
+    .product-card strong { display: block; font-size: 20px; margin: 7px 0; }
+    .product-card p { font-size: 13px; line-height: 1.55; margin: 8px 0; }
+    .product-card a { color: #086f90; font-weight: 700; }
     @media (max-width: 850px) { main { grid-template-columns: minmax(0, 1fr); } .recommend { grid-template-columns: 1fr; } .metric { text-align: left; } }
     @media (max-width: 510px) { .facts { grid-template-columns: 1fr 1fr; } .compare-grid { grid-template-columns: 1fr; } header { padding: 26px 22px; } }
   </style>
@@ -65,7 +71,7 @@
   <header>
     <div class="eyebrow">TankWise · HacKU 2026 · Prototype</div>
     <h1>小單位熱水器，先算再買</h1>
-    <p>輸入全家的洗澡需求，比較水箱容量、設溫和開機時間。結果是物理模型的模擬估算，仍須用實際產品資料校準。</p>
+    <p>輸入全家的洗澡需求、安裝空間及機身預算，先模擬容量、設溫和開機時間，再找符合條件的香港在售型號。</p>
   </header>
   <main>
     <form id="needs-form" class="card">
@@ -83,7 +89,20 @@
       <input id="inlet" type="number" min="5" max="35" step="1" value="15">
       <label for="volume">可接受最大水箱容量（L）</label>
       <input id="volume" type="number" min="15" max="50" step="1" value="50">
-      <small>容量只是空間與滿水重量的粗略代理；安裝尺寸及牆體承重須另查。</small>
+      <small>若有承重或用水限制，可再設定容量上限。</small>
+      <div class="form-divider"></div>
+      <h2>購買限制</h2>
+      <small>可安裝位置的淨空尺寸，依寬 × 高 × 深量度；單位是厘米。</small>
+      <div class="space-grid">
+        <label for="space-width">寬（cm）<input id="space-width" type="number" min="1" step="0.1" value="40" required></label>
+        <label for="space-height">高（cm）<input id="space-height" type="number" min="1" step="0.1" value="75" required></label>
+        <label for="space-depth">深（cm）<input id="space-depth" type="number" min="1" step="0.1" value="40" required></label>
+      </div>
+      <small>按廠商指定直掛方向比較機身尺寸；喉管、接線和維修所需空間須額外預留。</small>
+      <label for="budget">熱水器機身預算（HK$）</label>
+      <input id="budget" type="number" min="0" step="1" value="3500" required>
+      <small>只比較機身標價，不包括安裝、送貨或拆舊機。</small>
+      <div class="form-divider"></div>
       <label for="tariff">電價假設（HK$／kWh）</label>
       <input id="tariff" type="number" min="0" max="5" step="0.01" value="1.40">
       <small>可按自己的電費單修改；下方只估算待機熱損失電費。</small>
@@ -99,10 +118,11 @@
         <div id="current-preheat-group" hidden><label for="current-preheat">提前幾分鐘開</label><select id="current-preheat"><option value="30">30 分鐘</option><option value="45" selected>45 分鐘</option><option value="60">60 分鐘</option><option value="90">90 分鐘</option></select></div>
       </div>
       <small>預設的 25 L／65°C 常開只是一個示例；請改成你的現況。</small>
-      <button id="run-button" type="submit">比較並推薦配置</button>
+      <button id="run-button" type="submit">模擬並推薦真實型號</button>
     </form>
 
     <section class="results">
+      <article class="card panel" id="product-recommendation"><p class="placeholder">正在篩選符合空間與預算的型號…</p></article>
       <article class="card panel" id="recommendation"><p class="placeholder">正在計算預設的兩人洗澡場景…</p></article>
       <article class="card panel" id="comparison-panel" hidden><h2>改動前 vs 改動後</h2><div id="comparison" class="compare-grid"></div></article>
       <article class="card panel" id="chart-panel" hidden>
@@ -118,10 +138,11 @@
         <h2>模型假設與限制</h2>
         <ul class="notes">
           <li>結果均為「模擬」。以 45°C 作花灑目標、降至 40°C 判為不夠熱水；水箱分成 12 層，暫未完成實測標定。</li>
-          <li>比較 15、25、38、50 L，設溫 60–75°C，額定加熱功率假設 3 kW；定時開機方案按完全冷水箱開始預熱。</li>
+          <li>抽象配置比較 15、25、38、50 L；真實型號庫核實機身價、尺寸與 3 kW 版本。設溫 60–75°C；定時開機方案按完全冷水箱開始預熱。</li>
           <li>待機損失按機電工程署一款 25 L 產品的測試值推估，再按容量的 2／3 次方外推。實際產品保溫效能可以差很多。</li>
           <li>年待機電費是展示取捨的估算，不包含洗澡用水加熱能量、實際分級電價、管道散熱或安裝費。</li>
-          <li>花灑式與非開口式產品的安裝及出水限制不同；購買前須由合資格人士核對型號、尺寸、線路及安裝條件。</li>
+          <li>目前產品庫只有 4 款中央儲水式產品；網頁標價為 2026-10-02 查閱時的商戶報價，可能變動。機身尺寸不等於實際安裝淨空。</li>
+          <li>購買前須由合資格人士核對型號、掛裝方向、尺寸、承重、喉管、電路及安裝條件。</li>
         </ul>
       </article>
     </section>
@@ -130,6 +151,31 @@
     const $ = id => document.getElementById(id);
     const fmt = (n, digits = 1) => Number(n).toFixed(digits);
     const policy = c => c.policy === "timed" ? `洗澡前 ${c.preheat_minutes} 分鐘開` : "常開";
+    function renderProducts(data) {
+      const report = data.real_products, selected = report.selected;
+      if (!selected) {
+        let reason = "目前產品庫沒有同時通過尺寸、預算、容量及洗澡模擬的型號。";
+        if (!report.fitting_count) reason = "目前產品庫沒有機身能放入這個寬 × 高 × 深的空間。";
+        else if (!report.affordable_count) reason = "目前產品庫沒有機身售價在預算內的型號。";
+        else if (!report.eligible_count) reason = "尺寸、預算與容量上限合起來，排除了目前產品庫全部型號。";
+        $("product-recommendation").innerHTML = `<span class="badge warn">真實型號 · 暫無符合方案</span><h2>無法推薦購買型號</h2><p>${reason}</p><p class="small">已核對 ${report.catalog_count} 款產品；其中 ${report.fitting_count} 款機身尺寸合適，${report.affordable_count} 款在機身預算內。可調整限制再試，切勿把下方抽象配置當作已核實可買的型號。</p>`;
+        return;
+      }
+      const p = selected.product, r = selected.scenario, c = r.configuration;
+      const people = r.people.map((person, i) => `<p>第 ${i + 1} 人：可洗 ${fmt(person.usable_minutes)} 分鐘，等待 ${person.wait_minutes} 分鐘</p>`).join("");
+      const other = report.alternatives.map(match => {
+        const item = match.product, option = match.scenario.configuration;
+        return `<div class="product-card"><b>${item.brand} ${item.model}</b><p>${fmt(item.volume_l, 0)} L · HK$ ${fmt(item.price_hkd, 0)} · ${fmt(item.width_cm)} × ${fmt(item.height_cm)} × ${fmt(item.depth_cm)} cm</p><p>模擬：${fmt(option.setpoint_c, 0)}°C，${policy(option)}；估算年待機電費 HK$ ${fmt(match.scenario.estimated_annual_standby_hkd, 0)}</p><a href="${item.product_url}" target="_blank" rel="noopener noreferrer">查看商品與價格 ↗</a></div>`;
+      }).join("");
+      $("product-recommendation").innerHTML = `<span class="badge">真實型號 · 通過空間、預算與洗澡模擬</span><h2>建議購買型號</h2>
+        <div class="product-card"><strong>${p.brand} ${p.model}</strong><p>機身售價 <b>HK$ ${fmt(p.price_hkd, 0)}</b> · ${p.price_type} · 查閱日期 ${p.price_checked_on}</p>
+        <p>容量 ${fmt(p.volume_l, 0)} L · 機身寬 × 高 × 深 ${fmt(p.width_cm)} × ${fmt(p.height_cm)} × ${fmt(p.depth_cm)} cm · ${fmt(p.power_w / 1000, 0)} kW</p>
+        <p><b>建議設定：</b>${fmt(c.setpoint_c, 0)}°C，${policy(c)}。${people}</p>
+        <p>模擬年待機電費約 HK$ ${fmt(r.estimated_annual_standby_hkd, 0)}；商品型號的實測洗澡曲線尚未標定。</p>
+        <a href="${p.product_url}" target="_blank" rel="noopener noreferrer">查看商品與標價 ↗</a> · <a href="${p.spec_url}" target="_blank" rel="noopener noreferrer">核對機身規格 ↗</a></div>
+        <p class="small">已比較 ${report.catalog_count} 款真實型號；${report.eligible_count} 款同時符合空間、機身預算及容量上限，${report.feasible_product_count} 款通過洗澡模擬。按估算待機電費排序，同分選較低機身價。</p>
+        ${other ? `<h3>其他符合條件的型號</h3>${other}` : ""}`;
+    }
     function updateDurations() {
       const container = $("durations");
       const old = [...container.querySelectorAll("input")].map(input => input.value);
@@ -175,22 +221,24 @@
     function renderComparison(data) {
       $("comparison-panel").hidden = false;
       const current = data.current;
-      const selected = data.selected;
+      const productMatch = data.real_products.selected;
+      const selected = productMatch?.scenario;
       let before = `<div class="compare-box"><span class="badge warn">模擬 · 改動前</span><strong>尚未安裝</strong><p>目前沒有熱水器可作直接比較。</p></div>`;
       if (current) {
         const c = current.configuration;
         const people = current.people.map((person, i) => `<p>第 ${i + 1} 人：${person.complete ? "夠熱水" : `只可洗 ${fmt(person.usable_minutes)}／${fmt(person.requested_minutes)} 分鐘`}，等待 ${person.wait_minutes} 分鐘</p>`).join("");
         before = `<div class="compare-box"><span class="badge ${current.feasible ? "" : "warn"}">模擬 · 改動前 · ${current.feasible ? "足夠" : "不足"}</span><strong>${fmt(c.volume_l, 0)} L · ${fmt(c.setpoint_c, 0)}°C</strong><p>${policy(c)}</p>${people}<p>估算年待機電費：HK$ ${fmt(current.estimated_annual_standby_hkd, 0)}</p></div>`;
       }
-      let after = `<div class="compare-box after"><span class="badge warn">模擬 · 改動後</span><strong>沒有可行配置</strong><p>需放寬容量、流量或等候限制。</p></div>`;
+      let after = `<div class="compare-box after"><span class="badge warn">真實型號 · 改動後</span><strong>暫無可推薦商品</strong><p>目前產品庫沒有同時符合空間、機身預算及洗澡需求的型號；上方的理論配置可作參考。</p></div>`;
       if (selected) {
         const c = selected.configuration;
         const people = selected.people.map((person, i) => `<p>第 ${i + 1} 人：可洗 ${fmt(person.usable_minutes)} 分鐘，等待 ${person.wait_minutes} 分鐘</p>`).join("");
-        after = `<div class="compare-box after"><span class="badge">模擬 · 改動後 · 足夠</span><strong>${fmt(c.volume_l, 0)} L · ${fmt(c.setpoint_c, 0)}°C</strong><p>${policy(c)}</p>${people}<p>估算年待機電費：HK$ ${fmt(selected.estimated_annual_standby_hkd, 0)}</p></div>`;
+        after = `<div class="compare-box after"><span class="badge">真實型號 · 改動後 · 模擬足夠</span><strong>${productMatch.product.brand} ${productMatch.product.model}</strong><p>${fmt(c.volume_l, 0)} L · ${fmt(c.setpoint_c, 0)}°C · ${policy(c)}</p><p>機身標價：HK$ ${fmt(productMatch.product.price_hkd, 0)}</p>${people}<p>估算年待機電費：HK$ ${fmt(selected.estimated_annual_standby_hkd, 0)}</p></div>`;
       }
       $("comparison").innerHTML = before + after;
     }
     function render(data) {
+      renderProducts(data);
       $("chart-panel").hidden = false;
       renderPlot(data.evaluated, data.selected);
       renderComparison(data);
@@ -201,7 +249,7 @@
       }
       const r = data.selected, c = r.configuration;
       const people = r.people.map((p, i) => `<li><span>第 ${i + 1} 人：需要 ${fmt(p.requested_minutes)} 分鐘</span><b>可洗 ${fmt(p.usable_minutes)} 分鐘；等待 ${p.wait_minutes} 分鐘</b></li>`).join("");
-      $("recommendation").innerHTML = `
+      $("recommendation").innerHTML = `<h2>模型最佳配置（不限於已核實商品）</h2>
         <div class="recommend"><div><span class="badge">模擬推薦 · ${data.feasible_count}／${data.evaluated_count} 組可行</span>
           <strong>${fmt(c.volume_l, 0)} L 水箱 · ${fmt(c.setpoint_c, 0)}°C</strong>
           <div>${policy(c)}</div></div>
@@ -210,7 +258,7 @@
           <div class="fact"><span>估算年待機熱損失</span><b>${fmt(r.estimated_annual_standby_kwh)} kWh</b></div>
           <div class="fact"><span>滿水重量下限</span><b>約 ${fmt(c.volume_l, 0)} kg</b></div></div>
         <ul class="person-list">${people}</ul>
-        <p class="small">推薦規則：先確保每人洗澡時間及等待限制都達標，再選估算待機損失最低者；同分時選較小水箱。重量只計水，未計機身。</p>`;
+        <p class="small">這是容量、設溫與開機時間的理論配置，未套用實際機身尺寸或售價。推薦規則：先確保每人洗澡時間及等待限制都達標，再選估算待機損失最低者；同分時選較小水箱。重量只計水，未計機身。</p>`;
       $("alternatives-panel").hidden = false;
       $("alternatives").innerHTML = data.alternatives.map((item, i) => {
         const option = item.configuration;
@@ -225,6 +273,8 @@
         shower_minutes: [...$("durations").querySelectorAll("input")].map(input => Number(input.value)),
         max_wait_minutes: Number($("wait").value), flow_l_min: Number($("flow").value),
         inlet_c: Number($("inlet").value), max_volume_l: Number($("volume").value),
+        space_width_cm: Number($("space-width").value), space_height_cm: Number($("space-height").value),
+        space_depth_cm: Number($("space-depth").value), budget_hkd: Number($("budget").value),
         tariff_hkd_per_kwh: Number($("tariff").value),
         current_configuration: $("current-volume").value === "none" ? null : {
           volume_l: Number($("current-volume").value), setpoint_c: Number($("current-setpoint").value),
@@ -241,7 +291,7 @@
         $("recommendation").innerHTML = '<p class="error"></p>';
         $("recommendation").querySelector(".error").textContent = error.message;
       }
-      finally { button.disabled = false; button.textContent = "比較並推薦配置"; }
+      finally { button.disabled = false; button.textContent = "模擬並推薦真實型號"; }
     }
     $("people").addEventListener("change", updateDurations);
     $("current-volume").addEventListener("change", updateCurrent);

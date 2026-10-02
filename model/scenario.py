@@ -1,5 +1,7 @@
 """Multi-person evening shower scenarios for the layered tank model."""
 
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass
 from math import isfinite
@@ -127,6 +129,8 @@ def simulate_household(
     configuration: Configuration,
     *,
     layers: int = 12,
+    power_w: float = 3000.0,
+    ua_w_per_k: float | None = None,
 ) -> ScenarioResult:
     """Run one evening and choose the shortest allowed wait for each person.
 
@@ -138,13 +142,15 @@ def simulate_household(
         raise ValueError("Configuration exceeds the allowed tank volume")
     config = TankConfig(
         volume_l=configuration.volume_l,
+        power_w=power_w,
         setpoint_c=configuration.setpoint_c,
         inlet_c=needs.inlet_c,
         ambient_c=needs.ambient_c,
         shower_flow_l_min=needs.flow_l_min,
         target_c=needs.target_c,
         minimum_c=needs.minimum_c,
-        ua_w_per_k=estimate_ua_w_per_k(configuration.volume_l),
+        ua_w_per_k=(estimate_ua_w_per_k(configuration.volume_l)
+                    if ua_w_per_k is None else ua_w_per_k),
         layers=layers,
     )
     initial_c = config.setpoint_c if configuration.policy == "always_on" else config.inlet_c

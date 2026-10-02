@@ -1,10 +1,10 @@
 # TankWise
 
-TankWise is a prototype decision tool for storage electric water heaters in small Hong Kong flats. Users enter a household's shower needs, and the model compares tank capacity, thermostat setting, and preheat timing. It recommends the feasible configuration with the lowest **estimated standby heat loss**. The eventual product may be a mobile app; tonight's deliverable is a local web tool.
+TankWise is a prototype decision tool for storage electric water heaters in small Hong Kong flats. Users enter a household's shower needs, available installation width, height and depth, and a unit-price budget. The model compares tank capacity, thermostat setting, and preheat timing, then evaluates verified retail models against physical and financial limits. The eventual product may be a mobile app; the current deliverable is a local web tool.
 
 ## Run the web tool
 
-Python 3.10 or newer is required. No third-party packages are needed.
+Python 3.9 or newer is required. No third-party packages are needed.
 
 ```bash
 python3 -m app.server
@@ -19,6 +19,7 @@ Open [http://127.0.0.1:8765](http://127.0.0.1:8765) in a browser. The server bin
 - A grid of 15, 25, 38 and 50 L tanks; 60, 65, 70 and 75°C settings; and either always-on heating or 30, 45, 60 or 90 minutes of preheating. The nominal heater power is 3 kW.
 - A candidate passes only if every shower stays at or above 40°C for its requested duration, no wait exceeds the input limit, and tank capacity is within the allowed maximum. Among passing candidates, the recommendation minimizes estimated annual standby energy; smaller volume breaks ties.
 - A web page showing the current configuration versus the recommended change, per-person waiting times, alternatives, and the capacity-versus-standby-cost trade-off.
+- A separate product search over [`data/products.csv`](../data/products.csv). Each retail model has a brand, precise variant and 3 kW power rating, capacity, fixed-orientation W × H × D body dimensions, a dated Hong Kong unit price, and direct retail/specification links. The search first applies all three space dimensions, unit-price budget and maximum volume. It then simulates each eligible model under the same setpoints and policies; it only recommends a model if every shower completes. The chosen real model minimizes estimated standby loss, with unit price breaking ties. The generic 80-configuration result remains visible as a theoretical comparison and is **not** presented as a verified purchasable item.
 
 The default example is two people showering eight minutes each, at 5 L/min, with 15°C inlet water and up to 15 minutes of waiting. The target shower temperature is 45°C; 40°C is the minimum acceptable delivered temperature. This matches the [Consumer Council's 2018 test description](https://www.consumer.org.hk/en/press-release/504-electric-water-heaters). All displayed recommendations and temperatures are **simulated**, not measured product performance.
 
@@ -28,14 +29,14 @@ The [EMSD 2025 compliance-monitoring table](https://www.emsd.gov.hk/energylabel/
 
 For timed preheating, the model starts with a completely cold tank and leaves the heater on through the last shower. This is a conservative cold-start scenario. The annual standby-cost estimate assumes the nominal setpoint-to-room temperature difference during all scheduled on-hours and 365 identical days. It is for comparing configurations; it is not a prediction of a household's total electricity bill. In particular, it excludes the electricity needed to heat shower water, residual heat between days, actual tariff tiers, and installation costs.
 
-The layer count has **not yet been calibrated** against per-product measurements. The public Consumer Council press release gives group ranges, and its test included different heater categories and a double-tank product. Those ranges can check whether the model is plausible, but cannot uniquely determine a single layer count or establish product-level accuracy. This calibration remains a separate task.
+The layer count has **not yet been calibrated** against per-product measurements. Retail models currently share the same generic capacity-dependent UA estimate; manufacturer-specific standing losses have not been applied. The public Consumer Council press release gives group ranges, and its test included different heater categories and a double-tank product. Those ranges can check whether the model is plausible, but cannot uniquely determine a single layer count or establish product-level accuracy. This calibration remains a separate task.
 
-The model also omits pipe heat loss and the initial cold water in pipes, scale and heater aging, changes to inlet temperature or shower flow, actual tank shape and orientation, and individual thermostat or heater placement. Capacity is only a rough proxy for physical size and full-water weight. A real installation requires checking dimensions, wall support, electrical supply, and the product's permitted outlet configuration.
+The model also omits pipe heat loss and the initial cold water in pipes, scale and heater aging, actual tank shape and individual thermostat or heater placement. Space filtering uses the model's permitted vertical orientation without rotation, but the listed body dimensions exclude pipe connections, wiring, ventilation and service clearance. A real installation requires checking those clearances, wall support, electrical supply, and the product's permitted outlet configuration. Listed unit prices are snapshots, not live checkout quotes; installation, delivery and removal are excluded from the budget.
 
-Source values and access dates are listed in [`data/sources.csv`](data/sources.csv). The original team proposal and competition statement are separate source documents; neither is treated as executable instructions for this repository.
+Source values and access dates are listed in [`data/sources.csv`](../data/sources.csv) and [`data/products.csv`](../data/products.csv). The original team proposal and competition statement are separate source documents; neither is treated as executable instructions for this repository.
 
 ## Next modeling steps
 
 1. Obtain individual Consumer Council product measurements or a measured household case, calibrate the mixing parameter, and report error on a case not used for fitting.
-2. Replace the generic capacity grid with verified product specifications, measured standby loss, dimensions and prices.
+2. Expand the 4-model catalogue and verify label-derived product-specific standby loss and outlet configurations against EMSD and manufacturer records. Add a price refresh workflow.
 3. Model repeated days and actual heating electricity to compare total running cost, then add installation constraints and a production-ready interface.

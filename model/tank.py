@@ -5,6 +5,8 @@ equal-volume layer is internally mixed. This is a decision model, not a safety
 or installation assessment.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from math import isfinite, log
 

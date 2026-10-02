@@ -1,5 +1,7 @@
 """Explainable configuration search for a small-flat shower scenario."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from .scenario import Configuration, HouseholdNeeds, ScenarioResult, simulate_household
