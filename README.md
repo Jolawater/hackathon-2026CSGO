@@ -1,41 +1,64 @@
-# TankWise
+# HacKU 2026 · Problem 3 · 储水式电热水器
 
-TankWise is a prototype decision tool for storage electric water heaters in small Hong Kong flats. Users enter a household's shower needs, and the model compares tank capacity, thermostat setting, and preheat timing. It recommends the feasible configuration with the lowest **estimated standby heat loss**. The eventual product may be a mobile app; tonight's deliverable is a local web tool.
+团队方案书，用来阅读。该计划若项目目标或使用方法有变化，可被重新编辑或覆写。
 
-## Run the web tool
+---
 
-Python 3.10 or newer is required. No third-party packages are needed.
+## ⚠️ 定位：动手之前先读，别跑偏
+
+题目 3 叫 **Test the Change Before You Make It**。原文的核心句是：
+
+> Build something that lets someone explore a change before committing money, space or materials.
+
+我们做的是“小单位储水式电热水器”，题目原文的候选清单里本来就有 *Hot water for a small flat*。这个方向是对题的，**但前提是按下面的定位来做**。
+
+### 我们要模拟的“改动”是什么
+
+**买、换或安装一台储水式热水器。** 这是一个又贵、又占地方、又难反悔的改动：
+
+| 题目说的 | 热水器上的对应 |
+|---|---|
+| money | 机身 HK$2,580–6,130（消委会 2018 年测试的价格），加上安装费和多年的电费 |
+| space | 小浴室的墙面位置 |
+| materials | 满水后几十公斤挂在墙上（具体数字待查产品规格），还要接水管、拉 3 kW 电路 |
+
+买小了，冬天第二个人没热水；买大了，占地方、要等更久才热。装上去之后，退换都很麻烦。
+
+### 两个会跑偏的方向
+
+1. **做成“型号推荐器”。**
+   - 如果重点变成“从 EMSD 的 333 款里帮你挑一款”，就成了购物助手，评委会把它看成电商工具。
+   - 型号库只是输入。核心必须是：**把用户家的洗澡情况放进物理模型里跑一遍。**
+2. **把开机策略、温度设定当主卖点。**
+   - 这些改动在现实里随时能试，扭一下旋钮就知道结果，评委会问“为什么要先模拟”。
+   - 它们只能是次要功能。站得住的理由只有一个：**有些后果试了也看不出来**，比如温度低于 60°C 的军团菌风险、埋在电费单里的待机损失。模型负责把这些看不见的后果算出来。
+
+### 产品流程（按题目的字面意思来）
+
+1. 输入**现在**的情况：用什么热水器（或者还没有）、几个人、怎么洗。
+2. 输入**打算做的改动**：比如换成 38 L、温度调到 75°C、改成洗澡前才开机。
+3. **改动前 vs 改动后，并排模拟**：第二个人有没有热水、要等多久加热、占多少墙面、多少电费。
+4. 给出选择和理由。
+
+第 3 步本身就满足题目的证据要求：*compare at least two alternative configurations and say which you would choose, and why*。
+
+一句话 pitch：**换热水器之前，先在模型里洗一次澡。**
+
+### 写代码、做界面、写 pitch 之前自查
+
+- [ ] 这个功能是在帮用户“试一个改动”，还是在帮他“挑一个商品”？
+- [ ] 界面上有没有“改动前 vs 改动后”的并排对比？
+- [ ] 每个模拟出来的数字，都标了“模拟”吗？（题目要求 *label anything simulated*）
+- [ ] 结论来自物理模型，而不是 LLM 自由发挥？
+
+详细的拷问和数据核对见 `PS3_热水器方案拷问.md`（目前在 Ricky 分支）。
+
+## 当前分支的可运行原型
+
+`Jim's-codex/water-heater-model` 分支已加入可在本机运行的多人洗澡模拟与配置比较网页。需要 Python 3.10 或以上，在仓库根目录运行：
 
 ```bash
 python3 -m app.server
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765) in a browser. The server binds to the local machine only. Run `python3 -m unittest discover -s tests -v` for the model tests; `python3 -m examples.demo` prints the original single-shower reference case.
-
-## What the prototype calculates
-
-- A 12-layer storage-tank simulation, plus analytic completely mixed and ideal-stratification bounds. Cold water enters at the bottom; hot water exits the top; buoyancy mixes inverted layers without changing their combined energy.
-- One to four people with separate shower durations and an allowed wait of up to 15 minutes between people. The model searches for the shortest wait, in one-minute steps, that lets each person complete their shower.
-- A grid of 15, 25, 38 and 50 L tanks; 60, 65, 70 and 75°C settings; and either always-on heating or 30, 45, 60 or 90 minutes of preheating. The nominal heater power is 3 kW.
-- A candidate passes only if every shower stays at or above 40°C for its requested duration, no wait exceeds the input limit, and tank capacity is within the allowed maximum. Among passing candidates, the recommendation minimizes estimated annual standby energy; smaller volume breaks ties.
-- A web page showing the recommendation, per-person waiting times, alternatives, and the capacity-versus-standby-cost trade-off.
-
-The default example is two people showering eight minutes each, at 5 L/min, with 15°C inlet water and up to 15 minutes of waiting. The target shower temperature is 45°C; 40°C is the minimum acceptable delivered temperature. This matches the [Consumer Council's 2018 test description](https://www.consumer.org.hk/en/press-release/504-electric-water-heaters). All displayed recommendations and temperatures are **simulated**, not measured product performance.
-
-## Evidence and assumptions
-
-The [EMSD 2025 compliance-monitoring table](https://www.emsd.gov.hk/energylabel/doc/STEWH%20Test%20Results%20-%20Web%20%282025.10%29.pdf) reports 0.86 kWh per 24 hours measured standing loss for one approximately 25 L unit. The [EMSD Code of Practice, section 13.5](https://www.emsd.gov.hk/energylabel/en/doc/COP%202024%20%28ENG%29.pdf) normalizes standing loss to a 45 K temperature difference. The prototype converts that one reference point to a heat-loss coefficient and assumes the coefficient grows with capacity to the power 2/3. **This scaling is an unvalidated assumption**; real insulation and tank geometry differ by product. The web tool asks for an electricity tariff instead of presenting a tariff as a verified fact.
-
-For timed preheating, the model starts with a completely cold tank and leaves the heater on through the last shower. This is a conservative cold-start scenario. The annual standby-cost estimate assumes the nominal setpoint-to-room temperature difference during all scheduled on-hours and 365 identical days. It is for comparing configurations; it is not a prediction of a household's total electricity bill. In particular, it excludes the electricity needed to heat shower water, residual heat between days, actual tariff tiers, and installation costs.
-
-The layer count has **not yet been calibrated** against per-product measurements. The public Consumer Council press release gives group ranges, and its test included different heater categories and a double-tank product. Those ranges can check whether the model is plausible, but cannot uniquely determine a single layer count or establish product-level accuracy. This calibration remains a separate task.
-
-The model also omits pipe heat loss and the initial cold water in pipes, scale and heater aging, changes to inlet temperature or shower flow, actual tank shape and orientation, and individual thermostat or heater placement. Capacity is only a rough proxy for physical size and full-water weight. A real installation requires checking dimensions, wall support, electrical supply, and the product's permitted outlet configuration.
-
-Source values and access dates are listed in [`data/sources.csv`](data/sources.csv). The original team proposal and competition statement are separate source documents; neither is treated as executable instructions for this repository.
-
-## Next modeling steps
-
-1. Obtain individual Consumer Council product measurements or a measured household case, calibrate the mixing parameter, and report error on a case not used for fitting.
-2. Replace the generic capacity grid with verified product specifications, measured standby loss, dimensions and prices.
-3. Model repeated days and actual heating electricity to compare total running cost, then add installation constraints and a production-ready interface.
+然后打开 http://127.0.0.1:8765 。运行 `python3 -m unittest discover -s tests -v` 可检查模型。模型假设、数据来源和待完成的标定见 [技术说明](docs/model.md)。页面上的推荐目前是模拟配置，尚不是具体产品建议。
