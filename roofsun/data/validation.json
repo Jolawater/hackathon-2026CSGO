@@ -1,0 +1,67 @@
+{
+  "pvlib_version": "0.15.2",
+  "python_version": "3.12.14",
+  "checks": [
+    {
+      "name_en": "Published solar-position benchmark",
+      "name_zh": "已發表太陽位置基準",
+      "description_en": "NREL SPA report example: 17 Oct 2003, Colorado. Required angular error < 0.00001°.",
+      "description_zh": "NREL SPA 報告的 2003 年 10 月 17 日科羅拉多參考案例，要求角度誤差小於 0.00001°。",
+      "observed": "zenith error=0.00000002°, azimuth error=0.00000049°",
+      "passed": true,
+      "source_url": "https://www.nrel.gov/docs/fy08osti/34302.pdf"
+    },
+    {
+      "name_en": "Row-shadow geometry cross-check",
+      "name_zh": "排間陰影幾何交叉核對",
+      "description_en": "Our ray/plane formula versus pvlib in 25 fixed-tilt cases. This checks implementation consistency, not real module electrical losses.",
+      "description_zh": "自建光線與面板交點公式，對照 pvlib 的 25 個固定傾角案例。這是實作一致性檢查，並非實際面板電損驗證。",
+      "observed": "25 cases; max shade-fraction difference=3.33e-16",
+      "passed": true,
+      "source_url": "https://pvlib-python.readthedocs.io/en/v0.15.2/reference/generated/pvlib.shading.shaded_fraction1d.html"
+    },
+    {
+      "name_en": "Hourly weather integrity",
+      "name_zh": "逐小時气象資料完整性",
+      "description_en": "Hourly means, UTC converted to Hong Kong time. Negative fill values rejected during download.",
+      "description_zh": "逐小時平均資料由 UTC 轉為香港時間，下載時拒絕缺失值。",
+      "observed": "hours=8760; night irradiance=0.0",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Shading relationship",
+      "name_zh": "遮擋關係",
+      "description_en": "Identical layout with a 0° versus 40° surrounding horizon. More obstruction must reduce annual output.",
+      "description_zh": "相同排布，周圍天際線分別設為 0° 與 40°；增加遮擋應令全年發電量下降。",
+      "observed": "clear=9867.3 kWh; obstructed=6787.6 kWh",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Monthly energy accounting",
+      "name_zh": "每月能量加總",
+      "description_en": "Sum of rounded monthly generation must match the annual total within 0.12 kWh.",
+      "description_zh": "四捨五入後的月發電量總和，與全年發電量相差應少於 0.12 kWh。",
+      "observed": "monthly sum=9867.27; annual=9867.3",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Configuration-search result",
+      "name_zh": "配置搜索結果",
+      "description_en": "210 candidates; only configurations passing the selected preliminary checks enter recommendations.",
+      "description_zh": "搜索 210 個候選，只有通過所選初步條件檢查的配置才可推薦。",
+      "observed": "feasible=133; frontier=8; measured runtime=1.62s",
+      "passed": true,
+      "source_url": null
+    }
+  ],
+  "baseline": {
+    "annual_kwh": 9867.3,
+    "panels_count": 18,
+    "capacity_kw": 8.1,
+    "shading_loss_pct": 3.8
+  },
+  "scope": "No measured rooftop or electrical-yield validation has been performed."
+}

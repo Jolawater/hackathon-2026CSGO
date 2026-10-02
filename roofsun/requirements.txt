@@ -1,0 +1,9 @@
+fastapi==0.142.2
+uvicorn==0.54.0
+pvlib==0.15.2
+numpy==2.5.3
+pandas==3.0.6
+shapely==2.1.2
+pytest==8.4.2
+httpx==0.28.1
+requests==2.34.2
