@@ -1,7 +1,7 @@
 """Multi-person evening shower scenarios for the layered tank model."""
 
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from math import isfinite
 
 from .tank import TankConfig, TankSimulator

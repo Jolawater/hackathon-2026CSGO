@@ -18,7 +18,7 @@ Open [http://127.0.0.1:8765](http://127.0.0.1:8765) in a browser. The server bin
 - One to four people with separate shower durations and an allowed wait of up to 15 minutes between people. The model searches for the shortest wait, in one-minute steps, that lets each person complete their shower.
 - A grid of 15, 25, 38 and 50 L tanks; 60, 65, 70 and 75°C settings; and either always-on heating or 30, 45, 60 or 90 minutes of preheating. The nominal heater power is 3 kW.
 - A candidate passes only if every shower stays at or above 40°C for its requested duration, no wait exceeds the input limit, and tank capacity is within the allowed maximum. Among passing candidates, the recommendation minimizes estimated annual standby energy; smaller volume breaks ties.
-- A web page showing the recommendation, per-person waiting times, alternatives, and the capacity-versus-standby-cost trade-off.
+- A web page showing the current configuration versus the recommended change, per-person waiting times, alternatives, and the capacity-versus-standby-cost trade-off.
 
 The default example is two people showering eight minutes each, at 5 L/min, with 15°C inlet water and up to 15 minutes of waiting. The target shower temperature is 45°C; 40°C is the minimum acceptable delivered temperature. This matches the [Consumer Council's 2018 test description](https://www.consumer.org.hk/en/press-release/504-electric-water-heaters). All displayed recommendations and temperatures are **simulated**, not measured product performance.
 

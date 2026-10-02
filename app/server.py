@@ -1,12 +1,12 @@
 """Dependency-free local web server for the water heater decision demo."""
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 
 from model.optimize import recommend_configuration
-from model.scenario import HouseholdNeeds
+from model.scenario import Configuration, HouseholdNeeds, simulate_household
 
 
 INDEX = Path(__file__).with_name("index.html")
@@ -50,7 +50,22 @@ class Handler(BaseHTTPRequestHandler):
                 tariff_hkd_per_kwh=float(request.get("tariff_hkd_per_kwh", 1.4)),
             )
             result = recommend_configuration(needs)
-            payload = json.dumps(asdict(result), ensure_ascii=False, allow_nan=False).encode()
+            response = asdict(result)
+            current_input = request.get("current_configuration")
+            if current_input is None:
+                response["current"] = None
+            else:
+                if not isinstance(current_input, dict):
+                    raise ValueError("current_configuration must be an object or null")
+                current = Configuration(
+                    volume_l=float(current_input["volume_l"]),
+                    setpoint_c=float(current_input["setpoint_c"]),
+                    policy=str(current_input["policy"]),
+                    preheat_minutes=int(current_input.get("preheat_minutes", 0)),
+                )
+                current_needs = replace(needs, max_volume_l=max(needs.max_volume_l, current.volume_l))
+                response["current"] = asdict(simulate_household(current_needs, current))
+            payload = json.dumps(response, ensure_ascii=False, allow_nan=False).encode()
             self._respond(200, payload, "application/json; charset=utf-8")
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             payload = json.dumps({"error": str(exc)}, ensure_ascii=False).encode()
@@ -61,7 +76,12 @@ def main() -> None:
     address = "127.0.0.1", 8765
     server = ThreadingHTTPServer(address, Handler)
     print(f"TankWise is running at http://{address[0]}:{address[1]}", flush=True)
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("TankWise stopped.")
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
