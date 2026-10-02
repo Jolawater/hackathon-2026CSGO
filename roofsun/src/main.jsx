@@ -1476,7 +1476,12 @@ function App() {
                         t("Generation", "發電量"),
                       ]}
                     />
-                    <Bar dataKey="kwh" fill="#507a5b" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      isAnimationActive={false}
+                      dataKey="kwh"
+                      fill="#507a5b"
+                      radius={[4, 4, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1519,6 +1524,7 @@ function App() {
                       formatter={(v, name) => [fmt(v), name]}
                     />
                     <Scatter
+                      isAnimationActive={false}
                       data={
                         simulation.loading ? [] : simulation.data?.configs || []
                       }
@@ -1526,6 +1532,7 @@ function App() {
                       onClick={(p) => setConfig(p.config)}
                     />
                     <Scatter
+                      isAnimationActive={false}
                       data={
                         simulation.loading
                           ? []
@@ -1534,7 +1541,13 @@ function App() {
                       fill="#2c5d42"
                       onClick={(p) => setConfig(p.config)}
                     />
-                    {ready && <Scatter data={[result]} fill="#db9c3c" />}
+                    {ready && (
+                      <Scatter
+                        isAnimationActive={false}
+                        data={[result]}
+                        fill="#db9c3c"
+                      />
+                    )}
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
@@ -1605,6 +1618,7 @@ function App() {
                     }}
                   />
                   <Line
+                    isAnimationActive={false}
                     type="monotone"
                     dataKey="A"
                     stroke="#386348"
@@ -1613,6 +1627,7 @@ function App() {
                   />
                   {inputs.post_fit && (
                     <Line
+                      isAnimationActive={false}
                       type="monotone"
                       dataKey="B"
                       stroke="#bc934e"

@@ -72,7 +72,7 @@ try {
   assert.equal(download.suggestedFilename(), "roofsun-plans.json");
   await page.locator('.recharts-symbols[fill="#2c5d42"]').nth(1).click();
   await ready();
-  assert.equal(await page.locator('#rows').inputValue(), '1');
+  assert.equal(await page.locator("#rows").inputValue(), "1");
   await page
     .getByLabel("Rooftop scenario", { exact: true })
     .selectOption("shaded");
@@ -154,14 +154,21 @@ try {
     "PASS: baseline, recommendations, saved A/B, JSON export, shading, sliders, views, self-use, bilingual navigation, validation, mobile width, no-space handling, failed-request/retry handling.",
   );
 } catch (error) {
-  console.error('Layout diagnostics:', await page.evaluate(() => ({
-    viewport: innerWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    overflow: [...document.querySelectorAll('body *')].map(element => ({
-      tag: element.tagName, class: element.getAttribute('class'),
-      right: element.getBoundingClientRect().right,
-    })).filter(element => element.right > innerWidth + 1).slice(0, 15),
-  })));
+  console.error(
+    "Layout diagnostics:",
+    await page.evaluate(() => ({
+      viewport: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      overflow: [...document.querySelectorAll("body *")]
+        .map((element) => ({
+          tag: element.tagName,
+          class: element.getAttribute("class"),
+          right: element.getBoundingClientRect().right,
+        }))
+        .filter((element) => element.right > innerWidth + 1)
+        .slice(0, 15),
+    })),
+  );
   throw error;
 } finally {
   await browser.close();
