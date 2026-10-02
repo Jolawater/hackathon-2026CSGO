@@ -1405,3 +1405,12 @@ footer > p {
   margin-top: 7px;
   color: #688552;
 }
+
+/* Grid children must shrink while the chart ResizeObserver updates its SVG. */
+.main-grid > *,
+.charts-grid > *,
+.recommendation-grid > *,
+.saved-grid > *,
+.validation-grid > * {
+  min-width: 0;
+}

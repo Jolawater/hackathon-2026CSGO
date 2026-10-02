@@ -111,6 +111,11 @@ try {
   });
   await page.getByRole("button", { name: "設計工作台", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(
+    () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    {},
+    { timeout: 10000 },
+  );
   await page.screenshot({
     path: "/tmp/roofsun-browser-checks/mobile-zh.png",
     fullPage: true,
@@ -148,6 +153,16 @@ try {
   console.log(
     "PASS: baseline, recommendations, saved A/B, JSON export, shading, sliders, views, self-use, bilingual navigation, validation, mobile width, no-space handling, failed-request/retry handling.",
   );
+} catch (error) {
+  console.error('Layout diagnostics:', await page.evaluate(() => ({
+    viewport: innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    overflow: [...document.querySelectorAll('body *')].map(element => ({
+      tag: element.tagName, class: element.getAttribute('class'),
+      right: element.getBoundingClientRect().right,
+    })).filter(element => element.right > innerWidth + 1).slice(0, 15),
+  })));
+  throw error;
 } finally {
   await browser.close();
 }
