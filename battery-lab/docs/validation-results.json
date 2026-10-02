@@ -1,0 +1,95 @@
+{
+  "checks": [
+    {
+      "zh": "100 Wh / 10 W = 10 小时",
+      "en": "100 Wh / 10 W = 10 hours",
+      "passed": true,
+      "detail": "Delivered 100.00000000 Wh"
+    },
+    {
+      "zh": "两次 50% 放电 = 1 能量等效循环",
+      "en": "Two 50% discharges = one energy-equivalent cycle",
+      "passed": true,
+      "detail": "1.00000000"
+    },
+    {
+      "zh": "能量守恒（<0.1%）",
+      "en": "Energy conservation (<0.1%)",
+      "passed": true,
+      "detail": "relative error 7.848e-15"
+    },
+    {
+      "zh": "1 分钟 / 15 秒步长（<1%）",
+      "en": "1-minute / 15-second step (<1%)",
+      "passed": true,
+      "detail": "max relative error 1.036e-14"
+    },
+    {
+      "zh": "低温／浅循环不生成寿命数字",
+      "en": "Unsupported cold/shallow cycles suppress life numbers",
+      "passed": true,
+      "detail": "unsupported; unsupported"
+    },
+    {
+      "zh": "与原始 BLAST-Lite 调用一致",
+      "en": "Matches original BLAST-Lite calls",
+      "passed": true,
+      "detail": "SOH absolute error 0.000e+00; software parity only"
+    },
+    {
+      "zh": "冬季可用能量与 SOH 分开",
+      "en": "Winter usable energy separate from SOH",
+      "passed": true,
+      "detail": "90.00 Wh; SOH remains 100%"
+    }
+  ],
+  "all_passed": true,
+  "independent_validation": {
+    "zh": "独立设备长期实测验证：尚未完成。模型对照只是软件复现；实验依据来自上游拟合研究，不能当成新设备预测精度。",
+    "en": "Independent long-term device validation: not completed. Model parity verifies software reproduction; upstream fitted research does not establish prediction accuracy for a new device."
+  },
+  "year_runs": {
+    "phone": {
+      "days": 365,
+      "seconds": 0.958,
+      "balance_error_wh": 5.19321474712342e-09,
+      "trace_points": 2202
+    },
+    "scooter": {
+      "days": 365,
+      "seconds": 0.943,
+      "balance_error_wh": 1.882202923297882e-06,
+      "trace_points": 2202
+    },
+    "car": {
+      "days": 365,
+      "seconds": 0.913,
+      "balance_error_wh": 2.60770320892334e-07,
+      "trace_points": 2202
+    }
+  },
+  "browser": {
+    "passed": true,
+    "browser": "Microsoft Edge / Playwright",
+    "console_errors": [],
+    "checks": [
+      "3 device scenarios",
+      "winter inputs",
+      "bilingual UI",
+      "comparison table",
+      "playback",
+      "supported aging",
+      "unsupported aging gate",
+      "profile transfer",
+      "JSON export/import",
+      "validation page",
+      "390px responsive layout"
+    ]
+  },
+  "model_package_version": "1.1.0",
+  "model_source_sha256": "11ad96b6ae5dbc45f45c3a2f670144bc2956b61b8879a196f167bd3721e5d653",
+  "test_summary": {
+    "passed": 20,
+    "failed": 0
+  }
+}
