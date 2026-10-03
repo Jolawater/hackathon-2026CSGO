@@ -113,3 +113,7 @@ python scripts/download_weather.py --year 2025
 ```
 
 Do not use the illustrative preset roofs, assumed quotes or reference module as surveyed properties or commercial specifications.
+
+### v2 audit: explicit rows / 實際排數
+
+Every result returns requested and actual row counts. If not every requested row can be built, `rows_unbuildable` rejects the design. An editable **assumed** 70% minimum per-row module count relative to the same south-facing layout rejects severe rotated underfill; this is a packing-quality criterion, not a physical law or regulation. Explicit module caps bypass that density assumption, but never bypass the actual-row-count check. Search deduplicates by actual rows/count and physical row positions/segments, so geometrically different pitches are retained. A zero-module result has no recovery date.

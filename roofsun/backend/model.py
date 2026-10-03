@@ -40,6 +40,7 @@ class Inputs(BaseModel):
     self_use_rate: float = Field(default=1.4, ge=0, le=5)
     self_use_share: float = Field(default=0.5, ge=0, le=1)
 
+    minimum_row_fill_ratio: float = Field(default=0.7, ge=0, le=1)
     minimum_capacity_kw: float = Field(default=2, ge=0, le=20)
     budget: float = Field(default=0, ge=0, le=10000000)
     max_payback_years: float = Field(default=7, ge=0, le=25)
@@ -62,7 +63,7 @@ class Inputs(BaseModel):
     def validate_inputs(self):
         if any(not math.isfinite(v) or not 0 <= v <= 80 for v in self.horizon):
             raise ValueError('Each horizon angle must be finite and between 0 and 80 degrees')
-        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw']:
+        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw','minimum_row_fill_ratio']:
             if not math.isfinite(getattr(self,name)):
                 raise ValueError('Input values must be finite')
         if self.house_area < self.width*self.depth:
@@ -297,6 +298,14 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
     count=len(panels); capacity=count*PANEL['power_w']/1000
     violations=[]
     if error: violations.append(error)
+    actual_rows=len(rows)
+    if actual_rows != config.rows: violations.append('rows_unbuildable')
+    # Assumed packing-quality threshold; not a physical/regulatory law.
+    # Explicit partial-row caps opt out of this density check, not row-count checks.
+    if not config.panel_limit and config.azimuth != 180 and inputs.minimum_row_fill_ratio:
+        _, south_rows, _, _=layout(inputs,config.model_copy(update={'azimuth':180}))
+        if len(south_rows)==config.rows and any(r['count'] < inputs.minimum_row_fill_ratio*south_rows[i]['count']-1e-8 for i,r in enumerate(rows)):
+            if 'rows_unbuildable' not in violations: violations.append('rows_unbuildable')
     if coverage>inputs.house_area*POLICY['coverage_limit']+1e-6: violations.append('coverage')
     load=count*(PANEL['mass_kg']+PANEL['rack_mass_kg']+inputs.extra_mass_per_module)/coverage if coverage else 0
     if load>inputs.load_limit: violations.append('load')
@@ -328,6 +337,7 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
     annual=float(power.sum()); base=float(baseline.sum())
     economy=finance(inputs,capacity,monthly) if economics else {}
     result={'config':config.model_dump(),'panels_count':count,'capacity_kw':round(capacity,3),
+            'actual_rows':actual_rows,'requested_rows':config.rows,
             'annual_kwh':round(annual,1),'specific_yield':round(annual/capacity,1) if capacity else 0,
             'shading_loss_pct':round(100*(1-annual/base),1) if base else 0,
             'coverage_m2':round(coverage,2),'coverage_limit_m2':round(inputs.house_area*POLICY['coverage_limit'],2),

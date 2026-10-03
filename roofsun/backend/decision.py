@@ -2,10 +2,10 @@
 from functools import lru_cache
 import json
 import time
-from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION
+from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION, layout
 
 PHYSICAL_KEYS = ('width','depth','roof_rotation','house_area','horizon','weather_year','weather_scale',
-                 'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions')
+                 'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions','minimum_row_fill_ratio')
 
 
 def assess(inputs, result):
@@ -34,13 +34,16 @@ def physical_search(serialized):
     inputs=Inputs.model_validate_json(serialized)
     rows_limit=min(24,max(6,int((max(inputs.width,inputs.depth)-1)/
                    (PANEL['length_m']*0.766))))
-    results=[];seen=set()
+    results=[];seen=set();built=set()
     def test(tilt,azimuth,rows,panel_limit=0):
         key=(tilt,azimuth,rows,panel_limit)
         if key in seen:return
         seen.add(key)
         result=evaluate(inputs,Configuration(tilt=tilt,azimuth=azimuth,rows=rows,panel_limit=panel_limit),False,economics=False)
-        if result['panels_count'] and result['compliant']: results.append(result)
+        if result['panels_count'] and result['compliant']:
+            panels,actual_rows,_,_=layout(inputs,Configuration(**result['config']))
+            signature=(tilt,azimuth,result['actual_rows'],result['panels_count'],tuple((round(r['y'],8),tuple((round(a,8),round(b,8)) for a,b in r['intervals'])) for r in actual_rows))
+            if signature not in built:results.append(result);built.add(signature)
         if not panel_limit and result['panels_count']>22:test(tilt,azimuth,rows,22)
     for tilt in [0,10,20,30,40]:
         for az in [90,120,150,180,210,240,270]:

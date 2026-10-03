@@ -371,3 +371,36 @@ def test_generation_record_requires_evidence_and_matching_calendar_period():
     for change in [{'generation_kwh':0},{'source':''},{'start_month':12,'months':2},{'installed_capacity_kw':-1}]:
         assert client.post('/api/reference-case',json={'measurement':{**record,**change}}).status_code==422
     assert client.post('/api/reference-case',json={'inputs':{'width':1,'depth':1},'measurement':record}).status_code==422
+
+
+def test_audit_complete_tilt_row_direction_grid_is_explicit_about_unbuildable_rows():
+    inp=Inputs(depth=7)
+    for tilt in range(0,41,5):
+        for requested in range(1,5):
+            south=evaluate(inp,Configuration(tilt=tilt,rows=requested))
+            for az in [135,150,165,180,195,210,225]:
+                r=evaluate(inp,Configuration(tilt=tilt,rows=requested,azimuth=az))
+                assert r['requested_rows']==requested and r['actual_rows']==len(r['rows'])
+                if 'rows_unbuildable' not in r['violations']:
+                    assert r['actual_rows']==requested
+                    if south['actual_rows']==requested:
+                        assert all(row['count']>=.7*south['rows'][i]['count'] for i,row in enumerate(r['rows']))
+
+
+def test_rounded_village_roof_does_not_silently_lose_a_row():
+    r=evaluate(Inputs(width=8.06,depth=8.06,house_area=65),Configuration(tilt=25))
+    assert r['actual_rows']==3 or 'rows_unbuildable' in r['violations']
+    zero=evaluate(Inputs(width=1.5,depth=1.5),Configuration())
+    assert zero['payback_A'] is None and zero['payback_years_A'] is None
+    assert 'rows_unbuildable' in zero['violations']
+
+
+def test_search_deduplicates_actual_geometry_not_requested_labels():
+    candidates=search(Inputs())['configs']
+    signatures=[]
+    for r in candidates:
+        _,rows,_,_=layout(Inputs(),Configuration(**r['config']))
+        signatures.append((r['config']['tilt'],r['config']['azimuth'],r['actual_rows'],r['panels_count'],
+                           tuple((round(row['y'],8),tuple(tuple(round(v,8) for v in interval) for interval in row['intervals'])) for row in rows)))
+        assert r['actual_rows']==r['requested_rows']
+    assert len(set(signatures))==len(signatures)

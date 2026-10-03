@@ -96,6 +96,7 @@ const defaults = {
   post_fit: false,
   self_use_rate: 1.4,
   self_use_share: 0.5,
+  minimum_row_fill_ratio: 0.7,
   minimum_capacity_kw: 2,
   budget: 0,
   max_payback_years: 7,
@@ -143,6 +144,10 @@ const presets = [
 
 const errorNames = {
   no_space: ["Not enough room for a module", "空間不足以放置面板"],
+  rows_unbuildable: [
+    "Requested row count or assumed row density cannot be achieved",
+    "未能達到要求排數或假設的每排板數密度",
+  ],
   overlap: ["Rows overlap or exceed the roof", "排數過多，面板重疊或超出天台"],
   coverage: [
     "Continuous-cover area exceeds the selected limit",
@@ -758,6 +763,14 @@ function App() {
                   onChange={(v) => setConfig((c) => ({ ...c, rows: v }))}
                 />
               </div>
+              <p className="scene-caption">
+                {ready
+                  ? t(
+                      `Built ${result.actual_rows} of ${config.rows} requested rows.`,
+                      `已建出 ${result.actual_rows} 排／要求 ${config.rows} 排。`,
+                    )
+                  : t("Checking actual row count…", "正在核對實際排數…")}
+              </p>
               <div className="module-cap">
                 <label className="goal-checkbox">
                   <input
@@ -1110,7 +1123,7 @@ function App() {
                     </div>
                     <p>
                       {r && !simulation.loading
-                        ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.config.rows} ${t("rows", "排")}`
+                        ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.actual_rows ?? r.config.rows} ${t("rows", "排")}`
                         : simulation.loading
                           ? t("Calculating…", "正在計算…")
                           : t(
