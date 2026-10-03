@@ -13,7 +13,7 @@ from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "2.0.0"
+MODEL_VERSION = "2.1.0"
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 
@@ -31,8 +31,8 @@ class Inputs(BaseModel):
     roof_rotation: float = Field(default=0, ge=0, le=359)
     house_area: float = Field(default=80, ge=1, le=1500)
     horizon: list[float] = Field(default_factory=lambda:[0]*12, min_length=12, max_length=12)
-    price_per_kw: float = Field(default=14000, gt=0, le=100000)
-    fixed_cost: float = Field(default=640, ge=0, le=1000000)
+    price_per_kw: float = Field(default=25000, gt=0, le=100000)
+    fixed_cost: float = Field(default=5000, ge=0, le=1000000)
     annual_om: float = Field(default=300, ge=0, le=100000)
     inverter_cost: float = Field(default=5000, ge=0, le=100000)
     commissioning: date = date(2027,1,1)
@@ -40,6 +40,7 @@ class Inputs(BaseModel):
     self_use_rate: float = Field(default=1.4, ge=0, le=5)
     self_use_share: float = Field(default=0.5, ge=0, le=1)
 
+    minimum_capacity_kw: float = Field(default=2, ge=0, le=20)
     budget: float = Field(default=0, ge=0, le=10000000)
     max_payback_years: float = Field(default=7, ge=0, le=25)
     require_profit: bool = True
@@ -61,7 +62,7 @@ class Inputs(BaseModel):
     def validate_inputs(self):
         if any(not math.isfinite(v) or not 0 <= v <= 80 for v in self.horizon):
             raise ValueError('Each horizon angle must be finite and between 0 and 80 degrees')
-        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit']:
+        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw']:
             if not math.isfinite(getattr(self,name)):
                 raise ValueError('Input values must be finite')
         if self.house_area < self.width*self.depth:
@@ -82,6 +83,7 @@ class Configuration(BaseModel):
     tilt: float = Field(default=20, ge=0, le=40)
     azimuth: float = Field(default=180, ge=90, le=270)
     rows: int = Field(default=3, ge=1, le=24)
+    panel_limit: int = Field(default=0, ge=0, le=2000)
 
 
 class Evaluation(BaseModel):
@@ -111,15 +113,24 @@ def rotate_points(points, degrees):
 
 
 def layout(inputs: Inputs, config: Configuration):
-    margin=SETTINGS['model']['edge_margin_m']
-    length, width=PANEL['length_m'], PANEL['width_m']
-    projected=length*np.cos(np.radians(config.tilt))
+    # Layout caching depends only on geometry, never on irradiance or price.
+    geometry={'width':inputs.width,'depth':inputs.depth,'roof_rotation':inputs.roof_rotation,
+              'exclusions':[o.model_dump() for o in inputs.exclusions]}
+    return _layout(json.dumps(geometry,sort_keys=True),config.model_dump_json())
+
+
+@lru_cache(maxsize=2048)
+def _layout(geometry, configuration):
+    inputs=Inputs(**json.loads(geometry),house_area=1500)
+    config=Configuration.model_validate_json(configuration)
+    margin=SETTINGS['model']['edge_margin_m'];epsilon=1e-8
+    length,width=PANEL['length_m'],PANEL['width_m']
+    projected=length*math.cos(math.radians(config.tilt))
     if inputs.width<=2*margin or inputs.depth<=2*margin:
-        return [], [], 0, 'no_space'
+        return [],[],0,'no_space'
     roof=box(margin,margin,inputs.width-margin,inputs.depth-margin)
-    local=affinity.rotate(roof,config.azimuth-inputs.roof_rotation,origin=(0,0))
-    # Erode the convex roof by the module footprint. Extreme rotated-roof
-    # corners are not valid row centres: they cannot hold a complete module.
+    angle=config.azimuth-inputs.roof_rotation
+    local=affinity.rotate(roof,angle,origin=(0,0))
     centres=local
     for dx in [-width/2,width/2]:
         for dy in [-projected/2,projected/2]:
@@ -127,38 +138,69 @@ def layout(inputs: Inputs, config: Configuration):
     if centres.is_empty:
         return [],[],0,'no_space'
     _,ymin,_,ymax=centres.bounds
-    available=ymax-ymin+projected
-    if config.rows*projected>available+1e-8:
+    if (config.rows-1)*projected>ymax-ymin+epsilon:
         return [],[],0,'overlap'
-    # A single row is centred; multiple rows are equally spread over the available depth.
-    ys=([0.5*(ymin+ymax)] if config.rows==1 else
-        np.linspace(ymax,ymin,config.rows))
-    panels=[]; rows=[]; polygons=[]
-    for y in ys:
-        edges=[local.intersection(LineString([(-100,y+s*projected/2),(100,y+s*projected/2)])) for s in [-1,1]]
-        if any(e.is_empty for e in edges): continue
-        left=max(e.bounds[0] for e in edges); right=min(e.bounds[2] for e in edges)
-        count=max(0,int((right-left+1e-8)//width))
-        if not count: continue
-        xstart=(left+right-count*width)/2
-        row_index=len(rows)
-        row_panels=[]
-        for n in range(count):
-            x=xstart+n*width
-            corners=[[x,y+projected/2],[x+width,y+projected/2],[x+width,y-projected/2],[x,y-projected/2]]
-            native=rotate_points(corners,inputs.roof_rotation-config.azimuth)
-            poly = Polygon(native)
-            if any(poly.intersection(box(o.x, o.y, o.x+o.width, o.y+o.depth)).area > 1e-8 for o in inputs.exclusions):
-                continue
-            polygons.append(poly)
-            row_panels.append({'corners':native,'row':row_index, 'local_x':x})
-        if row_panels:
-            rows.append({'y':float(y),'count':len(row_panels), 'intervals':[[p['local_x'],p['local_x']+width] for p in row_panels]})
-            panels.extend(row_panels)
-    if not panels: return [],[],0,'no_space'
+    vertices=list(local.exterior.coords)
+    def span(y):
+        # Analytic convex-polygon slice: include boundary intersections with
+        # a metric tolerance, so 0.4999999999999999 does not delete a row.
+        xs=[]
+        for (x1,y1),(x2,y2) in zip(vertices,vertices[1:]):
+            if min(y1,y2)-epsilon<=y<=max(y1,y2)+epsilon:
+                if abs(y2-y1)<epsilon:xs.extend([x1,x2])
+                else:xs.append(x1+(min(1,max(0,(y-y1)/(y2-y1))))*(x2-x1))
+        return (min(xs),max(xs)) if xs else None
+    objects=[box(o.x,o.y,o.x+o.width,o.y+o.depth) for o in inputs.exclusions]
+    theta=math.radians(-angle);co,si=math.cos(theta),math.sin(theta)
+    def native(corners):return [[x*co-y*si,x*si+y*co] for x,y in corners]
+    def candidate(ys):
+        placements=[]
+        for y in ys:
+            edges=[span(y+s*projected/2) for s in [-1,1]]
+            if any(e is None for e in edges):continue
+            left=max(e[0] for e in edges);right=min(e[1] for e in edges)
+            count=max(0,math.floor((right-left+epsilon)/width))
+            start=(left+right-count*width)/2
+            xs=[start+n*width for n in range(count)]
+            if objects:
+                xs=[x for x in xs if not any(Polygon(native([[x,y+projected/2],[x+width,y+projected/2],[x+width,y-projected/2],[x,y-projected/2]])).intersection(o).area>epsilon for o in objects)]
+            placements.append((float(y),xs))
+        return placements
+    # Rotated roofs have narrower ends. Search pitch AND translation rather
+    # than pinning every row to the two extreme corners of the bounding box.
+    # Maximise complete modules, then prefer wider pitch and centred placement.
+    best=[];score=(-1,-1,-float('inf'))
+    pitches=[0] if config.rows==1 else np.linspace(projected,(ymax-ymin)/(config.rows-1),9)
+    axis_aligned=abs(math.sin(math.radians(angle*2)))<1e-9
+    for pitch in pitches:
+        slack=max(0,ymax-ymin-pitch*(config.rows-1))
+        offsets=[slack/2] if axis_aligned else np.linspace(0,slack,17)
+        for offset in offsets:
+            top=ymax-float(offset)
+            placement=candidate([top-i*float(pitch) for i in range(config.rows)])
+            count=sum(len(xs) for _,xs in placement)
+            rank=(count,float(pitch),-abs(float(offset)-slack/2))
+            if rank>score:best=placement;score=rank
+    if config.panel_limit:
+        # Allocate one central module to each row in turn. This deterministic
+        # subset allows 22 x 450 W = 9.9 kW without requiring complete rows.
+        selected=[[] for _ in best];remaining=config.panel_limit
+        ordered=[sorted(xs,key=lambda x:abs(x+width/2-(min(xs)+max(xs)+width)/2)) if xs else [] for _,xs in best]
+        while remaining and any(ordered):
+            for i,xs in enumerate(ordered):
+                if xs and remaining:selected[i].append(xs.pop(0));remaining-=1
+        best=[(y,sorted(selected[i])) for i,(y,_) in enumerate(best)]
+    panels=[];rows=[];polygons=[]
+    for y,xs in best:
+        if not xs:continue
+        index=len(rows)
+        for x in xs:
+            corners=native([[x,y+projected/2],[x+width,y+projected/2],[x+width,y-projected/2],[x,y-projected/2]])
+            polygons.append(Polygon(corners));panels.append({'corners':corners,'row':index,'local_x':x})
+        rows.append({'y':y,'count':len(xs),'intervals':[[x,x+width] for x in xs]})
+    if not panels:return [],[],0,'no_space'
     from shapely.ops import unary_union
-    coverage=unary_union(polygons).convex_hull.area
-    return panels,rows,float(coverage),None
+    return panels,rows,float(unary_union(polygons).convex_hull.area),None
 
 
 def shading_fractions(altitude, sun_azimuth, tilt, azimuth, rows):

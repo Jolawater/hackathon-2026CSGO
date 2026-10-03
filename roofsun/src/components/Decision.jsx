@@ -5,6 +5,10 @@ import { fmt, money } from "../lib/format.js";
 
 export const reasonText = (reason, t) =>
   ({
+    minimum_capacity: t(
+      "Below the selected minimum practical system size",
+      "低於所選最小實用系統容量",
+    ),
     physical: t("Preliminary physical checks failed", "未通過初步物理條件"),
     budget: t("Over budget", "超出預算"),
     profit: t(
@@ -25,25 +29,59 @@ export function DecisionControls({ inputs, change, t }) {
         </strong>
         <p className="microcopy">
           {t(
-            "0 = no limit. Choices must pass these goals; minimum-cost and maximum-generation designs can still be unsuitable.",
-            "0 表示不限。推薦必須通過這些目標；最低成本或最高發電量也可能不適合。",
+            "Enable a cap to screen by budget or payback. Minimum system size is a practical screening assumption, not a legal limit.",
+            "勾選上限以按預算或回本期篩選。最小系統容量是實用篩選假設，並非法例下限。",
           )}
         </p>
       </div>
+      <div>
+        <label className="goal-checkbox">
+          <input
+            type="checkbox"
+            checked={inputs.budget > 0}
+            onChange={(e) => change("budget", e.target.checked ? 200000 : 0)}
+          />
+          {t("Limit installation budget", "設定安裝預算上限")}
+        </label>
+        {inputs.budget > 0 && (
+          <NumberField
+            label={t("Budget cap", "預算上限")}
+            value={inputs.budget}
+            max={10000000}
+            unit="HK$"
+            onChange={(v) => change("budget", v)}
+          />
+        )}
+      </div>
+      <div>
+        <label className="goal-checkbox">
+          <input
+            type="checkbox"
+            checked={inputs.max_payback_years > 0}
+            onChange={(e) =>
+              change("max_payback_years", e.target.checked ? 7 : 0)
+            }
+          />
+          {t("Limit sustained payback time", "設定持續回本期限")}
+        </label>
+        {inputs.max_payback_years > 0 && (
+          <NumberField
+            label={t("Sustained payback within", "持續回本期限")}
+            value={inputs.max_payback_years}
+            max={25}
+            step={0.5}
+            unit={t("years", "年")}
+            onChange={(v) => change("max_payback_years", v)}
+          />
+        )}
+      </div>
       <NumberField
-        label={t("Budget cap", "預算上限")}
-        value={inputs.budget}
-        max={10000000}
-        unit="HK$"
-        onChange={(v) => change("budget", v)}
-      />
-      <NumberField
-        label={t("Sustained payback within", "持續回本期限")}
-        value={inputs.max_payback_years}
-        max={25}
-        step={0.5}
-        unit={t("years", "年")}
-        onChange={(v) => change("max_payback_years", v)}
+        label={t("Minimum system capacity", "最小系統容量")}
+        value={inputs.minimum_capacity_kw}
+        max={20}
+        step={0.1}
+        unit="kW"
+        onChange={(v) => change("minimum_capacity_kw", v)}
       />
       <label className="goal-checkbox">
         <input
@@ -59,7 +97,7 @@ export function DecisionControls({ inputs, change, t }) {
     </section>
   );
 }
-export function DecisionBanner({ result, search, loading, t, onJump }) {
+export function DecisionBanner({ result, search, loading, t, onJump, sample }) {
   const ready = result && !loading;
   const eligible = ready && result.decision?.eligible;
   const defer = search?.verdict === "defer_installation";
@@ -71,34 +109,44 @@ export function DecisionBanner({ result, search, loading, t, onJump }) {
       <div>
         <span className="eyebrow">{t("YOUR DECISION", "你的決策")}</span>
         <h2>
-          {!ready
-            ? t("Checking your goals…", "正在核對目標…")
-            : defer
-              ? t("Consider deferring installation", "可考慮暫緩安裝")
-              : eligible
-                ? t(
-                    "Current design meets your stated goals",
-                    "當前設計符合你設定的目標",
-                  )
-                : t(
-                    "Current design does not meet your goals",
-                    "當前設計未達你的目標",
-                  )}
+          {sample
+            ? t(
+                "Example rooftop — replace the assumptions",
+                "示例天台：請改為你的實際資料",
+              )
+            : !ready
+              ? t("Checking your goals…", "正在核對目標…")
+              : defer
+                ? t("Consider deferring installation", "可考慮暫緩安裝")
+                : eligible
+                  ? t(
+                      "Current design meets the selected screening criteria",
+                      "當前設計符合所選篩選條件",
+                    )
+                  : t(
+                      "Current design does not meet the selected criteria",
+                      "當前設計未達所選條件",
+                    )}
         </h2>
         <p>
-          {ready
-            ? eligible
-              ? t(
-                  "Within the selected constraints and financial assumptions. Compare alternatives and check sensitivity before choosing.",
-                  "在所選條件與財務假設下達標。選擇前請比較其他方案及敏感性。",
-                )
-              : result.decision?.reasons
-                  .map((r) => reasonText(r, t))
-                  .join(" · ")
-            : t(
-                "Results update when your inputs change.",
-                "輸入改變後會重新計算。",
-              )}
+          {sample
+            ? t(
+                "This is a calculated example, not a recommendation for your property. Enter measured roof dimensions and an actual installation quote before deciding.",
+                "這是模型計算示例，並非對你物業的建議。請填入實測天台尺寸及真實安裝商報價，再作決定。",
+              )
+            : ready
+              ? eligible
+                ? t(
+                    "Within the selected constraints and financial assumptions. Compare alternatives and check sensitivity before choosing.",
+                    "在所選條件與財務假設下達標。選擇前請比較其他方案及敏感性。",
+                  )
+                : result.decision?.reasons
+                    .map((r) => reasonText(r, t))
+                    .join(" · ")
+              : t(
+                  "Results update when your inputs change.",
+                  "輸入改變後會重新計算。",
+                )}
         </p>
         {defer && (
           <p>
@@ -228,23 +276,25 @@ export function EngineeringControls({ inputs, change, t }) {
       <div className="field-pair">
         <NumberField
           label={t("Discount rate", "折現率")}
-          value={inputs.discount_rate}
-          max={0.3}
-          step={0.01}
-          onChange={(v) => change("discount_rate", v)}
+          value={Math.round(inputs.discount_rate * 10000) / 100}
+          unit="%"
+          max={30}
+          step={0.5}
+          onChange={(v) => change("discount_rate", v / 100)}
         />
         <NumberField
           label={t("Cost inflation", "費用年通脹")}
-          value={inputs.cost_inflation}
-          max={0.15}
-          step={0.01}
-          onChange={(v) => change("cost_inflation", v)}
+          value={Math.round(inputs.cost_inflation * 10000) / 100}
+          unit="%"
+          max={15}
+          step={0.5}
+          onChange={(v) => change("cost_inflation", v / 100)}
         />
       </div>
       <p className="microcopy">
         {t(
-          "Rates are decimals: 0.04 = 4%. Simple cash flow and discounted NPV are both reported; taxes and financing are excluded.",
-          "比率用小數：0.04 = 4%。同時報告簡單現金流與折現淨現值，未計稅項及融資。",
+          "Rates are entered as percentages. Simple cash flow and discounted NPV are both reported; taxes and financing are excluded.",
+          "比率以百分比輸入。同時報告簡單現金流與折現淨現值，未計稅項及融資。",
         )}
       </p>
       <div className="field-pair">

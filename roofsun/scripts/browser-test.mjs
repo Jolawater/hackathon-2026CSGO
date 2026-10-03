@@ -68,7 +68,7 @@ try {
   );
   assert(
     (await page.locator(".decision-banner").innerText()).includes(
-      "meets your stated goals",
+      "Example rooftop",
     ),
   );
   assert(
@@ -80,6 +80,9 @@ try {
     path: "/tmp/roofsun-browser-checks/desktop.png",
     fullPage: true,
   });
+  await page
+    .getByRole("button", { name: "Advanced mode", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Save this pair as A/B", exact: true })
     .click();
@@ -95,7 +98,7 @@ try {
     await readFile("/tmp/roofsun-browser-checks/plans.json", "utf8"),
   );
   assert.equal(archive.schema, "roofsun-hk/v2");
-  assert.equal(archive.model_version, "2.0.0");
+  assert.equal(archive.model_version, "2.1.0");
   assert.equal(Object.keys(archive.weather_sources).length, 3);
   // Imported result numbers must be discarded and recomputed from validated inputs.
   archive.plans.forEach((p) => (p.annual_kwh = 99999999));
@@ -143,6 +146,7 @@ try {
     .waitFor();
   assert.equal(await page.locator(".saved-plan").count(), 2);
   // Budget refusal must be visible while physical exploration remains available.
+  await page.getByLabel("Limit installation budget", { exact: true }).check();
   await page.getByLabel("Budget cap", { exact: true }).fill("1000");
   await ready();
   await searched();
@@ -153,7 +157,7 @@ try {
     })
     .waitFor();
   assert(await page.locator(".recommendation").first().isDisabled());
-  await page.getByLabel("Budget cap", { exact: true }).fill("0");
+  await page.getByLabel("Limit installation budget", { exact: true }).uncheck();
   await ready();
   await recommendationReady();
   await page.getByLabel("Width", { exact: true }).fill("20");
@@ -181,7 +185,9 @@ try {
   await page
     .getByLabel("Require positive net cash flow and NPV", { exact: true })
     .uncheck();
-  await page.getByLabel("Sustained payback within", { exact: true }).fill("0");
+  await page
+    .getByLabel("Limit sustained payback time", { exact: true })
+    .uncheck();
   await ready();
   await recommendationReady();
   await reset();
@@ -197,7 +203,7 @@ try {
     .getByLabel("Rooftop scenario", { exact: true })
     .selectOption("shaded");
   await ready();
-  await recommendationReady();
+  await searched();
   assert.notEqual(
     (await page.locator(".hero-number").innerText()).replace(/\D/g, ""),
     String(Math.round(baseline.annual_kwh)),
@@ -274,10 +280,156 @@ try {
     })
     .waitFor();
   await reset();
+  // Audit regressions exercised through the real UI, not API-only fixtures.
+  await page.getByRole("button", { name: "Simple mode", exact: true }).click();
+  assert.equal(
+    await page.getByLabel("Installation per kW", { exact: true }).inputValue(),
+    "25000",
+  );
+  assert(
+    await page
+      .getByRole("heading", {
+        name: "Highest acceptable installation quote",
+        exact: true,
+      })
+      .isVisible(),
+  );
+  assert(
+    !(await page
+      .getByRole("heading", {
+        name: "Generation through the year",
+        exact: true,
+      })
+      .isVisible()),
+  );
+  assert(
+    await page
+      .getByRole("heading", {
+        name: "Independent weather-input check",
+        exact: true,
+      })
+      .isVisible(),
+  );
+  await page.getByLabel("Floors above your rooftop", { exact: true }).fill("1");
+  await page.getByLabel("Distance to neighbour", { exact: true }).fill("10");
+  const shadingResponse = page.waitForResponse(
+    (r) => r.url().includes("/api/evaluate") && r.status() === 200,
+  );
+  await page
+    .getByRole("button", { name: "Apply neighbour shading", exact: true })
+    .click();
+  const withNeighbour = await (await shadingResponse).json();
+  assert(withNeighbour.annual_kwh < baseline.annual_kwh);
+  await reset();
+  const massResponse = page.waitForResponse(
+    (r) => r.url().includes("/api/evaluate") && r.status() === 200,
+  );
+  await page
+    .getByLabel("Mounting weight preset", { exact: true })
+    .selectOption("ballast");
+  const ballasted = await (await massResponse).json();
+  assert(ballasted.load_kg_m2 > baseline.load_kg_m2);
+  await reset();
+  await page.getByLabel("House covered area", { exact: true }).fill("200");
+  await page.getByLabel("Width", { exact: true }).fill("12");
+  await page.getByLabel("Depth", { exact: true }).fill("10");
+  await ready();
+  const cappedResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/evaluate") &&
+      r.status() === 200 &&
+      r.request().postDataJSON()?.config?.panel_limit === 22,
+  );
+  await page
+    .getByRole("button", { name: "Cap at 22 modules / 9.9 kW", exact: true })
+    .click();
+  const capped = await (await cappedResponse).json();
+  assert.equal(capped.panels_count, 22);
+  assert.equal(capped.capacity_kw, 9.9);
+  assert.equal(capped.fit_rate, 4);
+  await ready();
+  const cliffResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/evaluate") &&
+      r.status() === 200 &&
+      r.request().postDataJSON()?.config?.panel_limit === 23,
+  );
+  await page.getByLabel("Maximum modules", { exact: true }).fill("23");
+  const cliff = await (await cliffResponse).json();
+  assert.equal(cliff.capacity_kw, 10.35);
+  assert.equal(cliff.fit_rate, 3);
+  assert(cliff.npv_A < capped.npv_A);
+  await ready();
+  await recommendationReady();
+  await page.getByRole("button", { name: /Best within 10 kW/ }).click();
+  await ready();
+  await page
+    .locator(".quote-screen")
+    .getByText(/22 modules · 9.9 kW/)
+    .waitFor();
+  await reset();
+  await page.locator(".measured-reference summary").click();
+  await page
+    .getByLabel("Meter generation kWh", { exact: true })
+    .fill(String(baseline.monthly_kwh.reduce((a, b) => a + b, 0)));
+  await page
+    .getByLabel("Actual installed capacity kW", { exact: true })
+    .fill(String(baseline.capacity_kw));
+  await page
+    .getByLabel("Record source / period", { exact: true })
+    .fill("Synthetic browser fixture; not field evidence");
+  await page
+    .getByRole("button", { name: "Compare meter record", exact: true })
+    .click();
+  await page
+    .locator(".measured-reference")
+    .getByText(/relative difference 0%/)
+    .waitFor();
+  const meterExport = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export JSON", exact: true }).click();
+  const meterFile = await meterExport;
+  await meterFile.saveAs("/tmp/roofsun-browser-checks/meter.json");
+  const meterArchive = JSON.parse(
+    await readFile("/tmp/roofsun-browser-checks/meter.json", "utf8"),
+  );
+  assert.equal(meterArchive.measured_reference.difference_pct, 0);
+  assert.equal(
+    meterArchive.irradiance_checks["2025"].same_year.difference_pct,
+    3,
+  );
+  await page
+    .getByRole("slider", { name: "Panel tilt", exact: true })
+    .fill("35");
+  await ready();
+  await page
+    .locator(".measured-reference")
+    .getByText("Inputs changed; rerun this comparison.", { exact: true })
+    .waitFor();
+  const changedMeter = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export JSON", exact: true }).click();
+  const changedFile = await changedMeter;
+  await changedFile.saveAs("/tmp/roofsun-browser-checks/meter-stale.json");
+  assert.equal(
+    JSON.parse(
+      await readFile("/tmp/roofsun-browser-checks/meter-stale.json", "utf8"),
+    ).measured_reference,
+    null,
+  );
+  await reset();
+  await page.screenshot({
+    path: "/tmp/roofsun-browser-checks/screening-desktop.png",
+    fullPage: false,
+  });
+  await page
+    .getByRole("button", { name: "Advanced mode", exact: true })
+    .click();
   await page.getByRole("button", { name: "繁中", exact: true }).click();
   assert(
     await page
-      .getByRole("heading", { name: "當前設計符合你設定的目標", exact: true })
+      .getByRole("heading", {
+        name: "示例天台：請改為你的實際資料",
+        exact: true,
+      })
       .isVisible(),
   );
   await page.getByRole("button", { name: "模型與來源", exact: true }).click();
@@ -323,7 +475,7 @@ try {
   await ready();
   assert.deepEqual(errors, [], "No browser runtime exceptions");
   console.log(
-    "PASS: goals/refusal, physical trade-off, persisted A/B, safe recalculated imports, JSON/report provenance, sensitivity/reference and stale-evidence exclusion, weather/mass/obstacles/electrical inputs, bilingual evidence, charts, mobile, invalid area, no-space and network retry.",
+    "PASS: audit packing/9.9 kW tariff cap, conservative quote screen, neighbour geometry, ballast, actual-meter workflow and stale-meter exports; goals/refusal, physical trade-off, persisted A/B, safe recalculated imports, JSON/report provenance, sensitivity/reference and stale-evidence exclusion, weather/mass/obstacles/electrical inputs, bilingual evidence, charts, mobile, invalid area, no-space and network retry.",
   );
 } catch (error) {
   await page.screenshot({

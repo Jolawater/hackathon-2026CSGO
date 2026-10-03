@@ -1688,3 +1688,93 @@ footer > p {
     overflow: visible;
   }
 }
+/* Screening workflow: keep the decision and quote threshold ahead of model detail. */
+.mode-toggle {
+  margin: 0 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mode-toggle .microcopy {
+  margin-left: auto;
+}
+.goals-details {
+  margin-bottom: 18px;
+}
+.goals-details > summary,
+.measured-reference > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.goals-card {
+  margin: 8px 0;
+}
+.neighbour-input,
+.mounting-input {
+  margin: 20px 0;
+}
+.neighbour-input > .field-pair {
+  margin-top: 12px;
+}
+.module-cap {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border, #e1e5db);
+}
+.module-cap .number-field {
+  max-width: 220px;
+  margin: 10px 0;
+}
+.quote-screen {
+  border-bottom: 1px solid #e0e6da;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+}
+.quote-screen h3 {
+  margin: 8px 0;
+  font-size: 17px;
+  line-height: 1.4;
+}
+.quote-ceiling {
+  display: block;
+  color: #2c5d42;
+  font-size: 29px;
+  overflow-wrap: anywhere;
+}
+.quote-screen p {
+  font-size: 12px;
+  color: #62705d;
+  line-height: 1.6;
+}
+.radiation-evidence,
+.measured-reference {
+  padding: 24px;
+  margin: 24px 0;
+}
+.radiation-evidence h2 {
+  font-size: 19px;
+  margin-bottom: 16px;
+}
+.radiation-evidence p,
+.measured-reference p {
+  line-height: 1.65;
+}
+.measured-reference .text-field {
+  margin: 14px 0;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 600px) {
+  .mode-toggle .microcopy {
+    width: 100%;
+    margin-left: 0;
+  }
+  .module-cap {
+    padding: 16px;
+  }
+  .quote-ceiling {
+    font-size: 26px;
+  }
+}

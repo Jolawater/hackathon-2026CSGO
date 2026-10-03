@@ -71,6 +71,14 @@ import {
   downloadArchive,
   downloadReport,
 } from "./lib/workspace.js";
+import {
+  NeighbourInput,
+  MountingInput,
+  QuoteScreen,
+  RadiationEvidence,
+  MeasuredReference,
+  niceTicks,
+} from "./components/Screening.jsx";
 const Validation = lazy(() => import("./components/Validation.jsx"));
 const Evidence = lazy(() => import("./components/Evidence.jsx"));
 
@@ -80,14 +88,15 @@ const defaults = {
   roof_rotation: 0,
   house_area: 80,
   horizon: Array(12).fill(0),
-  price_per_kw: 14000,
-  fixed_cost: 640,
+  price_per_kw: 25000,
+  fixed_cost: 5000,
   annual_om: 300,
   inverter_cost: 5000,
   commissioning: "2027-01-01",
   post_fit: false,
   self_use_rate: 1.4,
   self_use_share: 0.5,
+  minimum_capacity_kw: 2,
   budget: 0,
   max_payback_years: 7,
   require_profit: true,
@@ -106,7 +115,7 @@ const defaults = {
   panel_source:
     "Generic 450 W engineering reference, not a verified commercial model",
 };
-const defaultConfig = { tilt: 20, azimuth: 180, rows: 3 };
+const defaultConfig = { tilt: 20, azimuth: 180, rows: 3, panel_limit: 0 };
 const presets = [
   { id: "open", en: "Open rooftop", zh: "空曠天台", inputs: { ...defaults } },
   {
@@ -160,6 +169,14 @@ function App() {
     [hour, setHour] = useState(12),
     [topView, setTopView] = useState(false),
     [saved, setSaved] = useState(initialWorkspace.current.saved);
+  const [advanced, setAdvanced] = useState(
+    () => localStorage.getItem("roofsun-mode") === "advanced",
+  );
+  useEffect(() => {
+    localStorage.setItem("roofsun-mode", advanced ? "advanced" : "simple");
+  }, [advanced]);
+  const [fieldReference, setFieldReference] = useState(null);
+  const [resetCount, setResetCount] = useState(0);
   const [storageError, setStorageError] = useState("");
   const [importError, setImportError] = useState("");
   const [importing, setImporting] = useState(false);
@@ -180,6 +197,9 @@ function App() {
       (point, i, array) =>
         i % 3 === 0 || point.date === "2033-12-31" || i === array.length - 1,
     ) || [];
+  const cashTicks = niceTicks(
+    curve.map((p) => (inputs.post_fit ? p : { A: p.A, B: p.A })),
+  );
   const monthly = (result?.monthly_kwh || []).map((kwh, i) => ({
     month: zh
       ? `${i + 1}月`
@@ -235,6 +255,7 @@ function App() {
       budget: t("Budget", "預算"),
       profit: t("Profit/NPV", "收益／淨現值"),
       payback: t("Payback", "回本"),
+      minimum_capacity: t("Minimum capacity", "最小容量"),
     })[key];
   const archive = () =>
     buildArchive(
@@ -245,6 +266,10 @@ function App() {
       metadata.data,
       simulation.loading || simulation.error ? null : simulation.data,
       evidence,
+      ready &&
+        fieldReference?.fingerprint === JSON.stringify({ inputs, config })
+        ? fieldReference.data
+        : null,
     );
   function exportSaved() {
     downloadArchive(archive());
@@ -348,14 +373,14 @@ function App() {
               </span>
               <h1>
                 {t(
-                  "Find a better place for the sun.",
-                  "找出更合適的太陽能擺法。",
+                  "Find the right size for your roof.",
+                  "替你的天台，找到合適規模。",
                 )}
               </h1>
               <p>
                 {t(
-                  "Explore the layout. See the shade. Compare the return.",
-                  "探索排布，觀察遮擋，比較投資結果。",
+                  "Compare shade, the 10 kW tariff step, and the quote before 2033.",
+                  "比較遮擋、10 kW 電價門檻，以及 2033 年前的安裝價值。",
                 )}
               </p>
             </div>
@@ -393,7 +418,28 @@ function App() {
               </small>
             </div>
           </div>
+          <div className="mode-toggle view-toggle">
+            <button
+              className={!advanced ? "active" : ""}
+              onClick={() => setAdvanced(false)}
+            >
+              {t("Simple mode", "簡單模式")}
+            </button>
+            <button
+              className={advanced ? "active" : ""}
+              onClick={() => setAdvanced(true)}
+            >
+              {t("Advanced mode", "進階模式")}
+            </button>
+            <span className="microcopy">
+              {t(
+                "Roof → shading → quote → decision",
+                "天台 → 遮擋 → 報價 → 決策",
+              )}
+            </span>
+          </div>
           <DecisionBanner
+            sample={preset !== "custom"}
             result={ready ? result : null}
             search={
               simulation.loading || simulation.error ? null : simulation.data
@@ -406,7 +452,12 @@ function App() {
                 ?.scrollIntoView({ behavior: "smooth" })
             }
           />
-          <DecisionControls inputs={inputs} change={change} t={t} />
+          <details className="goals-details" open={advanced}>
+            <summary>
+              {t("Budget and screening goals", "預算及篩選目標")}
+            </summary>
+            <DecisionControls inputs={inputs} change={change} t={t} />
+          </details>
           {invalidArea && (
             <p role="alert" className="error-banner">
               {t(
@@ -432,6 +483,12 @@ function App() {
                     setInputs(structuredClone(defaults));
                     setConfig(defaultConfig);
                     setPreset("open");
+                    setImportError("");
+                    setFieldReference(null);
+                    setResetCount((n) => n + 1);
+                    setDay("2025-12-21");
+                    setHour(12);
+                    setTopView(false);
                   }}
                 >
                   <RotateCcw size={15} />
@@ -492,11 +549,19 @@ function App() {
                   "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
                 )}
               </p>
-              <Horizon
-                values={inputs.horizon}
+              <NeighbourInput
+                key={resetCount}
+                horizon={inputs.horizon}
                 onChange={(v) => change("horizon", v)}
                 t={t}
               />
+              {advanced && (
+                <Horizon
+                  values={inputs.horizon}
+                  onChange={(v) => change("horizon", v)}
+                  t={t}
+                />
+              )}
               <div className="input-divider" />
               <div className="section-label">
                 {t("SYSTEM QUOTE", "系統報價")}
@@ -511,9 +576,22 @@ function App() {
                 unit="HK$"
                 onChange={(v) => change("price_per_kw", v)}
               />
+              <label className="date-label">
+                {t("Commissioning date", "投產日期")}
+                <input
+                  aria-label={t("Commissioning date", "投產日期")}
+                  type="date"
+                  min="2026-01-01"
+                  max="2033-12-31"
+                  value={inputs.commissioning}
+                  onChange={(e) => {
+                    if (e.target.value) change("commissioning", e.target.value);
+                  }}
+                />
+              </label>
               <details className="advanced-finance">
                 <summary>
-                  {t("Costs & commissioning", "費用與投產日期")}
+                  {t("Maintenance & other costs", "維護及其他費用")}
                   <ChevronDown size={13} />
                 </summary>
                 <div className="field-pair">
@@ -536,22 +614,11 @@ function App() {
                   max={100000}
                   onChange={(v) => change("inverter_cost", v)}
                 />
-                <label className="date-label">
-                  {t("Commissioning date", "投產日期")}
-                  <input
-                    aria-label={t("Commissioning date", "投產日期")}
-                    type="date"
-                    min="2026-01-01"
-                    max="2033-12-31"
-                    value={inputs.commissioning}
-                    onChange={(e) => {
-                      if (e.target.value)
-                        change("commissioning", e.target.value);
-                    }}
-                  />
-                </label>
               </details>
-              <EngineeringControls inputs={inputs} change={change} t={t} />
+              <MountingInput inputs={inputs} change={change} t={t} />
+              {advanced && (
+                <EngineeringControls inputs={inputs} change={change} t={t} />
+              )}
               <div className="reference-module">
                 <Layers size={17} />
                 <div>
@@ -571,10 +638,7 @@ function App() {
                     {t("LAYOUT EXPLORER", "排布探索")}
                   </span>
                   <h2>
-                    {t(
-                      "A little tilt changes a lot.",
-                      "角度改變，結果也改變。",
-                    )}
+                    {t("More panels. Better value?", "多裝面板，是否更划算？")}
                   </h2>
                 </div>
                 <div className="view-toggle">
@@ -694,6 +758,44 @@ function App() {
                   onChange={(v) => setConfig((c) => ({ ...c, rows: v }))}
                 />
               </div>
+              <div className="module-cap">
+                <label className="goal-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!(config.panel_limit > 0)}
+                    onChange={(e) =>
+                      setConfig((c) => ({
+                        ...c,
+                        panel_limit: e.target.checked ? 0 : 22,
+                      }))
+                    }
+                  />
+                  {t("Fill all available module slots", "填滿所有可用板位")}
+                </label>
+                {config.panel_limit > 0 && (
+                  <NumberField
+                    label={t("Maximum modules", "面板數上限")}
+                    value={config.panel_limit}
+                    min={1}
+                    max={2000}
+                    onChange={(v) =>
+                      setConfig((c) => ({ ...c, panel_limit: Math.round(v) }))
+                    }
+                  />
+                )}
+                <button
+                  className="text-button"
+                  onClick={() => setConfig((c) => ({ ...c, panel_limit: 22 }))}
+                >
+                  {t("Cap at 22 modules / 9.9 kW", "上限 22 塊／9.9 kW")}
+                </button>
+                <p className="microcopy">
+                  {t(
+                    "At 450 W/module, 22 modules are 9.9 kW; 23 are 10.35 kW. Above 10 kW, the HK$3/kWh rate applies to the whole system, not just the extra capacity. Actual fitting and selected constraints still apply.",
+                    "每板 450 W：22 塊為 9.9 kW，23 塊為 10.35 kW。超過 10 kW 後，整個系統採 HK$3／度，並非只有新增容量降價。仍須符合實際板位及所選限制。",
+                  )}
+                </p>
+              </div>
               <div className="scene-bottom">
                 <span>
                   <Info size={13} />
@@ -758,6 +860,11 @@ function App() {
                 </div>
               </section>
               <section className="card finance-card">
+                <QuoteScreen
+                  result={ready ? result : null}
+                  inputs={inputs}
+                  t={t}
+                />
                 <div className="card-title">
                   <Coins size={17} />
                   <h2>{t("Investment outlook", "投資結果")}</h2>
@@ -774,9 +881,11 @@ function App() {
                   <span>{t("First break-even", "首次回本")}</span>
                   <strong>
                     {ready
-                      ? payback
-                        ? payback.slice(0, 7)
-                        : t("Not within 25 years", "25 年內未回本")
+                      ? !result.panels_count
+                        ? t("Not applicable", "不適用")
+                        : payback
+                          ? payback.slice(0, 7)
+                          : t("Not within 25 years", "25 年內未回本")
                       : "—"}
                   </strong>
                 </div>
@@ -784,24 +893,28 @@ function App() {
                   <span>{t("Sustained break-even", "持續回本")}</span>
                   <strong>
                     {ready
-                      ? result[
-                          inputs.post_fit
-                            ? "stable_payback_B"
-                            : "stable_payback_A"
-                        ]?.slice(0, 7) || t("Not within life", "壽命內未達成")
+                      ? !result.panels_count
+                        ? t("Not applicable", "不適用")
+                        : result[
+                            inputs.post_fit
+                              ? "stable_payback_B"
+                              : "stable_payback_A"
+                          ]?.slice(0, 7) || t("Not within life", "壽命內未達成")
                       : "—"}
                   </strong>
                 </div>
-                <div className="finance-line">
-                  <span>
-                    {t("NPV at selected discount rate", "所選折現率淨現值")}
-                  </span>
-                  <strong>
-                    {ready
-                      ? money(result[inputs.post_fit ? "npv_B" : "npv_A"])
-                      : "—"}
-                  </strong>
-                </div>
+                {advanced && (
+                  <div className="finance-line">
+                    <span>
+                      {t("NPV at selected discount rate", "所選折現率淨現值")}
+                    </span>
+                    <strong>
+                      {ready
+                        ? money(result[inputs.post_fit ? "npv_B" : "npv_A"])
+                        : "—"}
+                    </strong>
+                  </div>
+                )}
                 <div className="finance-line">
                   <span>
                     {t("Net cash flow to FiT end", "計劃結束時淨現金流")}
@@ -962,15 +1075,22 @@ function App() {
             </div>
             <div className="recommendation-grid">
               {[
-                ["economy", "Lower investment", "較低投入", Coins],
-                ["balanced", "Balanced choice", "折中選擇", Leaf],
-                ["generation", "More generation", "較高發電量", Zap],
+                ["npv", "Highest discounted value", "最高淨現值", Coins],
+                ["payback", "Fastest sustained payback", "最快持續回本", Leaf],
+                ["under10", "Best within 10 kW", "10 kW 內最佳", Zap],
+                ...(advanced
+                  ? [
+                      ["economy", "Lower investment", "較低投入", Coins],
+                      ["balanced", "Balanced choice", "折中選擇", Leaf],
+                      ["generation", "More generation", "較高發電量", Zap],
+                    ]
+                  : []),
               ].map(([key, en, cn, Icon]) => {
                 const r = suggestions?.[key];
                 return (
                   <button
                     key={key}
-                    className={`recommendation ${key === "balanced" ? "featured" : ""}`}
+                    className={`recommendation ${key === "npv" ? "featured" : ""}`}
                     disabled={!r || simulation.loading || !!simulation.error}
                     onClick={() => setConfig(r.config)}
                   >
@@ -993,24 +1113,42 @@ function App() {
                         ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.config.rows} ${t("rows", "排")}`
                         : simulation.loading
                           ? t("Calculating…", "正在計算…")
-                          : t("No feasible configuration", "沒有可行配置")}
+                          : t(
+                              "No design meets this target",
+                              "沒有方案符合此目標",
+                            )}
                     </p>
                     {r && !simulation.loading && (
                       <p className="choice-reason">
-                        {key === "economy"
+                        {key === "npv"
                           ? t(
-                              "Lowest investment among designs meeting your goals.",
-                              "達標方案中初始投資最低。",
+                              "Highest NPV among searched designs meeting the selected goals.",
+                              "達標搜尋方案中淨現值最高。",
                             )
-                          : key === "generation"
+                          : key === "payback"
                             ? t(
-                                "Most energy among designs meeting your goals.",
-                                "達標方案中發電最多。",
+                                "Earliest sustained recovery of investment; not only the first crossing of zero.",
+                                "投資最早持續回本，而非只看首次跨過零。",
                               )
-                            : t(
-                                "Closest to equal-weight cost/energy ideal among eligible frontier choices.",
-                                "達標前沿方案中，最接近成本／發電等權理想點。",
-                              )}
+                            : key === "under10"
+                              ? t(
+                                  "Highest NPV at ≤10 kW; includes partial rows capped at 22 modules.",
+                                  "不超過 10 kW 的達標方案中淨現值最高，包含限額 22 塊的非整排方案。",
+                                )
+                              : key === "economy"
+                                ? t(
+                                    "Lowest investment among designs meeting your goals.",
+                                    "達標方案中初始投資最低。",
+                                  )
+                                : key === "generation"
+                                  ? t(
+                                      "Most energy among designs meeting your goals.",
+                                      "達標方案中發電最多。",
+                                    )
+                                  : t(
+                                      "Closest to equal-weight cost/energy ideal among eligible frontier choices.",
+                                      "達標前沿方案中，最接近成本／發電等權理想點。",
+                                    )}
                       </p>
                     )}
                     {r && !simulation.loading && (
@@ -1057,7 +1195,7 @@ function App() {
               )}
             </p>
           </section>
-          <div className="charts-grid">
+          <div className="charts-grid" hidden={!advanced}>
             <section className="card chart-card">
               <div className="card-title">
                 <h2>{t("Generation through the year", "全年發電分布")}</h2>
@@ -1182,7 +1320,7 @@ function App() {
               </p>
             </section>
           </div>
-          <section className="card cashflow-card">
+          <section className="card cashflow-card" hidden={!advanced}>
             <div className="card-title">
               <h2>
                 {t("When does the investment come back?", "投資何時能回本？")}
@@ -1218,7 +1356,9 @@ function App() {
                     tick={{ fontSize: 11 }}
                   />
                   <YAxis
-                    tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                    domain={[cashTicks[0], cashTicks.at(-1)]}
+                    ticks={cashTicks}
+                    tickFormatter={(v) => `${v / 1000}k`}
                     tick={{ fontSize: 11 }}
                   />
                   <Tooltip
@@ -1268,18 +1408,31 @@ function App() {
               )}
             </p>
           </section>
-          <Suspense
-            fallback={
-              <p>{t("Loading sensitivity tools…", "正在載入敏感性工具…")}</p>
-            }
-          >
-            <Evidence
-              inputs={inputs}
-              config={config}
-              t={t}
-              onEvidence={setEvidence}
-            />
-          </Suspense>
+          <RadiationEvidence
+            check={metadata.data?.irradiance_checks?.[inputs.weather_year]}
+            t={t}
+          />
+          <MeasuredReference
+            key={resetCount}
+            inputs={inputs}
+            config={config}
+            t={t}
+            onResult={setFieldReference}
+          />
+          <div hidden={!advanced}>
+            <Suspense
+              fallback={
+                <p>{t("Loading sensitivity tools…", "正在載入敏感性工具…")}</p>
+              }
+            >
+              <Evidence
+                inputs={inputs}
+                config={config}
+                t={t}
+                onEvidence={setEvidence}
+              />
+            </Suspense>
+          </div>
           <section className="card saved-card" id="saved-plans">
             <div className="card-title">
               <h2>{t("Your side-by-side comparison", "並排比較你的方案")}</h2>

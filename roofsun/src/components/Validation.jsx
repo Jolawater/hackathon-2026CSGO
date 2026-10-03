@@ -1,6 +1,7 @@
 import React from "react";
 import { ShieldCheck, Layers, Check, ExternalLink } from "lucide-react";
 import { useApi } from "../lib/api.js";
+import { RadiationEvidence } from "./Screening.jsx";
 import { ReferenceEvidence } from "./Evidence.jsx";
 export default function Validation({ t }) {
   const { data: meta, error } = useApi("/api/meta", undefined, 0),
@@ -18,6 +19,7 @@ export default function Validation({ t }) {
         </p>
       </div>
       {error && <p className="error-banner">{error}</p>}
+      <RadiationEvidence check={meta?.irradiance_checks?.[2025]} t={t} />
       <div className="validation-grid">
         <section className="card">
           <div className="card-title">

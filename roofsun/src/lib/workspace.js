@@ -45,10 +45,11 @@ export function buildArchive(
   meta,
   search,
   evidence,
+  measuredReference = null,
 ) {
   return {
     schema: SCHEMA,
-    model_version: meta?.model_version || "2.0.0",
+    model_version: meta?.model_version || "2.1.0",
     generated_at: new Date().toISOString(),
     simulated: true,
     evidence_scope:
@@ -69,6 +70,8 @@ export function buildArchive(
         }
       : null,
     evidence: evidence || null,
+    irradiance_checks: meta?.irradiance_checks,
+    measured_reference: measuredReference,
   };
 }
 export async function restoreArchive(file, defaults) {

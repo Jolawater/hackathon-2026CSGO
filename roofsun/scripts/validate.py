@@ -52,11 +52,23 @@ record('Decision can reject installation','決策可建議暫緩安裝',
        f"feasible={len(late['configs'])}; eligible={late['eligible_count']}; verdict={late['verdict']}",late['eligible_count']==0 and late['verdict']=='defer_installation')
 analysis=analyse(Inputs(),Configuration())
 record('Historical weather and sensitivity coverage','歷史氣象及敏感性覆蓋',
-       'Three weather years (2024 includes 8,784 hours), eleven one-at-a-time scenarios and seven recommendation scenarios. Ranges are not confidence bounds.',
-       '三個氣象年份（2024 年為 8,784 小時）、十一個單項情景及七個推薦情景；範圍並非置信區間。',
-       f"annual scenario envelope={analysis['range']['annual_kwh']}; distinct choices={analysis['distinct_recommendations']}",len(analysis['weather_years'])==3 and len(analysis['scenarios'])==11)
-report.update(model_version='2.0.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
-              sensitivity=analysis,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
+       'Three weather years (2024 includes 8,784 hours), twelve one-at-a-time scenarios and eight recommendation scenarios. Ranges are not confidence bounds.',
+       '三個氣象年份（2024 年為 8,784 小時）、十二個單項情景及八個推薦情景；範圍並非置信區間。',
+       f"annual scenario envelope={analysis['range']['annual_kwh']}; distinct choices={analysis['distinct_recommendations']}",len(analysis['weather_years'])==3 and len(analysis['scenarios'])==12)
+from backend.reference import irradiance_check
+radiation=irradiance_check()
+record('Independent irradiance input comparison','獨立輻照輸入比較',
+       "NASA POWER 2025 versus HKO King's Park 2025 observations. Different location/calendar boundaries; no calibrated PV accuracy claim.",
+       'NASA POWER 2025 與天文台京士柏同年觀測對照；地點及曆年邊界不同，不宣稱已校準發電準確率。',
+       f"NASA={radiation['nasa_annual_kwh_m2']} kWh/m²; HKO={radiation['same_year']['hko_annual_kwh_m2']} kWh/m²; difference={radiation['same_year']['difference_pct']}%",
+       np.isfinite(radiation['same_year']['difference_pct']),radiation['same_year']['source_url'])
+record('Boundary and rotated packing regressions','邊界及旋轉排板回歸',
+       '8 x 7 m, two rows, 0–40° every 5° retains 12 modules; 150° two rows retains at least 9 complete non-overlapping modules.',
+       '8 x 7 m、兩排、0–40° 每 5° 均保留 12 塊；150° 兩排至少保留 9 塊完整且不重疊面板。',
+       '9 tilt cases; rotated two-row case',
+       all(len(layout(Inputs(depth=7),Configuration(tilt=t,rows=2))[0])==12 for t in range(0,41,5)) and len(layout(Inputs(depth=7),Configuration(azimuth=150,rows=2))[0])>=9)
+report.update(model_version='2.1.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
+              sensitivity=analysis,irradiance_check=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'
 temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2))
 temporary.replace(ROOT/'data/validation.json')

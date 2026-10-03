@@ -11,6 +11,8 @@ from .decision import recommend
 def summary(result, inputs):
     scenario='B' if inputs.post_fit else 'A'
     return {k:result[k] for k in ['config','panels_count','capacity_kw','annual_kwh','specific_yield','shading_loss_pct','initial_cost','fit_rate','compliant']} | {
+        'max_acceptable_quote':result[f'max_acceptable_quote_{scenario}'],
+        'max_acceptable_per_kw':result[f'max_acceptable_per_kw_{scenario}'],
         'net':result[f'net_{scenario}'],'npv':result[f'npv_{scenario}'],
         'stable_payback':result[f'stable_payback_{scenario}'],'decision':result['decision']}
 
@@ -52,7 +54,7 @@ def analyse_cached(serialized):
     inputs=Inputs.model_validate(payload['inputs']);config=Configuration.model_validate(payload['config'])
     base=evaluate(inputs,config)
     scenarios=[]
-    changes=[('base',{}),('weather_minus_10',{'weather_scale':max(.5,inputs.weather_scale*.9)}),
+    changes=[('base',{}),('weather_minus_15',{'weather_scale':max(.5,inputs.weather_scale*.85)}),('weather_minus_10',{'weather_scale':max(.5,inputs.weather_scale*.9)}),
              ('weather_plus_10',{'weather_scale':min(1.5,inputs.weather_scale*1.1)}),
              ('quote_minus_20',{'price_per_kw':inputs.price_per_kw*.8,'fixed_cost':inputs.fixed_cost*.8}),
              ('quote_plus_20',{'price_per_kw':min(100000,inputs.price_per_kw*1.2),'fixed_cost':min(1000000,inputs.fixed_cost*1.2)}),
@@ -73,13 +75,13 @@ def analyse_cached(serialized):
         result=evaluate(inp,config)
         years.append({'year':year,'hours':len(weather(year)['times']),**summary(result,inp)})
         searched=recommend(inp)
-        selected=searched['recommendations'].get('balanced')
+        selected=searched['recommendations'].get('npv')
         ranking.append({'year':year,'config':selected['config'] if selected else None,
                         'annual_kwh':selected['annual_kwh'] if selected else None,'verdict':searched['verdict']})
     # Robustness of the recommendation to quote/horizon uncertainty, not only yield.
-    for name,updates in [changes[4],changes[5],changes[7],changes[-1]]:
+    for name,updates in [(n,u) for n,u in changes if n in ['weather_minus_15','quote_plus_20','horizon_plus_5','delay_6_months','quote_30000']]:
         searched=recommend(inputs.model_copy(update=updates))
-        selected=searched['recommendations'].get('balanced')
+        selected=searched['recommendations'].get('npv')
         ranking.append({'scenario':name,'config':selected['config'] if selected else None,
                         'annual_kwh':selected['annual_kwh'] if selected else None,'verdict':searched['verdict']})
     designs={json.dumps(r['config'],sort_keys=True) for r in ranking}
@@ -87,7 +89,8 @@ def analyse_cached(serialized):
     for rows in range(max(1,config.rows-1),min(24,config.rows+1)+1):
         r=evaluate(inputs,config.model_copy(update={'rows':rows}))
         row_comparison.append(summary(r,inputs))
-    return {'model_version':MODEL_VERSION,'base':summary(base,inputs),'scenarios':scenarios,'weather_years':years,
+    from .reference import irradiance_check
+    return {'irradiance_check':irradiance_check(inputs.weather_year,inputs.weather_scale),'model_version':MODEL_VERSION,'base':summary(base,inputs),'scenarios':scenarios,'weather_years':years,
         'range':{'annual_kwh':[min(r['annual_kwh'] for r in scenarios+years),max(r['annual_kwh'] for r in scenarios+years)],
                  'npv':[min(r['npv'] for r in scenarios+years),max(r['npv'] for r in scenarios+years)]},
         'ranking':ranking,'ranking_stable':len(designs)==1,'distinct_recommendations':len(designs),

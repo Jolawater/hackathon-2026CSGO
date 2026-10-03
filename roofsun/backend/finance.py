@@ -47,9 +47,19 @@ def cashflows(inputs, capacity, monthly, settings):
         values=rounded[j]
         first=np.flatnonzero(values>=0)
         stable=np.flatnonzero(np.minimum.accumulate(values[::-1])[::-1]>=0)
-        first_date=periods['dates'][first[0]] if len(first) else None
-        stable_date=periods['dates'][stable[0]] if len(stable) else None
-        result.update({f'net_{name}':round(float(curves[j][-1]),2),
+        first_date=periods['dates'][first[0]] if capacity and len(first) else None
+        stable_date=periods['dates'][stable[0]] if capacity and len(stable) else None
+        discounted_operating=float(np.sum(increments[j]/(1+inputs.discount_rate)**periods['years']))
+        # Quote includes installation only; all modelled O&M/replacement costs
+        # are already deducted. Raw ceiling may be negative: no positive quote works.
+        stress_flow=income*.85+(after*.85 if j else 0)-spend
+        stress_ceiling=float(np.sum(stress_flow/(1+inputs.discount_rate)**periods['years']))
+        result.update({f'max_acceptable_quote_{name}':round(discounted_operating,2) if capacity else None,
+            f'max_acceptable_per_kw_{name}':round((discounted_operating-inputs.fixed_cost)/capacity,2) if capacity else None,
+            f'max_acceptable_quote_stress_{name}':round(stress_ceiling,2) if capacity else None,
+            f'max_acceptable_per_kw_stress_{name}':round((stress_ceiling-inputs.fixed_cost)/capacity,2) if capacity else None,
+            f'quote_headroom_{name}':round(discounted_operating-cost,2) if capacity else None,
+            f'net_{name}':round(float(curves[j][-1]),2),
             f'npv_{name}':round(float(-cost+np.sum(increments[j]/(1+inputs.discount_rate)**periods['years'])),2),
             f'payback_{name}':first_date,f'stable_payback_{name}':stable_date,
             f'payback_years_{name}':round((pd.Timestamp(stable_date)-start).days/365.2425,2) if stable_date else None})

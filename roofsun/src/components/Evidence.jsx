@@ -5,6 +5,7 @@ import { reasonText } from "./Decision.jsx";
 const labels = {
   quote_30000: ["Illustrative HK$30,000/kW quote", "示例 HK$30,000/kW 報價"],
   base: ["Current assumptions", "當前假設"],
+  weather_minus_15: ["Irradiance input −15%", "輻照輸入 −15%"],
   weather_minus_10: ["Irradiance −10%", "輻照 −10%"],
   weather_plus_10: ["Irradiance +10%", "輻照 +10%"],
   quote_minus_20: ["Quote −20%", "報價 −20%"],
@@ -220,7 +221,7 @@ export default function Evidence({ inputs, config, t, onEvidence }) {
               <thead>
                 <tr>
                   <th>{t("Condition", "條件")}</th>
-                  <th>{t("Balanced configuration", "折中配置")}</th>
+                  <th>{t("Highest-NPV configuration", "最高淨現值配置")}</th>
                 </tr>
               </thead>
               <tbody>

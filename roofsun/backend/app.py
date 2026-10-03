@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path
 import json
 import hashlib
+from .reference import irradiance_check, measured_case, Measurement
 from functools import lru_cache
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +10,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from .model import Evaluation, Inputs, evaluate, search, sun_preview, ROOT, SETTINGS
 
-app=FastAPI(title='RoofSun HK', version='2.0.0')
+app=FastAPI(title='RoofSun HK', version='2.1.0')
 app.add_middleware(CORSMiddleware,allow_origins=['http://127.0.0.1:5173','http://localhost:5173'],allow_methods=['GET','POST'],allow_headers=['Content-Type'])
 
 @app.get('/api/health')
-def health(): return {'status':'ok','model_version':'2.0.0','weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
+def health(): return {'status':'ok','model_version':'2.1.0','weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
 
 @lru_cache(maxsize=1)
 def source_metadata():
@@ -21,7 +22,7 @@ def source_metadata():
     for y in [2023,2024,2025]:
         path=ROOT/('data/weather_metadata.json' if y==2025 else f'data/weather_metadata_{y}.json')
         years[str(y)]={**json.loads(path.read_text()), 'csv_sha256':hashlib.sha256((ROOT/f'data/weather_{y}.csv').read_bytes()).hexdigest()}
-    return {'settings':SETTINGS,'model_version':'2.0.0','weather':years['2025'],'weather_years':years}
+    return {'settings':SETTINGS,'model_version':'2.1.0','weather':years['2025'],'weather_years':years,'irradiance_checks':{str(y):irradiance_check(y) for y in [2023,2024,2025]}}
 
 @app.get('/api/meta')
 def meta(): return source_metadata()
@@ -41,6 +42,14 @@ def api_simulate(inputs:Inputs): return search(inputs)
 def api_analyse(request:Evaluation):
     from .reliability import analyse
     return analyse(request.inputs, request.config)
+
+class MeasuredRequest(Evaluation):
+    measurement: Measurement
+
+@app.post('/api/reference-case')
+def api_reference_case(request:MeasuredRequest):
+    try:return measured_case(request.inputs,request.config,request.measurement)
+    except ValueError as exc:raise HTTPException(422,str(exc)) from exc
 
 class SunRequest(Evaluation):
     day:date=date(2025,12,21)

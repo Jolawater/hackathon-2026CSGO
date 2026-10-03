@@ -226,9 +226,9 @@ def test_three_historical_weather_years(year,hours):
 def test_reference_pipeline_and_scenario_analysis_are_reproducible():
     from backend.reliability import analyse
     result=analyse(Inputs(),Configuration())
-    assert len(result['scenarios'])==11
+    assert len(result['scenarios'])==12
     assert len(result['weather_years'])==3
-    assert len(result['ranking'])==7
+    assert len(result['ranking'])==8
     assert result['reference']['reference_kwh']>0
     assert len(result['reference']['monthly'])==12
     assert sum(r['reference_kwh'] for r in result['reference']['monthly'])==pytest.approx(result['reference']['reference_kwh'],abs=.12)
@@ -281,3 +281,93 @@ def test_reference_case_without_a_module_returns_an_explicit_unavailable_result(
     r=reference_case(Inputs(width=1,depth=1),Configuration())
     assert r['available'] is False
     assert r['capacity_kw']==0 and r['difference_pct'] is None
+
+
+@pytest.mark.parametrize('tilt',range(0,41,5))
+def test_complete_boundary_rows_survive_all_slider_tilts(tilt):
+    panels,rows,_,error=layout(Inputs(depth=7),Configuration(tilt=tilt,rows=2))
+    assert error is None and len(panels)==12
+    assert [r['count'] for r in rows]==[6,6]
+    assert all(box(.5,.5,7.5,6.5).buffer(1e-8).covers(Polygon(p['corners'])) for p in panels)
+
+
+def test_thirty_degree_default_retains_eighteen_modules():
+    assert evaluate(Inputs(),Configuration(tilt=30))['panels_count']==18
+
+
+def test_rotated_rows_search_translation_and_pitch_instead_of_roof_corners():
+    inp=Inputs(depth=7)
+    one=layout(inp,Configuration(azimuth=150,rows=1))[0]
+    two=layout(inp,Configuration(azimuth=150,rows=2))[0]
+    assert len(one)==6 and len(two)>=len(one)*1.5
+    for i,p in enumerate(two):
+        poly=Polygon(p['corners'])
+        assert box(.5,.5,7.5,6.5).buffer(1e-8).covers(poly)
+        assert all(poly.intersection(Polygon(q['corners'])).area<1e-8 for q in two[i+1:])
+
+
+def test_partial_rows_target_nine_point_nine_kw_and_avoid_tariff_cliff():
+    inp=Inputs(width=12,depth=10,house_area=200)
+    a=evaluate(inp,Configuration(rows=3,panel_limit=22))
+    b=evaluate(inp,Configuration(rows=3,panel_limit=23))
+    assert a['panels_count']==22 and a['capacity_kw']==9.9 and a['fit_rate']==4
+    assert b['panels_count']==23 and b['capacity_kw']==10.35 and b['fit_rate']==3
+    assert a['npv_A']>b['npv_A']
+    assert sum(r['count'] for r in a['rows'])==22
+    assert {p['row'] for p in a['panels']}==set(range(len(a['rows'])))
+    assert np.isfinite(a['annual_kwh'])
+
+
+def test_financial_choices_really_optimise_the_selected_quantity():
+    inp=Inputs(width=12,depth=10,house_area=200)
+    searched=search(inp);eligible=[r for r in searched['configs'] if r['decision']['eligible']]
+    choices=searched['recommendations']
+    assert choices['npv']['npv_A']==max(r['npv_A'] for r in eligible)
+    assert choices['under10']['npv_A']==max(r['npv_A'] for r in eligible if r['capacity_kw']<=10)
+    assert choices['under10']['capacity_kw']==9.9
+    assert choices['payback']['payback_years_A']==min(r['payback_years_A'] for r in eligible if r['payback_years_A'] is not None)
+    assert all(r['capacity_kw']>=inp.minimum_capacity_kw for r in choices.values())
+
+
+def test_quote_ceiling_is_all_in_and_solves_zero_npv_with_no_double_counted_costs():
+    inp=Inputs();result=evaluate(inp,Configuration());capacity=result['capacity_kw']
+    for key,post in [('A',False),('B',True)]:
+        quote=result[f'max_acceptable_quote_{key}']
+        at_quote=finance(inp.model_copy(update={'fixed_cost':0,'price_per_kw':quote/capacity,'post_fit':post}),capacity,result['monthly_kwh'])
+        assert at_quote[f'npv_{key}']==pytest.approx(0,abs=.02)
+        assert result[f'max_acceptable_per_kw_{key}']*capacity+inp.fixed_cost==pytest.approx(quote,abs=.1)
+        stress=finance(inp.model_copy(update={'fixed_cost':0,'price_per_kw':result[f'max_acceptable_quote_stress_{key}']/capacity}),capacity,[v*.85 for v in result['monthly_kwh']])
+        assert stress[f'npv_{key}']==pytest.approx(0,abs=.02)
+        assert result[f'max_acceptable_quote_stress_{key}']<quote
+
+
+def test_zero_modules_have_no_recovery_date_or_acceptable_quote():
+    zero=evaluate(Inputs(width=1,depth=1),Configuration())
+    for key in ['A','B']:
+        assert zero[f'payback_{key}'] is None and zero[f'stable_payback_{key}'] is None
+        assert zero[f'payback_years_{key}'] is None and zero[f'max_acceptable_quote_{key}'] is None
+        assert zero[f'npv_{key}']==0
+
+
+def test_independent_hko_same_year_check_does_not_silently_calibrate_weather():
+    from backend.reference import irradiance_check
+    before=weather()['ghi'].copy();check=irradiance_check()
+    assert check['same_year']['hko_annual_kwh_m2']==pytest.approx(1510.36,abs=.02)
+    assert check['same_year']['difference_pct']==pytest.approx(3,abs=.1)
+    assert check['nasa_annual_kwh_m2']==pytest.approx(1555.59948,abs=.01)
+    assert check['normals'][0]['annual_kwh_m2']<check['same_year']['hko_annual_kwh_m2']
+    assert np.array_equal(before,weather()['ghi'])
+    assert irradiance_check(2024)['same_year'] is None
+
+
+def test_generation_record_requires_evidence_and_matching_calendar_period():
+    client=TestClient(app)
+    baseline=evaluate(Inputs(),Configuration())
+    record={'start_month':1,'months':12,'generation_kwh':sum(baseline['monthly_kwh']),
+            'installed_capacity_kw':baseline['capacity_kw'],'source':'Synthetic test fixture, not a field observation'}
+    r=client.post('/api/reference-case',json={'measurement':record})
+    assert r.status_code==200 and r.json()['difference_pct']==0
+    assert 'not independently verified' in r.json()['scope'].lower()
+    for change in [{'generation_kwh':0},{'source':''},{'start_month':12,'months':2},{'installed_capacity_kw':-1}]:
+        assert client.post('/api/reference-case',json={'measurement':{**record,**change}}).status_code==422
+    assert client.post('/api/reference-case',json={'inputs':{'width':1,'depth':1},'measurement':record}).status_code==422

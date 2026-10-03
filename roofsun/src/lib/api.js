@@ -4,6 +4,8 @@ export function useApi(path, body, delay = 200, enabled = true) {
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
   const serialized = JSON.stringify(body);
+  const requestKey = `${path}|${serialized}`;
+  const [settledKey, setSettledKey] = useState(null);
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
@@ -30,11 +32,13 @@ export function useApi(path, body, delay = 200, enabled = true) {
         if (!controller.signal.aborted) {
           setData(result);
           setLoading(false);
+          setSettledKey(requestKey);
         }
       } catch (e) {
         if (e.name !== "AbortError" && !controller.signal.aborted) {
           setError(e.message);
           setLoading(false);
+          setSettledKey(requestKey);
         }
       }
     }, delay);
@@ -43,5 +47,11 @@ export function useApi(path, body, delay = 200, enabled = true) {
       controller.abort();
     };
   }, [path, serialized, delay, enabled]);
-  return { data, loading, error };
+  const current = settledKey === requestKey;
+  // Invalidate synchronously on the render with new inputs, before effects run.
+  return {
+    data,
+    loading: enabled && (loading || !current),
+    error: current ? error : "",
+  };
 }
