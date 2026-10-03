@@ -29,7 +29,12 @@ with sync_playwright() as p:
     f.locator('#seek').fill('600')
     f.locator('#seek').fill('60')
     assert frame.evaluate('__workshop.snapshot.energy')==energy
-    f.locator('#season').select_option('winter')
+    f.locator('#monthNumber').fill('1')
+    assert f.locator('#season').input_value()=='winter'
+    assert f.locator('#outsideNumber').input_value()=='18'
+    f.locator('#outsideNumber').fill('5')
+    f.locator('#visualStyle').select_option('studio')
+    f.locator('#visualStyle').select_option('animated')
     f.locator('#place').select_option('outdoors')
     f.locator('#thermal').click()
     f.locator('#step').click()
@@ -38,8 +43,10 @@ with sync_playwright() as p:
     assert abs(frame.evaluate('__workshop.final.balanceError'))<1e-8
     f.locator('#seek').fill('0')
     assert f.locator('#place').input_value()=='indoors'
+    assert f.locator('#monthNumber').input_value()=='4'
     f.locator('#seek').fill('120')
     assert f.locator('#place').input_value()=='outdoors'
+    assert f.locator('#monthNumber').input_value()=='1'
     page.screenshot(path=str(OUT/'workshop-desktop.png'),full_page=True)
     page.locator('#lang').click()
     assert f.locator('[data-i="title"]').inner_text()=='Your desk. A battery playground.'

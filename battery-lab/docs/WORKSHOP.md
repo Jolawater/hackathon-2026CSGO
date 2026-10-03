@@ -7,7 +7,7 @@
 3. Set an activity, target charge, charger power and optional daily charging window. Range sliders and number fields stay synchronized.
 4. Play at 60×, 600× or 3600×, skip an hour, or drag anywhere along the full 24-hour timeline. The energy chart previews the complete day; the cursor selects the inspected minute. The controls and environment restore to that minute too.
 5. To change the afternoon, seek to that time and edit the controls. Changes are timestamped; editing an earlier point replaces later events. Reset returns to the initial day's setup. Changing the experiment start clock restarts at minute zero.
-6. Select Winter and Outdoors to expose the phone to outside air. Indoors uses room temperature instead. Relative humidity is recorded; no unvalidated humidity multiplier affects energy or aging. The window illumination follows the simulated time of day.
+6. Choose a month (1–12) or Spring/Summer/Autumn/Winter. The northern-hemisphere scene changes foliage and particles; it does not assume actual local weather or change temperature. Select Outdoors to expose the phone to the entered outside air. Indoors uses room temperature instead. Relative humidity is recorded; no unvalidated humidity multiplier affects energy or aging. The window illumination follows the simulated time of day.
 7. Thermal illustration uses the **estimated mean shell temperature**, on a fixed −10 to 60°C color scale. The separately displayed cell temperature comes from the two-node model. There are no calibrated local hotspots or real thermal-camera readings.
 8. Read the explanation below the scene: stored versus cold-accessible energy, delivered/unmet demand, full-day feasibility, grid energy and estimated peak temperature. Export CSV for every minute, including environment and connection state.
 9. Send the SOC day to the independent reference-cell life experiment. Its constant cell temperature must be selected separately; phone temperature estimates are **not** silently converted into a validated aging input. Open or shallow daily cycles can be rejected. Clear the imported profile to return to editable cycle experiments.
@@ -51,3 +51,25 @@ In comparison mode, reference mode assumes the cell has equilibrated to ambient 
 - Edge browser checks exercise actual 3D plug dragging, seeking back and forward, restored environment, thermal mode, mobile layout, bilingual content, CSV/profile controls and the aging applicability gate.
 - Three.js 0.170.0 is bundled locally under MIT. No CDN or external API is needed at runtime after installing Python dependencies.
 - No independent phone temperature, pack cold performance or long-term target-device aging validation has been performed. Real user interviews remain pending. No humidity, condensation, plating, spatial thermal field or thermal-runaway model is implied.
+
+## Visual update
+
+The default Animated style uses toon-shaded geometry, seasonal foliage and a pastel control desk. Studio restores darker materials. Room and Black backgrounds remain selectable independently. Month and season are linked (December–February winter, March–May spring, June–August summer, September–November autumn), with no inferred weather forecast, degradation multiplier or implicit temperature change. They are stored in timeline snapshots and exported CSV. The site canvas uses mint, lavender and warm cream rather than white-only panels.
+
+## Regional comparison / 地区与纬度
+
+Compare and Sandbox now offer **Singapore (1.35°N), Hong Kong (22.30°N), and Helsinki (60.17°N)**. The bundled NASA POWER / MERRA-2 reference provides 2001–2020 monthly mean air temperature and relative humidity at 2 m. These are gridded reanalysis-derived conditions near the selected coordinates, not station observations, a current forecast, extremes, or battery measurements. Each region preserves the exact API URL, response hash, returned period and units in `static/data/regional-climate.json`; `fetch_climate_reference.py` reproduces retrieval. [Official API documentation](https://power.larc.nasa.gov/docs/services/api/temporal/climatology/).
+
+| January reference | Air temperature | Relative humidity |
+|---|---:|---:|
+| Singapore | 25.94°C | 87.99% |
+| Hong Kong | 16.00°C | 73.58% |
+| Helsinki | −2.92°C | 92.82% |
+
+Use **Apply monthly reference** explicitly. In Sandbox, this fills outside temperature and humidity; room temperature stays separate. While reference mode is active, changing month updates the monthly values. Editing outside temperature or humidity makes the environment custom and stops automatic replacement. The same-month comparison drawer shows all three regions. Timeline replay restores region, month and application state, and CSV includes them.
+
+In Compare, Apply fills ambient temperature, records humidity and enables the P28A reference cold mode; thermal equilibrium with the entered air is an explicit simplifying assumption. Region/month/reference status survives scenario JSON round-trips. Editing ambient temperature disengages the climate reference; the cell reference curve can still evaluate that manually entered temperature.
+
+Latitude itself never multiplies battery aging or energy. Climate enters through temperature, and device temperature still depends on indoor/outdoor placement and the illustrative thermal model. Humidity remains a record only. Singapore uses a tropical green scene instead of snowfall or four temperate seasons. Trees, particles and day/night lighting are illustrations, not phenology or location-specific sunrise predictions. HVAC needs, sun exposure, wind, terrain and regional travel habits are not inferred.
+
+Competition relevance: regions provide understandable alternative conditions and real reference inputs. They do not replace the central charge-time versus reserve trade-off or establish measured target-device accuracy.

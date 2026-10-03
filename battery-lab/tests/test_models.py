@@ -143,6 +143,23 @@ def test_cold_reference_and_manual_compatibility():
     assert result['metrics']['full_usable_wh']==pytest.approx(reference.capacity_wh*cold_factor(5))
 
 
+def test_regional_climate_provenance_and_override():
+    from climate import DATA
+    from cold import cold_factor
+    assert len(DATA['places'])==3
+    assert all(len(p['months'])==12 for p in DATA['places'])
+    s=Scenario(climate_region='helsinki',climate_month=1,climate_applied=True,cold_mode='reference_cell')
+    assert s.ambient_c==pytest.approx(-2.92)
+    assert s.humidity_pct==pytest.approx(92.82)
+    assert s.cold_capacity_factor==cold_factor(-2.92)
+    r=simulate(s)
+    assert r['climate_reference']['header']['sources']==['MERRA2','POWER']
+    manual=Scenario(climate_region='helsinki',climate_month=1,climate_applied=False,ambient_c=20)
+    assert manual.ambient_c==20
+    assert simulate(manual)['climate_reference'] is None
+    with pytest.raises(ValueError):Scenario(climate_applied=True)
+
+
 def test_constant_energy_boundary():
     a=aging(AgingInput(days=365,lower_soc=0,upper_soc=1,constant_energy=True))
     assert a['status']=='stopped_at_boundary'

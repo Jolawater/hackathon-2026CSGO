@@ -3,3 +3,27 @@
 #seek{width:100%;accent-color:var(--accent);cursor:ew-resize}a{color:#c0ef94}#scene{position:absolute;inset:0}#scene canvas{display:block;width:100%;height:100%}
 
 .heat-legend>div{background:linear-gradient(90deg,hsl(240 95% 50%),hsl(180 95% 50%),hsl(120 95% 50%),hsl(60 95% 50%),hsl(0 95% 50%))}.mini-chart>div{flex-wrap:wrap;gap:8px}
+
+/* The animated workbench uses a lighter palette; Studio keeps the dark option. */
+body.animated{color-scheme:light;background:#e7efe8;color:#203b34;--muted:#526f65;--accent:#a7d777;--line:#c4d4c8}
+.animated .workshop{background:linear-gradient(140deg,#e9f2e4,#e7eef2 60%,#eee9f2)}
+.animated .eyebrow{color:#4e773c}.animated .prototype{color:#456737;border-color:#bdcdb3;background:#e0ebd5}
+.animated .console{background:#e0eade;border:1px solid #c0d1c3;border-radius:16px}
+.animated .console-heading span,.animated .console label,.animated h3,.animated .hint{color:#4d695d}
+.animated input[type=number],.animated input[type=time],.animated select{background:#f0f4e9;color:#294536;border-color:#b7cbb6}
+.animated button{background:#dce8d2;color:#25482f;border-color:#b6cbaa}.animated button:hover{background:#cadfc0}
+.animated button.primary{background:#537c3d;color:#fff}.animated .schedule{background:#d5e2d1}
+.animated .timeline,.animated .mini-chart{background:#dfe9df;border-color:#bfcebf}
+.animated .time-progress>div,.animated .speed,.animated .stats,.animated .mini-chart>div{color:#486151}
+.animated .time-progress strong{color:#294532}.animated .model-details{color:#486355}
+.animated .model-details summary,.animated a{color:#365d3c}.animated .model-details code{background:#d7e3d6;color:#244b33}
+.animated .scene-bottom,.animated .scene-readout,.animated .device-name,.animated .scene-corner{padding:8px 10px;border-radius:10px;background:#102627ac;backdrop-filter:blur(5px);color:#edf6ec}
+.animated .device-name{max-width:58%}.animated .device-name strong{font-size:20px}.animated .device-name small{color:#d5e5df}
+.animated .scene-readout span,.animated .scene-corner small,.animated .scene-bottom p{color:#d0e3d7}
+.animated .heat-legend{background:#102627db}.animated .camera-tag{background:#102627cc;padding:4px 8px;border-radius:8px;color:#e4f4e3}
+
+@media(min-width:951px){.viewport{height:100%;min-height:740px}}.animated .heat-legend,.animated .heat-legend p,.animated .heat-legend span,.animated .heat-legend small{color:#dfede7}
+
+.region-comparison{font-size:10px;margin:12px 0 18px}.region-comparison summary{cursor:pointer}.region-comparison table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0}.region-comparison th,.region-comparison td{text-align:left;padding:5px;border-bottom:1px solid var(--line)}#applyClimate{font-size:11px;width:100%}
+
+@media(min-width:951px){.console{max-height:900px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#8da984 transparent}.viewport{height:900px}}

@@ -44,3 +44,5 @@ Save the scenario JSON, model version, dependency lock and random seed. Run thro
 ## Workshop update checks
 
 `tests/workshop_model.mjs` checks deterministic event replay, restored minute states, cold limits and energy balance. `tests/workshop_check.py` checks real 3D plug dragging, thermal mode, time scrubbing, environment restoration, mobile/bilingual layouts and profile transfer with the evidence gate. The Python suite also covers daily cycling frequency and empirical-reference interpolation. These are implementation checks, not target-device experimental validation.
+
+`tests/regions_check.py` verifies monthly reference application, indoor/outdoor separation, manual overrides, scenario persistence, and tropical scene behavior. Unit tests verify region metadata and derived cold factors. These checks validate data handling, not local weather accuracy.

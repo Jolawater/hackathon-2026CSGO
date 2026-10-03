@@ -24,3 +24,5 @@ AI assistance: Codex assisted with implementation, documentation and test execut
 Three.js **0.170.0**, MIT, is bundled as `static/vendor/three.module.min.js`; its complete license is preserved in `static/vendor/THREE-LICENSE.txt`. Source: https://github.com/mrdoob/three.js/tree/r170. Phone, furniture and cables are procedural geometry; no Steam game or Apple assets are copied.
 
 Molicel INR-18650-P28A v1.3 typical temperature-discharge curves are attributed in `static/data/p28a-temperature.json`, with source URL, PDF SHA-256, extraction method and test conditions. The PDF is not redistributed, and the derived numeric data are not represented as independently measured or endorsed by the manufacturer. See `docs/WORKSHOP.md` for quantitative scope.
+
+Regional climate attribution: NASA POWER Project, NASA Langley Research Center, and MERRA-2. `static/data/regional-climate.json` retains point-request URLs, API metadata, source period and response hashes. These are gridded climatology references, not independently collected weather measurements. Documentation: https://power.larc.nasa.gov/docs/services/api/temporal/climatology/.

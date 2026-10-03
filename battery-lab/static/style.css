@@ -23,3 +23,19 @@ html[lang=zh-CN] .task .range-control:nth-child(1):before{content:'开始'}html[
 #referenceExperiment{margin:20px 0}#referenceExperiment>summary{cursor:pointer;padding:20px;border:1px solid #dce4e0;border-radius:12px}#gameSection{width:100%}#workshopFrame{min-height:800px}
 
 #workspace>*{min-width:0}.results,.panel,.table-wrap{min-width:0}@media(max-width:760px){#workspace,.split{grid-template-columns:minmax(0,1fr)}.row>label{max-width:100%;min-width:0}.quiet{white-space:normal}footer{flex-wrap:wrap}}
+
+/* Soft daylight palette: colored canvas, calm cards, strong text contrast. */
+:root{--bg:#edf2e9;--line:#cfdbcf;--ink:#183c34;--muted:#62796d}
+body{background:radial-gradient(ellipse at 8% 8%,#dcecdf 0,transparent 40%),radial-gradient(ellipse at 98% 38%,#e9e3f2 0,transparent 40%),linear-gradient(155deg,#f0f3e7,#edf3ed 50%,#f5eddf);background-attachment:fixed}
+header{background:#f6faf0c9;backdrop-filter:blur(18px);border-color:#cedbcc}
+.panel{background:#f8fbf4eb;box-shadow:0 7px 26px #365c3910;border-color:#d1ddce}
+.hero{padding:16px 0 10px}.hero h1{color:#214d40}.local-badge{background:#e1eacd}
+.purpose{background:linear-gradient(115deg,#dfeccf,#eaf0df 55%,#ede8f3);border-color:#cbd9bf}
+.control{background:linear-gradient(115deg,#dce9cc,#e7eedf)}
+.inputs{background:#edf3e8e8}.metric{background:#f4f7ee}.metric.good{background:#205c48}
+input,select{background:#f5f8ee;border-color:#cbd8c7}.quiet,.file-button{background:#eef4e7}
+.scenario-card{background:#f0f4e9}.scenario-card.selected{background:#e1edcf}
+.interactive-chart{background:#f5f8ef}.result-explainer{background:linear-gradient(120deg,#eaf2db,#f3f6ed)}
+footer{border-color:#c6d4c4}#referenceExperiment>summary{background:#e8efe0;border-color:#c8d6c2}
+
+html,body{background-color:#edf2e9}

@@ -103,3 +103,7 @@ See [WORKSHOP.md](docs/WORKSHOP.md) for controls, the thermal equations, digitiz
 Browser checks: `python tests/browser_check.py`, `python tests/scenarios_check.py`, `python tests/workshop_check.py`. Deterministic game-model checks: `node tests/workshop_model.mjs`. WebGL is required for 3D rendering; calculation and timeline controls remain usable if rendering is unavailable.
 
 比赛主 trade-off 可导入 `examples/charge-limit-A.json`，运行后将 B 选为“窗口内即充 / 100%”。相同条件下 A 充电约 60 分钟，B 约 100 分钟，B 多留 3 Wh。完整适题核对见 [COMPETITION.md](docs/COMPETITION.md)。
+
+## 季节、地区与浅色主题
+
+沙盒支持 1–12 月、四季、动画/工作室风格；网站使用薄荷绿、淡紫和暖米色背景。模拟与沙盒均可应用新加坡、香港、赫尔辛基的 NASA POWER 2001–2020 月均气候参考。地区通过环境温度影响模型，不直接产生纬度损耗系数；湿度仅记录，室温仍单独填写。详见 [WORKSHOP.md](docs/WORKSHOP.md)。地区交互验收：`python tests/regions_check.py`。

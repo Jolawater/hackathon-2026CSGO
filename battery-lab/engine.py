@@ -5,8 +5,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 from cold import cold_factor, DATA as COLD_DATA
+from climate import monthly_reference
 
-VERSION = "energy-1.1.0"
+VERSION = "energy-1.2.0"
 
 
 class Task(BaseModel):
@@ -54,10 +55,20 @@ class Scenario(BaseModel):
     aux_w: float = Field(default=0, ge=0, le=10000)
     cold_capacity_factor: float = Field(default=1, gt=0, le=1)
     cold_mode: Literal["manual", "reference_cell"] = "manual"
+    climate_region: Literal["custom","singapore","hong_kong","helsinki"] = "custom"
+    climate_month: int = Field(default=1,ge=1,le=12)
+    climate_applied: bool = False
+    humidity_pct: float = Field(default=50,ge=0,le=100)
     heating_w: float = Field(default=0, ge=0, le=20000)
 
     @model_validator(mode="after")
     def validate_limits(self):
+        if self.climate_applied:
+            if self.climate_region=='custom':
+                raise ValueError('Choose a region before applying climatology.')
+            _,weather=monthly_reference(self.climate_region,self.climate_month)
+            self.ambient_c=weather['temperature_c']
+            self.humidity_pct=weather['humidity_pct']
         if self.cold_mode == "reference_cell":
             self.cold_capacity_factor = cold_factor(self.ambient_c)
         if self.trigger >= self.target:
@@ -194,6 +205,7 @@ def simulate(s: Scenario, step_minutes=1, include_trace=True):
                    remaining_km=max(0,energy-s.reserve*cap)*s.distance_km/daily_demand if s.distance_km and daily_demand else None)
     assert all(isfinite(v) for v in metrics.values() if isinstance(v, float))
     return {"model": VERSION, "input": s.model_dump(), "metrics": metrics, "trace": trace,
+            "climate_reference": monthly_reference(s.climate_region,s.climate_month)[0] if s.climate_applied else None,
             "cold_reference": {k:COLD_DATA[k] for k in ['source','model','version','source_sha256','conditions','method']} if s.cold_mode=='reference_cell' else None,
             "daily": daily, "failures": failures, "evidence": "assumed_parameters_energy_balance",
             "limitations": ["Linear SOC-energy approximation", "SOH held at user input; no device degradation prediction", "Reference cold mode assumes cell equilibrated to ambient; no device-specific thermal calibration", "Cold fraction is manual or transferred P28A reference (23 C charge, 2.8 A discharge to 2.5 V); heating remains user input", "Charging taper is an assumption"]}

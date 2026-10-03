@@ -88,15 +88,18 @@
     ]
   },
   "test_summary": {
-    "passed": 23,
+    "passed": 24,
     "failed": 0
   },
   "ui_validation_date": "2026-10-03",
   "additional_checks": {
     "six_scenario_browser": "passed",
-    "workshop_browser": "passed: actual 3D drag, seek/replay, restored weather, thermal view, bilingual/mobile, profile evidence gate",
-    "workshop_node": "passed: deterministic replay, physical balance, cold bounds"
+    "workshop_browser": "passed: 3D plug drag, timeline restoration, months/seasons, animated/studio styles, mobile/bilingual, profile gate",
+    "workshop_node": "passed: deterministic replay, physical balance, cold bounds",
+    "regional_browser": "passed: monthly reference, overrides, indoor separation, persistence, tropical visuals"
   },
-  "cold_data_sha256": "2731baf0d059a2ed0920312a965c166b470d0bbd023f5287ddbb46f3132e4e1a",
-  "energy_model_version": "energy-1.1.0"
+  "cold_data_sha256": "b0316cd88597ae59a689ba30403d93e59f4ff0ccc0fef3ed9f09ed78964c6232",
+  "energy_model_version": "energy-1.2.0",
+  "data_hash_method": "SHA-256 of compact sorted-key JSON, UTF-8",
+  "climate_data_sha256": "f3e7c4bd7efecf704d71608e3db0534e8f7b1f575808978c0643a50a3f60b911"
 }
