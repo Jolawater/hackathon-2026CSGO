@@ -184,7 +184,11 @@ def screen_cached(serialized):
             'is_recommended':config==Configuration(**recommended['config'])}
 
 
-def screen(request):return screen_cached(request.model_dump_json())
+from threading import RLock
+_screen_lock=RLock()
+def screen(request):
+    # The warmup and live requests share the same cache and avoid duplicate cold work.
+    with _screen_lock:return screen_cached(request.model_dump_json())
 
 
 @lru_cache(maxsize=12)

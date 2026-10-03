@@ -572,22 +572,50 @@ export default function RoofScene3D({ inputs, config, result, sun, t }) {
       canvas.dataset.minCameraDistance = controls.minDistance.toFixed(3);
       canvas.dataset.cameraBlocked = String(blocked);
     }
-    let frame;
+    let frame = null,
+      visible = false,
+      renderCount = 0;
     function animate() {
-      frame = requestAnimationFrame(animate);
+      frame = null;
+      if (!visible || document.hidden) return;
       controls.update();
       constrainCamera();
       updateSun();
       updateCompass();
       renderer.render(scene, camera);
+      renderer.domElement.dataset.renderCount = String(++renderCount);
+      frame = requestAnimationFrame(animate);
     }
-    animate();
+    function updateActivity() {
+      const active = visible && !document.hidden;
+      renderer.domElement.dataset.renderActive = String(active);
+      if (!active && frame !== null) {
+        cancelAnimationFrame(frame);
+        frame = null;
+      }
+      if (active && frame === null) frame = requestAnimationFrame(animate);
+    }
+    const visibilityObserver =
+      "IntersectionObserver" in window
+        ? new IntersectionObserver((entries) => {
+            visible = entries[0].isIntersecting;
+            updateActivity();
+          })
+        : null;
+    if (visibilityObserver) visibilityObserver.observe(node);
+    else {
+      visible = true;
+      updateActivity();
+    }
+    document.addEventListener("visibilitychange", updateActivity);
     return () => {
       pose.current = {
         position: camera.position.toArray(),
         target: controls.target.toArray(),
       };
       cancelAnimationFrame(frame);
+      visibilityObserver?.disconnect();
+      document.removeEventListener("visibilitychange", updateActivity);
       observer.disconnect();
       controls.dispose();
       canvas.removeEventListener("pointermove", showDimensions);
