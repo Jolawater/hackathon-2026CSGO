@@ -1471,3 +1471,44 @@ footer small {
     gap: 8px;
   }
 }
+
+.deferred-scene {
+  min-height: 470px;
+}
+.calculation-wait {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.is-loading > div {
+  position: relative;
+  overflow: hidden;
+}
+.is-loading strong {
+  color: transparent;
+  background: #dce5d8;
+  border-radius: 8px;
+  min-height: 38px;
+}
+.is-loading > div:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-loading > div:after {
+    animation: none;
+  }
+}

@@ -31,6 +31,9 @@ import OwnerInputs, {
   OWNER_DEFAULTS,
   neighbourHorizon,
 } from "./components/Screening.jsx";
+import DeferredScene from "./components/DeferredScene.jsx";
+import CalculationWait from "./components/CalculationWait.jsx";
+import { useScreenApi } from "./lib/useScreenApi.js";
 import Intro, { jumpTo } from "./components/Intro.jsx";
 import RoofScene from "./components/RoofScene.jsx";
 import SceneBoundary from "./components/SceneBoundary.jsx";
@@ -79,7 +82,7 @@ function App() {
   const ownerKey = JSON.stringify(inputs);
   const meta = useApi(`/api/meta?retry=${retry}`, undefined, 0),
     validation = useApi(`/api/validation?retry=${retry}`, undefined, 0);
-  const calculated = useApi(`/api/screen?retry=${retry}`, payload, 450);
+  const calculated = useScreenApi(`/api/screen?retry=${retry}`, payload, 450);
   const ready = calculated.data && !calculated.loading && !calculated.error;
   const screen = ready ? calculated.data : null,
     r = screen?.result;
@@ -312,6 +315,12 @@ function App() {
                   verdictText(verdict, t)
                 )}
               </h2>
+              {calculated.loading && (
+                <CalculationWait
+                  t={t}
+                  requestKey={JSON.stringify(payload) + retry}
+                />
+              )}
               {r ? (
                 <>
                   <p className="recommended-layout">
@@ -369,7 +378,7 @@ function App() {
               </div>
             )}
             <section
-              className="headline-metrics"
+              className={`headline-metrics ${calculated.loading ? "is-loading" : ""}`}
               aria-label={t("Three key results", "三個主要結果")}
             >
               <div>
@@ -456,36 +465,38 @@ function App() {
                 </div>
                 <div className="scene-wrapper">
                   {r && sun ? (
-                    <SceneBoundary
-                      {...{
-                        inputs: sceneInputs,
-                        config: r.config,
-                        result: r,
-                        sun,
-                        t,
-                      }}
-                    >
-                      <Suspense
-                        fallback={
-                          <RoofScene
+                    <DeferredScene t={t}>
+                      <SceneBoundary
+                        {...{
+                          inputs: sceneInputs,
+                          config: r.config,
+                          result: r,
+                          sun,
+                          t,
+                        }}
+                      >
+                        <Suspense
+                          fallback={
+                            <RoofScene
+                              inputs={sceneInputs}
+                              config={r.config}
+                              result={r}
+                              sun={sun}
+                              t={t}
+                              topView={false}
+                            />
+                          }
+                        >
+                          <RoofScene3D
                             inputs={sceneInputs}
                             config={r.config}
                             result={r}
                             sun={sun}
                             t={t}
-                            topView={false}
                           />
-                        }
-                      >
-                        <RoofScene3D
-                          inputs={sceneInputs}
-                          config={r.config}
-                          result={r}
-                          sun={sun}
-                          t={t}
-                        />
-                      </Suspense>
-                    </SceneBoundary>
+                        </Suspense>
+                      </SceneBoundary>
+                    </DeferredScene>
                   ) : (
                     <div className="scene-empty">
                       {calculated.loading

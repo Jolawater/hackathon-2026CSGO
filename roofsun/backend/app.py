@@ -12,11 +12,35 @@ from .model import Evaluation, Inputs, evaluate, search, sun_preview, ROOT, SETT
 from .screening import ScreeningRequest, SevenInputs, screen, analyse_seven, import_owner
 from .calibration import calibration
 
-app=FastAPI(title='RoofSun HK', version=MODEL_VERSION)
+from contextlib import asynccontextmanager
+from threading import Thread
+import logging,time
+
+WARMUP={'status':'pending','examples':[]}
+def warm_examples():
+    WARMUP.update(status='running',examples=[])
+    try:
+        examples=[SevenInputs(),SevenInputs(neighbours=[{'direction':180,'floors':3,'distance':3}]),SevenInputs(neighbours=[{'direction':90,'floors':2,'distance':4},{'direction':270,'floors':2,'distance':4}])]
+        for owner in examples:
+            started=time.perf_counter()
+            result=screen(ScreeningRequest(inputs=owner,selected_rows=None))
+            if result['result']:
+                api_evaluate(Evaluation(inputs=result['mapped_inputs'],config=result['result']['config']))
+            WARMUP['examples'].append({'inputs':owner.model_dump(),'seconds':round(time.perf_counter()-started,3)})
+        WARMUP['status']='ready'
+    except Exception:
+        WARMUP['status']='failed';logging.exception('RoofSun cache warmup failed')
+
+@asynccontextmanager
+async def lifespan(app):
+    Thread(target=warm_examples,name='roofsun-cache-warmup',daemon=True).start()
+    yield
+
+app=FastAPI(title='RoofSun HK', version=MODEL_VERSION,lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=['http://127.0.0.1:5173','http://localhost:5173'],allow_methods=['GET','POST'],allow_headers=['Content-Type'])
 
 @app.get('/api/health')
-def health(): return {'status':'ok','model_version':MODEL_VERSION,'weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
+def health(): return {'status':'ok','warmup':WARMUP,'model_version':MODEL_VERSION,'weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
 
 @lru_cache(maxsize=1)
 def source_metadata():
@@ -31,6 +55,11 @@ def meta(): return {**source_metadata(),'calibration':calibration(),'owner_defau
 
 @app.post('/api/evaluate')
 def api_evaluate(request:Evaluation):
+    return evaluate_cached(request.model_dump_json())
+
+@lru_cache(maxsize=48)
+def evaluate_cached(serialized):
+    request=Evaluation.model_validate_json(serialized)
     result=evaluate(request.inputs,request.config)
     result['winter_solstice_noon']=sun_preview(request.inputs,request.config,date(2025,12,21),12)
     rows=request.config.rows
