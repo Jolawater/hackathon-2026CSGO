@@ -198,7 +198,8 @@ export function TradeoffSummary({ result, t, onCompare }) {
       <div className="tradeoff-grid">
         <div>
           <strong>
-            {a.config.rows} → {b.config.rows} {t("rows", "排")}
+            {a.actual_rows ?? a.config.rows} → {b.actual_rows ?? b.config.rows}{" "}
+            {t("rows", "排")}
           </strong>
           <p>
             {a.panels_count} → {b.panels_count} {t("modules", "塊面板")}

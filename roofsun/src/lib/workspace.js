@@ -49,7 +49,7 @@ export function buildArchive(
 ) {
   return {
     schema: SCHEMA,
-    model_version: meta?.model_version || "2.1.0",
+    model_version: meta?.model_version || "2.2.0",
     generated_at: new Date().toISOString(),
     simulated: true,
     evidence_scope:

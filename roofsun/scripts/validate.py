@@ -1,4 +1,4 @@
-"""Generate a measured validation report. Failure stops report creation."""
+"""Generate reproducible model validation evidence, not measured rooftop accuracy."""
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -66,8 +66,21 @@ record('Boundary and rotated packing regressions','邊界及旋轉排板回歸',
        '8 x 7 m, two rows, 0–40° every 5° retains 12 modules; 150° two rows retains at least 9 complete non-overlapping modules.',
        '8 x 7 m、兩排、0–40° 每 5° 均保留 12 塊；150° 兩排至少保留 9 塊完整且不重疊面板。',
        '9 tilt cases; rotated two-row case',
-       all(len(layout(Inputs(depth=7),Configuration(tilt=t,rows=2))[0])==12 for t in range(0,41,5)) and len(layout(Inputs(depth=7),Configuration(azimuth=150,rows=2))[0])>=9)
-report.update(model_version='2.1.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
+       all(len(layout(Inputs(width=8,depth=7),Configuration(tilt=t,rows=2))[0])==12 for t in range(0,41,5)) and len(layout(Inputs(width=8,depth=7),Configuration(tilt=20,azimuth=150,rows=2))[0])>=9)
+presets=json.loads((ROOT/'data/roof_presets.json').read_text())
+village=Inputs(width=8.06,depth=8.06,house_area=65)
+compact=evaluate(village,Configuration(tilt=40,rows=3,layout_mode='compact'))
+record('Coverage-limited village packing with access','村屋覆蓋限制及檢修間隙',
+       'Assumed 65 m² roof: 18 reference modules at 40° with at least the assumed 0.3 m horizontal gap; actual hull <=32.5 m².',
+       '假設 65 m² 天台，40° 的 18 塊參考面板；水平間隙至少為假設的 0.3 m，實際凸包面積不超過 32.5 m²。',
+       f"rows={compact['actual_rows']}; modules={compact['panels_count']}; hull={compact['coverage_m2']} m²; gap={compact['minimum_clear_gap_m']} m",
+       compact['compliant'] and compact['panels_count']==18 and compact['minimum_clear_gap_m']>=.3-1e-4)
+record('Village example dimensions and scope','村屋示例尺寸及適用範圍',
+       'Illustrative roofs fall within the source-backed 65.03 m² covered-area size limit, not a full legal or structural certification.',
+       '示例尺寸在有來源的 65.03 m² 有蓋面積上限內；並非完整合法性或結構認證。',
+       '; '.join(f"{p['id']}: {p['inputs']['house_area']} m²" for p in presets['presets']),
+       all(p['inputs']['house_area']<=65.03 for p in presets['presets']),presets['source_url'])
+report.update(model_version='2.2.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,irradiance_check=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'
 temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2))

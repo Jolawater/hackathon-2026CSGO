@@ -13,7 +13,7 @@ from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "2.1.0"
+MODEL_VERSION = "2.2.0"
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 
@@ -26,10 +26,11 @@ class Exclusion(BaseModel):
 
 
 class Inputs(BaseModel):
-    width: float = Field(default=8, ge=0.5, le=30)
-    depth: float = Field(default=6, ge=0.5, le=30)
+    width: float = Field(default=8.06, ge=0.5, le=30)
+    depth: float = Field(default=8.06, ge=0.5, le=30)
+    village_house_mode: bool = True
     roof_rotation: float = Field(default=0, ge=0, le=359)
-    house_area: float = Field(default=80, ge=1, le=1500)
+    house_area: float = Field(default=65, ge=1, le=1500)
     horizon: list[float] = Field(default_factory=lambda:[0]*12, min_length=12, max_length=12)
     price_per_kw: float = Field(default=25000, gt=0, le=100000)
     fixed_cost: float = Field(default=5000, ge=0, le=1000000)
@@ -67,7 +68,7 @@ class Inputs(BaseModel):
         for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw','minimum_row_fill_ratio','minimum_access_gap_m']:
             if not math.isfinite(getattr(self,name)):
                 raise ValueError('Input values must be finite')
-        if self.house_area < self.width*self.depth:
+        if self.house_area + 1e-8 < self.width*self.depth:
             raise ValueError('House covered area must be at least the available rooftop area')
         if not date(2026,1,1) <= self.commissioning <= date(2033,12,31):
             raise ValueError('Commissioning date must be between 2026 and 2033')
@@ -82,10 +83,10 @@ class Inputs(BaseModel):
 
 
 class Configuration(BaseModel):
-    tilt: float = Field(default=20, ge=0, le=40)
+    tilt: float = Field(default=40, ge=0, le=40)
     azimuth: float = Field(default=180, ge=90, le=270)
-    rows: int = Field(default=2, ge=1, le=24)
-    layout_mode: str = Field(default='spread', pattern='^(spread|compact)$')
+    rows: int = Field(default=3, ge=1, le=24)
+    layout_mode: str = Field(default='compact', pattern='^(spread|compact)$')
     panel_limit: int = Field(default=0, ge=0, le=2000)
 
 
@@ -155,7 +156,19 @@ def _layout(geometry, configuration):
                 if abs(y2-y1)<epsilon:xs.extend([x1,x2])
                 else:xs.append(x1+(min(1,max(0,(y-y1)/(y2-y1))))*(x2-x1))
         return (min(xs),max(xs)) if xs else None
-    objects=[box(o.x,o.y,o.x+o.width,o.y+o.depth) for o in inputs.exclusions]
+    # Pre-project obstacle rectangles once. Separating-axis checks avoid building
+    # thousands of Shapely polygons during interactive pitch/offset search.
+    objects=[]
+    for o in inputs.exclusions:
+        corners=rotate_points([[o.x,o.y],[o.x+o.width,o.y],[o.x+o.width,o.y+o.depth],[o.x,o.y+o.depth]],angle)
+        axes=[(1.,0.),(0.,1.),(math.cos(math.radians(angle)),math.sin(math.radians(angle))),(-math.sin(math.radians(angle)),math.cos(math.radians(angle)))]
+        projections=[(ax,ay,min(ax*x+ay*y for x,y in corners),max(ax*x+ay*y for x,y in corners)) for ax,ay in axes]
+        objects.append(projections)
+    def obstructed(x,y):
+        cx=x+width/2
+        for projections in objects:
+            if all(min(hi,ax*cx+ay*y+abs(ax)*width/2+abs(ay)*projected/2)-max(lo,ax*cx+ay*y-abs(ax)*width/2-abs(ay)*projected/2)>epsilon for ax,ay,lo,hi in projections):return True
+        return False
     theta=math.radians(-angle);co,si=math.cos(theta),math.sin(theta)
     def native(corners):return [[x*co-y*si,x*si+y*co] for x,y in corners]
     def candidate(ys):
@@ -168,7 +181,7 @@ def _layout(geometry, configuration):
             start=(left+right-count*width)/2
             xs=[start+n*width for n in range(count)]
             if objects:
-                xs=[x for x in xs if not any(Polygon(native([[x,y+projected/2],[x+width,y+projected/2],[x+width,y-projected/2],[x,y-projected/2]])).intersection(o).area>epsilon for o in objects)]
+                xs=[x for x in xs if not obstructed(x,y)]
             placements.append((float(y),xs))
         return placements
     def limited(placement):
@@ -322,6 +335,10 @@ def plane_irradiance(tilt, azimuth, year, scale):
               albedo=SETTINGS['model']['albedo'],model='isotropic')
 
 
+def scope_warnings(inputs):
+    return ['village_house_area'] if inputs.village_house_mode and inputs.house_area>POLICY['village_house_area_limit_m2'] else []
+
+
 def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True):
     panels, rows, coverage, error=layout(inputs,config)
     count=len(panels); capacity=count*PANEL['power_w']/1000
@@ -373,6 +390,7 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
             'shading_loss_pct':round(100*(1-annual/base),1) if base else 0,
             'coverage_m2':round(coverage,2),'coverage_limit_m2':round(inputs.house_area*POLICY['coverage_limit'],2),
             'load_kg_m2':round(load,2),'load_limit_kg_m2':inputs.load_limit,'weather_year':inputs.weather_year,'model_version':MODEL_VERSION,'compliant':not violations,'violations':violations,
+            'warnings':scope_warnings(inputs),
             'monthly_kwh':monthly,**economy}
     if details: result.update(panels=panels,rows=rows,row_losses=row_losses)
     else: result.pop('cashflow',None)

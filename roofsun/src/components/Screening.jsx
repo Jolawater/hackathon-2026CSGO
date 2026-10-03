@@ -1,12 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NumberField } from "./Controls.jsx";
 import { fmt, money } from "../lib/format.js";
 
-export function NeighbourInput({ horizon, onChange, t }) {
+export function NeighbourInput({ horizon, onChange, t, presetGeometry }) {
   const [floors, setFloors] = useState(0),
     [distance, setDistance] = useState(10),
     [direction, setDirection] = useState(180),
     [sector, setSector] = useState(60);
+  useEffect(() => {
+    if (!presetGeometry) return;
+    setFloors(presetGeometry.floors_above);
+    setDistance(presetGeometry.distance_m);
+    setDirection(presetGeometry.azimuth);
+    setSector(presetGeometry.sector_width);
+  }, [presetGeometry]);
   const angle = Math.min(
     80,
     (Math.atan2(floors * 3, distance) * 180) / Math.PI,

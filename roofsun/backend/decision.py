@@ -2,7 +2,7 @@
 from functools import lru_cache
 import json
 import time
-from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION, layout
+from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION, layout, scope_warnings
 
 PHYSICAL_KEYS = ('width','depth','roof_rotation','house_area','horizon','weather_year','weather_scale',
                  'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions','minimum_row_fill_ratio','minimum_access_gap_m')
@@ -69,7 +69,7 @@ def recommend(inputs):
     physical=physical_search(key)
     results=[]
     for r in physical['results']:
-        result={**r,**finance(inputs,r['capacity_kw'],r['monthly_kwh'])}
+        result={**r,**finance(inputs,r['capacity_kw'],r['monthly_kwh']),'warnings':scope_warnings(inputs)}
         result.pop('cashflow')
         result['decision']=assess(inputs,result)
         results.append(result)
