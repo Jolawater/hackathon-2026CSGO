@@ -70,10 +70,15 @@ export default function RoofScene3D({
     camera.position.set(span * 1.2, span * 1.15, span * 1.5);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.minDistance = span * 0.7;
+    // Stay outside the rooftop footprint, even when viewing a corner.
+    controls.minDistance = Math.hypot(w, d) / 2 + 1.2;
     controls.maxDistance = span * 2.8;
     controls.enablePan = false;
-    controls.maxPolarAngle = Math.PI * 0.9;
+    // Stop above the roof instead of allowing the camera underneath it.
+    controls.maxPolarAngle = Math.min(
+      Math.PI * 0.45,
+      Math.acos(Math.min(0.95, 1.8 / controls.minDistance)),
+    );
     if (pose.current && !topView) {
       camera.position.fromArray(pose.current.position);
       controls.target.fromArray(pose.current.target);
@@ -548,10 +553,67 @@ export default function RoofScene3D({
     const observer = new ResizeObserver(resize);
     observer.observe(node);
     resize();
+    const limitNotice = document.createElement("div");
+    limitNotice.className = "scene-camera-limit";
+    limitNotice.setAttribute("role", "status");
+    limitNotice.textContent = zh
+      ? "已到視角邊界 · 請反向拖動或拉遠"
+      : "View limit reached · drag back or zoom out";
+    limitNotice.hidden = true;
+    node.appendChild(limitNotice);
+    scene.updateMatrixWorld(true);
+    const cameraObstacles = pickables
+      .filter((o) => o.geometry?.type === "BoxGeometry")
+      .map((o) => new THREE.Box3().setFromObject(o).expandByScalar(0.4));
+    controls.update();
+    if (cameraObstacles.some((b) => b.containsPoint(camera.position))) {
+      camera.position.set(0, span * 2.2, 0.01);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+    const lastSafe = camera.position.clone(),
+      travel = new THREE.Vector3(),
+      contact = new THREE.Vector3(),
+      travelRay = new THREE.Ray();
+    function constrainCamera() {
+      travel.subVectors(camera.position, lastSafe);
+      const length = travel.length();
+      travelRay.set(lastSafe, travel.clone().normalize());
+      const blocked = cameraObstacles.some(
+        (b) =>
+          b.containsPoint(camera.position) ||
+          (length > 1e-8 &&
+            travelRay.intersectBox(b, contact) &&
+            contact.distanceTo(lastSafe) <= length),
+      );
+      if (blocked) {
+        camera.position.copy(lastSafe);
+        camera.lookAt(controls.target);
+      } else lastSafe.copy(camera.position);
+      const radius = camera.position.distanceTo(controls.target);
+      const polar = Math.acos(
+        THREE.MathUtils.clamp(
+          (camera.position.y - controls.target.y) / radius,
+          -1,
+          1,
+        ),
+      );
+      limitNotice.hidden = !(
+        blocked ||
+        polar >= controls.maxPolarAngle - 0.003 ||
+        radius <= controls.minDistance + 0.02 ||
+        radius >= controls.maxDistance - 0.02
+      );
+      canvas.dataset.cameraHeight = camera.position.y.toFixed(3);
+      canvas.dataset.cameraDistance = radius.toFixed(3);
+      canvas.dataset.minCameraDistance = controls.minDistance.toFixed(3);
+      canvas.dataset.cameraBlocked = String(blocked);
+    }
     let frame;
     function animate() {
       frame = requestAnimationFrame(animate);
       controls.update();
+      constrainCamera();
       updateSun();
       updateCompass();
       renderer.render(scene, camera);

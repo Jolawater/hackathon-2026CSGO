@@ -2607,3 +2607,21 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 100%;
   }
 }
+
+.scene-camera-limit {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  max-width: calc(100% - 116px);
+  padding: 9px 13px;
+  border-radius: 18px;
+  background: #173c43e8;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  pointer-events: none;
+  box-shadow: 0 3px 12px #173c4320;
+}
+.scene-camera-limit[hidden] {
+  display: none;
+}
