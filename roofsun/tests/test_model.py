@@ -104,7 +104,7 @@ def test_api_rejects_invalid_inputs_and_returns_real_results():
 
 
 def test_budget_and_late_start_can_reject_every_installation():
-    for inputs in [Inputs(budget=1000), Inputs(commissioning='2032-01-01')]:
+    for inputs in [Inputs(budget=1000), Inputs(commissioning='2032-01-01',require_profit=True,max_payback_years=7)]:
         result=search(inputs)
         assert result['configs']
         assert result['eligible_count']==0
@@ -206,9 +206,9 @@ def test_exclusions_and_object_height_change_geometry_and_energy():
 
 def test_martinez_mode_has_zero_unshaded_penalty_and_more_shading_loss():
     unshaded=Configuration(rows=1)
-    a=evaluate(Inputs(),unshaded);b=evaluate(Inputs(electrical_model='martinez'),unshaded)
+    a=evaluate(Inputs(electrical_model='linear'),unshaded);b=evaluate(Inputs(electrical_model='martinez'),unshaded)
     assert a['annual_kwh']==b['annual_kwh']
-    a=evaluate(Inputs(),Configuration());b=evaluate(Inputs(electrical_model='martinez'),Configuration())
+    a=evaluate(Inputs(electrical_model='linear'),Configuration());b=evaluate(Inputs(electrical_model='martinez'),Configuration())
     assert 0<b['annual_kwh']<a['annual_kwh']
 
 
@@ -497,3 +497,181 @@ def test_rotated_obstacle_packing_remains_disjoint_after_search_optimisation():
             for panel in panels:
                 for obj in obstacles:
                     assert Polygon(panel['corners']).intersection(box(obj.x,obj.y,obj.x+obj.width,obj.y+obj.depth)).area<1e-7
+
+
+# v3 owner workflow: equations stay covered above; these verify the new adapter.
+def test_v3_defaults_use_generated_observations_and_fixed_assumptions():
+    from backend.calibration import weather_ratio
+    from backend.screening import SevenInputs, model_inputs
+    inp=model_inputs(SevenInputs())
+    assert Inputs().weather_scale==weather_ratio(2025)==inp.weather_scale
+    assert Inputs().electrical_model==inp.electrical_model=='martinez'
+    assert inp.bypass_blocks==3 and inp.finite_rows is True
+    assert inp.discount_rate==.04 and inp.cost_inflation==0
+    assert inp.minimum_capacity_kw==2 and inp.minimum_access_gap_m==.3
+    assert inp.minimum_row_fill_ratio==.7 and inp.load_limit==150
+    assert inp.extra_mass_per_module==0 and not inp.post_fit
+    assert inp.budget==inp.max_payback_years==0 and not inp.require_profit
+    assert inp.self_use_share==.5 and inp.self_use_rate==1.4
+
+
+def test_hko_source_ratios_are_reproducible_without_a_literal_correction():
+    import json
+    from backend.model import ROOT
+    from backend.calibration import calibration,weather_ratio
+    from scripts.hko_check import calculate
+    regenerated=calculate()
+    assert regenerated==json.loads((ROOT/'data/hko_check.json').read_text())==calibration()
+    for record in regenerated['years']:
+        assert .9<record['ratio']<1
+        assert record['ratio']==record['hko_kwh_m2']/record['nasa_kwh_m2']
+        assert weather_ratio(record['year'])==record['ratio']
+        assert record['days']==(366 if record['year']==2024 else 365)
+    assert regenerated['combined_ratio']==sum(r['hko_kwh_m2'] for r in regenerated['years'])/sum(r['nasa_kwh_m2'] for r in regenerated['years'])
+    assert weather_ratio(2025)==pytest.approx(.971,abs=.0005)  # Rounded plan value, not a runtime constant.
+    assert [len(r['flagged_days']) for r in regenerated['years']]==[2,0,4]
+    assert 'not measured PV accuracy' in regenerated['scope']
+
+
+@pytest.mark.parametrize('bad_value',['nan','inf','-1','***'])
+def test_calibration_rejects_missing_or_invalid_daily_observations(tmp_path,bad_value):
+    from scripts.hko_check import calculate
+    (tmp_path/'data').mkdir()
+    (tmp_path/'data/hko_kp_daily_gsr.csv').write_text(f'2025,1,1,{bad_value},C\n')
+    with pytest.raises(ValueError):calculate(tmp_path)
+
+
+@pytest.mark.parametrize('band,expected',[
+    ('low',(2000,0,4000)),('medium',(5000,300,5000)),('high',(10000,1000,10000))])
+def test_all_seven_owner_answers_map_to_model_inputs(band,expected):
+    from backend.screening import SevenInputs,model_inputs
+    from datetime import date
+    owner=SevenInputs(roof={'width':7,'depth':8},door_direction=225,
+        neighbour={'floors':2,'distance':6},price_per_kw=27000,cost_band=band,
+        commissioning_month='2028-09',post_fit=True)
+    inp=model_inputs(owner)
+    assert len(owner.model_dump())==7
+    assert (inp.width,inp.depth,inp.house_area)==(7,8,56)
+    assert inp.exclusions==[] and inp.roof_rotation==225
+    # Known geometry: height=6 m and distance=6 m -> southern elevation=45°.
+    assert inp.horizon==[0,0,0,0,26.6,40.9,45.,40.9,26.6,0,0,0]
+    assert inp.price_per_kw==27000
+    assert (inp.fixed_cost,inp.annual_om,inp.inverter_cost)==expected
+    assert inp.commissioning==date(2028,9,1) and inp.post_fit
+
+
+@pytest.mark.parametrize('direction',range(0,360,45))
+def test_eight_door_directions_preserve_rotation(direction):
+    from backend.screening import SevenInputs,model_inputs
+    assert model_inputs(SevenInputs(door_direction=direction)).roof_rotation==direction
+
+
+def test_three_point_verdict_boundaries_are_explicit():
+    from backend.screening import classify
+    for values,expected in [([1,2,3],'worthwhile'),([-1,0,2],'marginal'),([0,1,2],'marginal'),([-2,-1,0],'not_recommended')]:
+        assert classify([{'npv':v} for v in values])==expected
+
+
+@pytest.mark.parametrize('post_fit',[False,True])
+def test_three_point_npv_uses_one_configuration_and_the_selected_income_case(post_fit):
+    from backend.screening import SevenInputs,ScreeningRequest,model_inputs,screen
+    from backend.calibration import calibration,weather_ratio
+    owner=SevenInputs(post_fit=post_fit);inp=model_inputs(owner)
+    result=screen(ScreeningRequest(inputs=owner))
+    cfg=Configuration(**result['result']['config'])
+    scales=[calibration()['combined_ratio'],weather_ratio(2025),1]
+    rates=[.08,.04,0]
+    for point,scale,rate in zip(result['interval']['points'],scales,rates):
+        direct=evaluate(inp.model_copy(update={'weather_scale':scale,'discount_rate':rate}),cfg,False)
+        assert point['weather_scale']==scale and point['discount_rate']==rate
+        assert point['npv']==direct['npv_B' if post_fit else 'npv_A']
+    candidate_npvs=[r['npv_B' if post_fit else 'npv_A'] for r in search(inp)['configs'] if r['capacity_kw']>=2]
+    assert result['recommended']['npv']==max(candidate_npvs)
+    assert result['result']['payback_date']==result['result']['stable_payback_B' if post_fit else 'stable_payback_A']
+    assert result['interval']['points'][1]['npv']==result['result']['npv']
+    assert result['result']['quote_ceiling_per_kw']==result['result']['max_acceptable_per_kw_B' if post_fit else 'max_acceptable_per_kw_A']
+
+
+def test_owner_adjacent_rows_are_feasible_and_show_a_real_generation_tradeoff():
+    from backend.screening import ScreeningRequest,screen
+    base=screen(ScreeningRequest());more=screen(ScreeningRequest(selected_rows=base['alternatives']['more']))
+    assert more['result']['actual_rows']==base['result']['actual_rows']+1
+    assert more['result']['compliant'] and base['result']['compliant']
+    assert more['result']['annual_kwh']>base['result']['annual_kwh']
+    assert more['result']['specific_yield']<base['result']['specific_yield']
+    trade=base['tradeoff'];a,b=trade['from'],trade['to']
+    assert trade['extra_kwh']==pytest.approx(b['annual_kwh']-a['annual_kwh'])
+    assert trade['extra_cost']==b['initial_cost']-a['initial_cost']
+    assert b['payback_years']>a['payback_years'] and trade['payback_months']>0
+    assert more['recommended_interval']==base['interval']
+    assert not more['is_recommended']
+    assert len(base['sun_path'])==25 and base['sun_path'][12]['hour']==12
+    noon=sun_preview(Inputs(**base['mapped_inputs']),Configuration(**base['result']['config']),pd.Timestamp('2025-12-21').date(),12)
+    assert base['sun_path'][12]['altitude']==noon['altitude']
+
+
+def test_owner_sensitivity_has_nine_recalculated_cases_and_no_fabricated_field_record():
+    from backend.screening import ScreeningRequest,analyse_seven,model_inputs,SevenInputs
+    from backend.calibration import weather_ratio
+    report=analyse_seven(ScreeningRequest())
+    by_id={r['id']:r for r in report['scenarios']}
+    assert len(by_id)==9 and report['field_case']=={'available':False,'status':'pending'}
+    inp=model_inputs(SevenInputs());config=Configuration(**report['configuration'])
+    assert by_id['quote_minus_20']['npv']>by_id['quote_plus_20']['npv']
+    assert by_id['delay_6_months']['npv']>by_id['delay_12_months']['npv']
+    for year in (2023,2024):
+        revised=inp.model_copy(update={'weather_year':year,'weather_scale':weather_ratio(year)})
+        expected=evaluate(revised,config,False)
+        case=by_id[f'weather_{year}']
+        assert case['npv']==expected['npv_A'] and case['annual_kwh']==expected['annual_kwh']
+    assert by_id['quote_plus_20']['npv']==evaluate(inp.model_copy(update={'price_per_kw':inp.price_per_kw*1.2}),config,False)['npv_A']
+    assert all(isinstance(r['recommendation_changed'],bool) for r in by_id.values())
+
+
+def test_seven_input_api_rejects_deleted_overrides_and_handles_no_or_negative_value_systems():
+    from backend.screening import SevenInputs
+    client=TestClient(app)
+    owner=SevenInputs().model_dump()
+    for change in [{'electrical_model':'linear'},{'door_direction':22},{'commissioning_month':'2027-13'},
+                   {'cost_band':'unknown'},{'neighbour':{'floors':-1,'distance':1}},{'roof':{'width':0,'depth':8}}]:
+        assert client.post('/api/screen',json={'inputs':{**owner,**change}}).status_code==422
+    tiny=client.post('/api/screen',json={'inputs':{**owner,'roof':{'width':1,'depth':1}}}).json()
+    assert tiny['result'] is None and tiny['verdict']=='not_recommended' and tiny['sun_path']==[]
+    late=client.post('/api/screen',json={'inputs':{**owner,'commissioning_month':'2032-01'}}).json()
+    assert late['result']['compliant'] and late['verdict']=='not_recommended'
+    assert late['result']['payback_date'] is None
+    assert late['interval']['max']<0
+
+
+def test_old_archives_discard_deleted_assumptions_and_results_before_recalculation():
+    from backend.screening import SevenInputs,model_inputs
+    client=TestClient(app)
+    old={'model_version':'2.2.0','plans':[{'inputs':{'width':8,'depth':7,'house_area':150,
+        'roof_rotation':143,'commissioning':'2028-06-15','price_per_kw':21000,
+        'fixed_cost':2000,'annual_om':0,'inverter_cost':4000,'post_fit':True,
+        'horizon':[80]*12,'weather_scale':1.5,'discount_rate':0,'extra_mass_per_module':400,
+        'exclusions':[{'x':2,'y':2,'width':1,'depth':1}], 'electrical_model':'linear'},
+        'config':{'tilt':0,'rows':20},'annual_kwh':99999999}]}
+    response=client.post('/api/import-owner',json=old)
+    assert response.status_code==200
+    record=response.json();assert record['migrated'] and record['neighbour_reset']
+    assert set(record['inputs'])==set(SevenInputs.model_fields)
+    inp=model_inputs(SevenInputs(**record['inputs']))
+    assert inp.house_area==56 and inp.roof_rotation==135 and inp.exclusions==[]
+    assert inp.horizon==[0]*12 and inp.electrical_model=='martinez' and inp.discount_rate==.04
+    assert inp.extra_mass_per_module==0 and inp.price_per_kw==21000 and inp.fixed_cost==2000
+    assert inp.commissioning.isoformat()=='2028-06-01' and inp.post_fit
+    for payload in [{'plans':['invalid']},{'plans':{'bad':1}},{'inputs':{'width':-1}},{}]:
+        assert client.post('/api/import-owner',json=payload).status_code==422
+    new={'inputs':{**SevenInputs().model_dump(),'weather_scale':1.5},'result':{'npv':9999999}}
+    valid=client.post('/api/import-owner',json=new).json()
+    assert not valid['migrated'] and 'weather_scale' not in valid['inputs']
+
+
+def test_analyse_validates_owner_shape_before_legacy_fallback():
+    from backend.screening import SevenInputs
+    client=TestClient(app)
+    for change in [{'roof':{'width':-1,'depth':8}},{'cost_band':'invalid'},{'weather_scale':2}]:
+        response=client.post('/api/analyse',json={'inputs':{**SevenInputs().model_dump(),**change}})
+        assert response.status_code==422
+    assert client.post('/api/analyse',json={'inputs':SevenInputs().model_dump()}).json()['field_case']['available'] is False

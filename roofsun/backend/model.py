@@ -8,12 +8,13 @@ import numpy as np
 import pandas as pd
 import pvlib
 from pydantic import BaseModel, Field, model_validator
+from .calibration import weather_ratio
 from shapely import affinity
 from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "2.2.0"
+MODEL_VERSION = "3.0.0"
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 
@@ -45,16 +46,16 @@ class Inputs(BaseModel):
     minimum_row_fill_ratio: float = Field(default=0.7, ge=0, le=1)
     minimum_capacity_kw: float = Field(default=2, ge=0, le=20)
     budget: float = Field(default=0, ge=0, le=10000000)
-    max_payback_years: float = Field(default=7, ge=0, le=25)
-    require_profit: bool = True
+    max_payback_years: float = Field(default=0, ge=0, le=25)
+    require_profit: bool = False
     discount_rate: float = Field(default=0.04, ge=0, le=0.3)
     cost_inflation: float = Field(default=0, ge=0, le=0.15)
     weather_year: int = Field(default=2025, ge=2023, le=2025)
-    weather_scale: float = Field(default=1, ge=0.5, le=1.5)
+    weather_scale: float = Field(default_factory=weather_ratio, ge=0.5, le=1.5)
     extra_mass_per_module: float = Field(default=0, ge=0, le=500)
     load_limit: float = Field(default=150, gt=0, le=150)
     finite_rows: bool = True
-    electrical_model: str = Field(default='linear', pattern='^(linear|martinez)$')
+    electrical_model: str = Field(default='martinez', pattern='^(linear|martinez)$')
     bypass_blocks: int = Field(default=3, ge=1, le=6)
     exclusions: list[Exclusion] = Field(default_factory=list, max_length=6)
     quote_source: str = Field(default='Illustrative assumption; replace with an installer quote', max_length=300)

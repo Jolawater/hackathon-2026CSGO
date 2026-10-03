@@ -1,0 +1,46 @@
+{
+  "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+  "source_sha256": "c861bd7958557da5631d54f11003681c78b82dd4100dfd1810604de83b4a50a1",
+  "source_units": "MJ/m² per day; divide by 3.6 for kWh/m²",
+  "acquisition": "Original daily_KP_GSR_ALL.csv supplied by the user on 2026-10-03; bundled unchanged, not downloaded by this run.",
+  "flag_policy": "Reported daily totals marked # are retained and counted; they are incomplete observations, not filled or invented values.",
+  "scope": "Annual scaling of NASA hourly shape to King's Park totals. Different locations and local/UTC calendar boundaries; not measured PV accuracy or a confidence interval.",
+  "years": [
+    {
+      "year": 2023,
+      "days": 365,
+      "hko_kwh_m2": 1418.6944444444446,
+      "nasa_kwh_m2": 1533.3452,
+      "ratio": 0.9252283467835192,
+      "flagged_days": [
+        "2023-06-18",
+        "2023-08-15"
+      ],
+      "nasa_sha256": "c40fce16b4a1a1644b01f39d8128655a63431287a1759abce8202e4860e8325f"
+    },
+    {
+      "year": 2024,
+      "days": 366,
+      "hko_kwh_m2": 1390.325,
+      "nasa_kwh_m2": 1470.33923,
+      "ratio": 0.9455811091975013,
+      "flagged_days": [],
+      "nasa_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
+    },
+    {
+      "year": 2025,
+      "days": 365,
+      "hko_kwh_m2": 1510.2277777777776,
+      "nasa_kwh_m2": 1555.59948,
+      "ratio": 0.970833300727111,
+      "flagged_days": [
+        "2025-08-29",
+        "2025-08-30",
+        "2025-08-31",
+        "2025-09-01"
+      ],
+      "nasa_sha256": "b2d648d68bcaa831b7f9ad4813ecdbb13afa1373ed602de02107b85e795a2d5e"
+    }
+  ],
+  "combined_ratio": 0.9473521078055045
+}
