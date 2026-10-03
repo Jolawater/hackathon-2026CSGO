@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import regions from "../../data/regions.json";
 import { NumberField } from "./Controls.jsx";
 import { useApi } from "../lib/api.js";
+import PaybackChart from "./PaybackChart.jsx";
 import RoofScene from "./RoofScene3D.jsx";
 import NeighbourBuildings from "./NeighbourBuildings.jsx";
 
@@ -510,6 +511,16 @@ export default function RegionalLab({ region, initial, t, onBack }) {
           </p>
         )}
       </section>
+      {confirmed && (
+        <PaybackChart
+          inputs={confirmed.inputs}
+          config={confirmed.config}
+          suggestions={answer.loading ? null : answer.data?.recommendations}
+          pending={pending}
+          t={t}
+          currency={loc.currency}
+        />
+      )}
       <details className="plan-management card">
         <summary>{t("Plan management", "方案管理")}</summary>
         <button onClick={() => fileRef.current.click()}>

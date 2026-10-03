@@ -58,6 +58,7 @@ import { NumberField, Slider, Pill } from "./components/Controls.jsx";
 import RoofScene from "./components/RoofScene3D.jsx";
 import RegionalLab from "./components/RegionalLab.jsx";
 import Welcome from "./components/Welcome.jsx";
+import PaybackChart from "./components/PaybackChart.jsx";
 import Choices from "./components/Choices.jsx";
 import PlanBrief from "./components/PlanBrief.jsx";
 import NeighbourBuildings from "./components/NeighbourBuildings.jsx";
@@ -1603,6 +1604,15 @@ function App() {
               </button>
             </div>
           )}
+          <PaybackChart
+            inputs={activeInputs}
+            config={activeConfig}
+            result={ready ? result : null}
+            suggestions={simulation.loading ? null : suggestions}
+            loading={evaluation.loading}
+            pending={pending}
+            t={t}
+          />
           <TradeoffSummary
             result={ready ? result : null}
             t={t}

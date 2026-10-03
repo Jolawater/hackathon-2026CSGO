@@ -2489,3 +2489,121 @@ input[type="number"]::-webkit-outer-spin-button {
 .professional-parameters .field-pair {
   max-width: 760px;
 }
+
+/* Readable financial explanations and year-by-year account. */
+.annual-payback {
+  padding: 28px;
+  margin: 26px 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.annual-payback h2 {
+  font-size: 24px;
+  margin: 0 0 10px;
+}
+.annual-payback p {
+  font-size: 16px;
+  line-height: 1.75;
+}
+.payback-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.payback-heading label {
+  font-size: 16px;
+  display: grid;
+  gap: 8px;
+}
+.payback-heading select {
+  padding: 12px;
+  border: 1px solid #acc7c1;
+  border-radius: 10px;
+  background: #f4f8f1;
+  max-width: 100%;
+}
+.payback-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 16px;
+  background: #e8f1ed;
+}
+.payback-summary > div {
+  display: grid;
+  gap: 8px;
+}
+.payback-summary span {
+  font-size: 15px;
+}
+.payback-summary strong {
+  font-size: 23px;
+}
+.payback-summary small {
+  font-size: 15px;
+}
+.payback-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+.payback-scroll:focus-visible {
+  outline: 2px solid #287b71;
+}
+.payback-legend {
+  font-weight: 600;
+}
+.payback-notice {
+  padding: 10px 14px;
+  background: #fff1d9;
+  border-radius: 10px;
+}
+.annual-payback table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+.annual-payback th,
+.annual-payback td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #dbe4dd;
+}
+.annual-payback summary {
+  font-size: 16px;
+  cursor: pointer;
+}
+.workbench .microcopy,
+.workbench .choice-explanation,
+.workbench .search-status,
+.workbench .recommendation p,
+.workbench .recommendation small,
+.workbench .chart-note {
+  font-size: 15px;
+  line-height: 1.75;
+}
+.workbench .number-field > span,
+.workbench .finance-line,
+.workbench .scene3d-help {
+  font-size: 16px;
+  line-height: 1.6;
+}
+@media (max-width: 650px) {
+  .annual-payback {
+    padding: 18px;
+  }
+  .annual-payback h2 {
+    font-size: 21px;
+  }
+  .payback-summary {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .payback-heading label {
+    width: 100%;
+  }
+}
