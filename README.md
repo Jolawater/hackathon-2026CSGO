@@ -1,21 +1,240 @@
-# HacKU 2026 · Problem 3 · TankWise（暂定名）
+# RoofSun HK ☀️ 裝板之前，先試一次
 
-团队方案书，用来阅读。该计划若项目目标或使用方法有变化，可被重新编辑或覆写。
+**Test your roof before you buy the panels.**
+
+RoofSun HK is a bilingual (繁體中文 / English) web tool for Hong Kong village-house owners. It answers three questions before anyone calls an installer:
+
+- Is rooftop solar worth it on *my* roof?
+- When will it pay back?
+- What is the highest quote I should accept?
+
+Built for **HacKU 2026 · Deep Tech · Problem Statement 3, “Test the Change Before You Make It”**.
+
+| | |
+|---|---|
+| 🌐 Live demo | <!-- TODO: replace before submission; quick-tunnel URLs change on restart --> https://reports-sofa-directory-layer.trycloudflare.com |
+| 🎬 3-minute video | <!-- TODO --> _link to be added_ |
+| 📊 Pitch deck | <!-- TODO --> _link to be added_ |
+| 📁 Source code | [`roofsun/`](roofsun/) (frontend, backend, data, tests) |
 
 ---
 
-## 两个配置的比较表（方案书 §5.6）
+## 中文簡介
 
-**比较表必须保留（2026-10-02 决定）：** 方案书 §10 允许在时间不够时砍掉比较页，但“比较至少两个配置，并写明选哪个、为什么”是题目的硬性证据要求，所以这张表不砍。如果比较页被砍，就以这里的表为准，并在 pitch 里讲。
+香港村屋業主想裝太陽能板，最常問三件事：值不值得裝、幾時回本、安裝商的報價貴不貴。
 
-**场景（§5.6 原文）：** 两人同住的劏房，晚上连续洗澡，每人 8 分钟，花洒 5 L/min，冬季入水 15°C。
+RoofSun HK 只問 **7 條屋主憑常識就答得出的問題**：
+- 天台尺寸；
+- 正門方向；
+- 鄰屋高度及距離；
+- 每千瓦報價；
+- 其他費用檔位；
+- 完工月份；
+- 2033 年後會不會自用。
 
-> 结果由模型组在阶段 3 填写，不得预先编造。
+它用一整年的逐小時天氣，模擬日照、前後排互相遮擋、鄰屋遮擋，以及上網電價（FiT）收入。結果會給出：
+- **值得裝／勉強／不建議**的結論；
+- 建議排布；
+- 持續回本時間；
+- 最高可接受報價；
+- 「再加一排」的取捨。
 
-| 指标 | 方案 A：25 L / 65°C | 方案 B：38 L / 60°C |
-|---|---|---|
-| 第 1 人可洗分钟数 | （模拟） | （模拟） |
-| 第 2 人是否够热水 / 需等待多久 | （模拟） | （模拟） |
-| 年待机电费（常开 / 洗澡前开） | （模拟） | （模拟） |
-| 体积与满水重量 | （规格） | （规格） |
-| 我们的选择与理由 | — | — |
+結果屬模擬，並非工程設計、報價或財務建議。
+
+---
+
+## How it meets Problem Statement 3
+
+| Requirement | RoofSun HK |
+|---|---|
+| **One small system** | One flat village-house rooftop PV system (≈ 2–10 kW) |
+| **≥ 2 adjustable inputs** | 7 owner inputs: roof length/width, front-door direction, neighbour floors/distance, quote per kW, other-cost band, completion month, post-2033 self-use |
+| **≥ 1 practical constraint** | EMSD rule: panels (including gaps) may cover **at most half** of the roof. Also a 150 kg/m² average load check, a ≥ 2 kW minimum system and the 65.03 m² village-house scope warning |
+| **Trade-off between two outcomes** | **“One more row”**: more kWh, but higher cost and more row-to-row shading, so payback and NPV can get better *or* worse. The card shows Δ generation, Δ cost, Δ payback (months), shading loss and kWh per kW |
+| **Evidence** | HKO measured irradiance calibration, NREL SPA reference check, row-shadow comparisons, pvlib ModelChain cross-checks, three-point NPV range and nine one-at-a-time sensitivity cases (see below) |
+
+---
+
+## How it works
+
+```
+7 owner answers ──► map to model inputs ──► search layouts ──► hourly simulation (8,760 h) ──► monthly cash flow ──► verdict
+                    (fixed, documented       (tilt, azimuth,     pvlib SPA sun position,        FiT tiers to 2033-12-31,
+                     assumptions)             rows, spacing)      Erbs + isotropic sky,          25-year horizon,
+                                                                  finite-row + neighbour shade,  NPV / sustained payback /
+                                                                  Martinez bypass-diode loss,    max acceptable quote
+                                                                  NOCT temperature
+```
+
+1. **Weather.** We use NASA POWER hourly data (2023–2025), scaled each year to match **Hong Kong Observatory measured global solar radiation** at King's Park. The calibration ratio is computed by `roofsun/scripts/hko_check.py` and is never hard-coded.
+
+   | Year | HKO measured (kWh/m²) | NASA POWER (kWh/m²) | Ratio |
+   |---|---|---|---|
+   | 2023 | 1,418.7 | 1,533.3 | 0.925 |
+   | 2024 | 1,390.3 | 1,470.3 | 0.946 |
+   | 2025 | 1,510.2 | 1,555.6 | 0.971 |
+   | Combined | | | 0.947 |
+
+2. **Layout search.** The search tries panel tilt, azimuth, row count and compact/spread spacing. It keeps only layouts that pass the coverage, spacing and load checks, then picks the highest-NPV feasible system of at least 2 kW.
+
+3. **Shading.**
+   - Adjacent rows use a finite-row overlap model with Martinez bypass-diode loss (3 blocks per module).
+   - Neighbouring buildings become a 12-sector horizon (3 m per floor). The horizon blocks direct sunlight and reduces sky-diffuse light through a sky-view factor.
+
+4. **Money.**
+   - Monthly cash flow over 25 years, using EMSD FiT tiers (≤ 10 kW: HK$4/kWh; 10–200 kW: HK$3/kWh) until **2033-12-31**.
+   - Two scenarios:
+     - **A, conservative:** the system stops earning after the FiT ends.
+     - **B, self-use:** 50% self-use at HK$1.4/kWh after 2033.
+   - The verdict uses three NPV points on the same configuration:
+     - **值得裝 (worthwhile):** all three NPVs are positive;
+     - **勉強 (marginal):** some are positive;
+     - **不建議 (not recommended):** none are positive.
+
+### Example output (default inputs, v3.1.0)
+
+Inputs: 8.06 m × 8.06 m roof, door facing north, no taller neighbour, HK$25,000/kW quote, medium other costs, completed 2027-01.
+
+| Result | Value |
+|---|---|
+| Verdict | 勉強 (marginal) |
+| Suggested layout | 2 rows · 12 modules · 5.4 kW |
+| First-year generation | 6,660 kWh (simulated) |
+| Sustained payback | 5.41 years, around 2032-05 (simulated) |
+| Highest acceptable quote | HK$28,389 per kW, where NPV = 0 in the current scenario (simulated) |
+
+The default dimensions and prices are illustrative assumptions, not a real house or a market quotation.
+
+---
+
+## Run locally
+
+Requirements: **Python 3.12+** and **Node.js 22+**. Run everything from `roofsun/`:
+
+```bash
+cd roofsun
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+npm ci
+python scripts/hko_check.py      # recompute HKO calibration from the bundled CSV
+npm run build
+python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
+```
+
+Then open **http://127.0.0.1:8000/**. Weather data, calibration and fonts are bundled, so after setup the app needs no external API, account or internet connection.
+
+For development, add `--reload` to uvicorn and run `npm run dev` in a second terminal. Port 5173 proxies `/api` to port 8000.
+
+### Tests
+
+```bash
+python -m pytest -q              # model, finance, mapping and API regression tests
+python scripts/validate.py       # reference checks (NREL SPA, row shadows, pvlib ModelChain)
+npm run test:browser             # Playwright end-to-end checks (API must be running)
+```
+
+GitHub Actions runs the same checks (`.github/workflows/roofsun-checks.yml`).
+
+---
+
+## Repository layout
+
+```
+.
+├── README.md                  ← you are here
+├── .github/workflows/         CI: pytest, validation, build, browser tests
+└── roofsun/
+    ├── README.md              detailed model documentation (bilingual)
+    ├── backend/               FastAPI app and model
+    │   ├── model.py           solar position, irradiance, layout, shading, energy
+    │   ├── finance.py         FiT tiers, monthly cash flow, NPV, payback
+    │   ├── decision.py        layout search and recommendation
+    │   ├── screening.py       7 owner inputs → model inputs, verdict, sensitivity
+    │   ├── calibration.py     HKO / NASA calibration
+    │   └── app.py             API routes; also serves the built frontend
+    ├── src/                   React frontend (charts, 3D scene, inputs, evidence)
+    ├── data/                  bundled weather, HKO observations, assumptions, presets
+    ├── scripts/               hko_check.py, validate.py, download_weather.py, browser tests
+    ├── tests/                 pytest suite
+    └── docs/                  development records for earlier versions
+```
+
+---
+
+## Assumptions and limitations
+
+Every fixed value is listed, with its source, in the in-app **假設與來源 / Assumptions & sources** panel.
+
+**Assumptions**, rather than measured facts:
+- the generic 450 W / 22 kg module;
+- 0.85 system factor;
+- 3 m per floor;
+- 4% discount rate;
+- 0.5%/year degradation;
+- the other-cost bands;
+- the HK$20k/25k/30k reference quotes.
+
+**Not modelled:**
+- typhoon wind load and ballast;
+- non-rectangular roofs;
+- grouped or stairhood installations;
+- string/MPPT detail and inverter clipping;
+- future tariff changes;
+- tax and financing.
+
+<!-- TODO: update this line when multi-direction neighbours land -->
+- The current version models only the **southern** neighbour.
+
+**No field measurement yet.** No real rooftop meter readings have been compared with the model. The HKO comparison checks irradiance, not rooftop generation accuracy.
+
+---
+
+## Data sources and credits
+
+**Data**
+- **Hong Kong Observatory:** King's Park daily global solar radiation ([CSV](https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv)).
+- **NASA POWER:** hourly irradiance and temperature, 2023–2025. *“These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the NASA Earth Science/Applied Science Program.”*
+- **EMSD:** Feed-in Tariff [introduction](https://re.emsd.gov.hk/tc_chi/fit/int/fit_int.html) and [FAQ](https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf), covering FiT rates and the coverage rule.
+- **Lands Department:** [guide to New Territories exempted houses](https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf), for the 65.03 m² scope.
+
+**Open-source libraries**
+- **Backend:**
+  - [pvlib-python](https://github.com/pvlib/pvlib-python) (BSD-3)
+  - [FastAPI](https://fastapi.tiangolo.com/) (MIT)
+  - [Uvicorn](https://www.uvicorn.org/) (BSD-3)
+  - [NumPy](https://numpy.org/) (BSD-3)
+  - [pandas](https://pandas.pydata.org/) (BSD-3)
+  - [Shapely](https://github.com/shapely/shapely) (BSD-3)
+- **Frontend:**
+  - [React](https://react.dev/) (MIT)
+  - [Vite](https://vitejs.dev/) (MIT)
+  - [Recharts](https://recharts.org/) (MIT)
+  - [three.js](https://threejs.org/) (MIT)
+  - [Lucide](https://lucide.dev/) (ISC)
+  - DM Sans and Manrope via Fontsource (SIL OFL 1.1)
+- **Testing:**
+  - [pytest](https://pytest.org/) (MIT)
+  - [Playwright](https://playwright.dev/) (Apache-2.0)
+
+**Model references**
+- Reda & Andreas, *Solar Position Algorithm* (NREL SPA).
+- Erbs, Klein & Duffie (1982), diffuse fraction correlation.
+- Martinez-Moreno et al. (2010), partial-shading loss with bypass diodes.
+
+---
+
+## Development history
+
+All code was written during HacKU 2026 (2–4 October 2026). The commit history is kept unedited.
+
+- **Main history:** branch `Jim's-RoofSun-HK`, fast-forwarded into `main` for submission.
+- **3D rooftop scene:** prototyped on branch [`JESON-ROOFTOPJIM`](https://github.com/Jolawater/hackathon-2026CSGO/tree/JESON-ROOFTOPJIM) (up to `51854cf`), then ported into `roofsun/src/components/RoofScene3D.jsx` in commit `a05e5ad`.
+
+**Other branches.** The team changed direction twice before settling on RoofSun HK. The other branches (`Andy`, `Jim's-codex/water-heater-model`, `JESON`, `nitroclock`, `Ricky`, `Jim`) are earlier explorations and are **not part of this submission**.
+
+**AI tools.** <!-- TODO: confirm wording with the team --> Parts of the code were written with AI coding assistants (e.g. OpenAI Codex), under the team's direction and review.
+
+---
+
+*RoofSun HK is a preliminary screening tool. Results are simulations, not engineering design, structural or regulatory approval, or financial advice.*

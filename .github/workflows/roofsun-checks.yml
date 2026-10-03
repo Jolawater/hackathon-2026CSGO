@@ -1,7 +1,7 @@
 name: RoofSun checks
 on:
   push:
-    branches: ["Jim's-RoofSun-HK"]
+    branches: ["Jim's-RoofSun-HK", main]
     paths: ['roofsun/**', '.github/workflows/roofsun-checks.yml']
   workflow_dispatch:
 jobs:
