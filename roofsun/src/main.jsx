@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
@@ -45,6 +52,27 @@ import {
   Scatter,
 } from "recharts";
 import "./style.css";
+import { useApi } from "./lib/api.js";
+import { fmt, money } from "./lib/format.js";
+import { NumberField, Slider, Pill } from "./components/Controls.jsx";
+import RoofScene from "./components/RoofScene.jsx";
+import Horizon from "./components/Horizon.jsx";
+import {
+  DecisionControls,
+  DecisionBanner,
+  TradeoffSummary,
+  EngineeringControls,
+} from "./components/Decision.jsx";
+import {
+  readWorkspace,
+  persistWorkspace,
+  buildArchive,
+  restoreArchive,
+  downloadArchive,
+  downloadReport,
+} from "./lib/workspace.js";
+const Validation = lazy(() => import("./components/Validation.jsx"));
+const Evidence = lazy(() => import("./components/Evidence.jsx"));
 
 const defaults = {
   width: 8,
@@ -60,6 +88,23 @@ const defaults = {
   post_fit: false,
   self_use_rate: 1.4,
   self_use_share: 0.5,
+  budget: 0,
+  max_payback_years: 7,
+  require_profit: true,
+  discount_rate: 0.04,
+  cost_inflation: 0,
+  weather_year: 2025,
+  weather_scale: 1,
+  extra_mass_per_module: 0,
+  load_limit: 150,
+  finite_rows: true,
+  electrical_model: "linear",
+  bypass_blocks: 3,
+  exclusions: [],
+  quote_source: "Illustrative assumption; replace with an installer quote",
+  quote_date: "",
+  panel_source:
+    "Generic 450 W engineering reference, not a verified commercial model",
 };
 const defaultConfig = { tilt: 20, azimuth: 180, rows: 3 };
 const presets = [
@@ -86,9 +131,7 @@ const presets = [
     },
   },
 ];
-const fmt = (n, d = 0) =>
-  Number(n || 0).toLocaleString("en-HK", { maximumFractionDigits: d });
-const money = (n) => `HK$ ${fmt(n)}`;
+
 const errorNames = {
   no_space: ["Not enough room for a module", "空間不足以放置面板"],
   overlap: ["Rows overlap or exceed the roof", "排數過多，面板重疊或超出天台"],
@@ -97,619 +140,10 @@ const errorNames = {
     "連續覆蓋面積超過所選限制",
   ],
   load: [
-    "Estimated module and rack load exceeds the limit",
-    "估算面板與支架荷載超過限制",
+    "Estimated module, rack and added load exceeds the limit",
+    "估算面板、支架及額外荷載超過限制",
   ],
 };
-
-function useApi(path, body, delay = 200) {
-  const [data, setData] = useState(null),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
-  const serialized = JSON.stringify(body);
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setError("");
-    const timer = setTimeout(async () => {
-      try {
-        const response = await fetch(path, {
-          method: body === undefined ? "GET" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: serialized,
-          signal: controller.signal,
-        });
-        const result = await response.json();
-        if (!response.ok)
-          throw Error(
-            Array.isArray(result.detail)
-              ? result.detail.map((x) => x.msg).join("; ")
-              : result.detail || "Calculation failed",
-          );
-        if (!controller.signal.aborted) {
-          setData(result);
-          setLoading(false);
-        }
-      } catch (e) {
-        if (e.name !== "AbortError" && !controller.signal.aborted) {
-          setError(e.message);
-          setLoading(false);
-        }
-      }
-    }, delay);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [path, serialized, delay]);
-  return { data, loading, error };
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  min = 0,
-  max = 100000,
-  step = 1,
-  unit,
-}) {
-  return (
-    <label className="number-field">
-      <span>{label}</span>
-      <div>
-        <input
-          aria-label={label}
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          onChange={(e) => {
-            if (e.target.value !== "") {
-              const n = Number(e.target.value);
-              if (Number.isFinite(n)) onChange(Math.min(max, Math.max(min, n)));
-            }
-          }}
-        />
-        {unit && <small>{unit}</small>}
-      </div>
-    </label>
-  );
-}
-function Slider({ label, value, min, max, step = 1, onChange, unit = "", id }) {
-  return (
-    <label className="slider-field" htmlFor={id}>
-      <span>
-        {label}
-        <strong>
-          {fmt(value, 1)}
-          {unit}
-        </strong>
-      </span>
-      <input
-        id={id}
-        aria-label={label}
-        type="range"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(+e.target.value)}
-      />
-      <span className="range-ends">
-        <small>
-          {min}
-          {unit}
-        </small>
-        <small>
-          {max}
-          {unit}
-        </small>
-      </span>
-    </label>
-  );
-}
-function Pill({ children, kind = "" }) {
-  return <span className={`pill ${kind}`}>{children}</span>;
-}
-
-function RoofScene({ inputs, config, result, sun, t, topView }) {
-  const w = inputs.width,
-    d = inputs.depth,
-    scale = Math.min(43, 300 / Math.max(w, d));
-  const project = (x, y, z = 0) =>
-    topView
-      ? [300 + (x - w / 2) * scale, 235 - (y - d / 2) * scale]
-      : [
-          300 + (x - w / 2) * scale + (y - d / 2) * scale * 0.58,
-          265 +
-            (x - w / 2) * scale * 0.31 -
-            (y - d / 2) * scale * 0.52 -
-            z * scale * 1.35,
-        ];
-  const points = (arr) => arr.map((p) => project(...p).join(",")).join(" ");
-  const roof = [
-    [0, 0, 0],
-    [w, 0, 0],
-    [w, d, 0],
-    [0, d, 0],
-  ];
-  const height = 1.762 * Math.sin((config.tilt * Math.PI) / 180);
-  const north = (inputs.roof_rotation * Math.PI) / 180;
-  const origin = project(w / 2, d / 2),
-    northPoint = project(w / 2 - Math.sin(north), d / 2 + Math.cos(north));
-  const compassRotation =
-    (Math.atan2(northPoint[0] - origin[0], origin[1] - northPoint[1]) * 180) /
-    Math.PI;
-  const altitude = sun?.altitude ?? 0,
-    sunAngle = (((sun?.azimuth ?? 180) - inputs.roof_rotation) * Math.PI) / 180;
-  const dx =
-      -Math.sin(sunAngle) /
-      Math.max(Math.tan((altitude * Math.PI) / 180), 0.05),
-    dy =
-      -Math.cos(sunAngle) /
-      Math.max(Math.tan((altitude * Math.PI) / 180), 0.05);
-  const panels = [...(result?.panels || [])].sort((a, b) => {
-    const ac = a.corners.reduce((v, p) => v + project(...p)[1], 0),
-      bc = b.corners.reduce((v, p) => v + project(...p)[1], 0);
-    return ac - bc;
-  });
-  return (
-    <svg
-      className="roof-scene"
-      viewBox="0 0 600 440"
-      role="img"
-      aria-label={t(
-        "Solar module layout and shadows based on the selected time",
-        "按所選時間顯示面板排布及陰影",
-      )}
-    >
-      <defs>
-        <pattern
-          id="floor-grid"
-          width="30"
-          height="30"
-          patternUnits="userSpaceOnUse"
-        >
-          <path
-            d="M 30 0 L 0 0 0 30"
-            fill="none"
-            stroke="#dce3d7"
-            strokeWidth=".6"
-          />
-        </pattern>
-        <linearGradient id="panel" x1="0" x2="1" y2="1">
-          <stop stopColor="#285963" />
-          <stop offset="1" stopColor="#113b45" />
-        </linearGradient>
-        <clipPath id="roof-clip">
-          <polygon points={points(roof)} />
-        </clipPath>
-      </defs>
-      <rect x="0" y="0" width="600" height="440" fill="url(#floor-grid)" />
-      <ellipse
-        cx="304"
-        cy="306"
-        rx="203"
-        ry="55"
-        fill="#152e1e"
-        opacity=".07"
-      />
-      {!topView && (
-        <>
-          <polygon
-            points={points([
-              [0, 0, -0.65],
-              [w, 0, -0.65],
-              [w, 0, 0],
-              [0, 0, 0],
-            ])}
-            fill="#c4cdbd"
-          />
-          <polygon
-            points={points([
-              [w, 0, -0.65],
-              [w, d, -0.65],
-              [w, d, 0],
-              [w, 0, 0],
-            ])}
-            fill="#aebca8"
-          />
-        </>
-      )}
-      <polygon
-        points={points(roof)}
-        fill="#f7f8ee"
-        stroke="#859b7c"
-        strokeWidth="1.6"
-      />
-      <g clipPath="url(#roof-clip)">
-        {Array.from({ length: Math.ceil(w) }, (_, i) => (
-          <path
-            key={"x" + i}
-            d={`M${project(i, 0).join(",")}L${project(i, d).join(",")}`}
-            stroke="#dfe5d6"
-            strokeWidth=".7"
-          />
-        ))}
-        {Array.from({ length: Math.ceil(d) }, (_, i) => (
-          <path
-            key={"y" + i}
-            d={`M${project(0, i).join(",")}L${project(w, i).join(",")}`}
-            stroke="#dfe5d6"
-            strokeWidth=".7"
-          />
-        ))}
-        {altitude > 0 &&
-          sun?.beam_clear &&
-          panels.map((p, i) => (
-            <polygon
-              key={"shadow" + i}
-              points={points(
-                p.corners.map(([x, y], j) => [
-                  x + (j >= 2 ? height : 0) * dx,
-                  y + (j >= 2 ? height : 0) * dy,
-                  0,
-                ]),
-              )}
-              fill="#243e2a"
-              opacity=".23"
-            />
-          ))}
-      </g>
-      <polygon
-        points={points([
-          [0.5, 0.5],
-          [w - 0.5, 0.5],
-          [w - 0.5, d - 0.5],
-          [0.5, d - 0.5],
-        ])}
-        fill="none"
-        stroke="#a5b798"
-        strokeDasharray="4 5"
-        strokeWidth="1"
-      />
-      {panels.map((p, i) => {
-        const pts = p.corners.map(([x, y], j) => [x, y, j >= 2 ? height : 0]);
-        const shade = sun?.beam_clear ? sun.row_shade[p.row] || 0 : 1;
-        const mix = (a, b, k) => a.map((v, j) => v + (b[j] - v) * k);
-        return (
-          <g key={i}>
-            <polygon
-              points={points(pts)}
-              fill="url(#panel)"
-              stroke="#b7d4ce"
-              strokeWidth="1"
-            />
-            {[0.25, 0.5, 0.75].map((n) => (
-              <path
-                key={n}
-                d={`M${project(...mix(pts[0], pts[1], n)).join(",")}L${project(...mix(pts[3], pts[2], n)).join(",")}`}
-                stroke="#8eb5bb"
-                strokeWidth=".5"
-                opacity=".6"
-              />
-            ))}
-            {[0.33, 0.66].map((n) => (
-              <path
-                key={n}
-                d={`M${project(...mix(pts[0], pts[3], n)).join(",")}L${project(...mix(pts[1], pts[2], n)).join(",")}`}
-                stroke="#8eb5bb"
-                strokeWidth=".5"
-                opacity=".6"
-              />
-            ))}
-            {shade > 0 && (
-              <polygon
-                points={points([
-                  pts[0],
-                  pts[1],
-                  mix(pts[1], pts[2], shade),
-                  mix(pts[0], pts[3], shade),
-                ])}
-                fill="#071921"
-                opacity=".68"
-              />
-            )}
-          </g>
-        );
-      })}
-      <path
-        d={`M${project(0, -0.6).join(",")}L${project(w, -0.6).join(",")}`}
-        stroke="#80947a"
-        strokeWidth="1"
-      />
-      <text
-        x={project(w / 2, -1)[0]}
-        y={project(w / 2, -1)[1] + 12}
-        textAnchor="middle"
-        fill="#586b52"
-        fontSize="12"
-      >
-        {fmt(w, 1)} m
-      </text>
-      <text
-        x={project(-1, d / 2)[0] - 15}
-        y={project(-1, d / 2)[1]}
-        fill="#586b52"
-        fontSize="12"
-      >
-        {fmt(d, 1)} m
-      </text>
-      <g transform="translate(530,344)">
-        <circle r="25" fill="#f7f8ee" stroke="#d0d8c7" />
-        <g transform={`rotate(${compassRotation})`}>
-          <path d="M0-17 6 7 0 3 -6 7Z" fill="#244d39" />
-        </g>
-        <text y="-33" textAnchor="middle" fontSize="11" fill="#496044">
-          N
-        </text>
-      </g>
-      <g transform="translate(25,378)">
-        <rect width="165" height="52" rx="8" fill="#fbfcf6" stroke="#d9e1d1" />
-        <circle cx="17" cy="17" r="4" fill="#376a6a" />
-        <text x="29" y="21" fontSize="11" fill="#455844">
-          {t("Solar modules", "太陽能面板")}
-        </text>
-        <circle cx="17" cy="36" r="4" fill="#1e2c30" />
-        <text x="29" y="40" fontSize="11" fill="#455844">
-          {t("Geometric shadow", "幾何陰影")}
-        </text>
-      </g>
-      {!panels.length && (
-        <text x="300" y="215" textAnchor="middle" fill="#7c4b2c" fontSize="16">
-          {t("No modules fit this configuration", "此配置無法放置面板")}
-        </text>
-      )}
-    </svg>
-  );
-}
-
-function Horizon({ values, onChange, t }) {
-  const [expanded, setExpanded] = useState(false),
-    [direction, setDirection] = useState(180),
-    [angle, setAngle] = useState(30);
-  return (
-    <div className="horizon-control">
-      <div className="section-label">
-        {t("SURROUNDING SHADE", "周圍遮擋")}
-        <button
-          className="text-button"
-          onClick={() => onChange(Array(12).fill(0))}
-        >
-          {t("Clear", "清除")}
-        </button>
-      </div>
-      <svg
-        viewBox="0 0 270 65"
-        className="skyline"
-        role="img"
-        aria-label={t("Horizon angles", "天際線仰角")}
-      >
-        <line x1="0" y1="49" x2="270" y2="49" stroke="#c5d1c2" />
-        <path
-          d={
-            "M0,49 " +
-            values
-              .concat(values[0])
-              .map((v, i) => `L${i * 22.5},${49 - v * 0.5}`)
-              .join(" ") +
-            " L270,49Z"
-          }
-          fill="#cbd8c2"
-          stroke="#709066"
-        />
-        {["N", "E", "S", "W", "N"].map((v, i) => (
-          <text
-            key={i}
-            x={i * 67.5}
-            y="63"
-            textAnchor={i === 0 ? "start" : i === 4 ? "end" : "middle"}
-            fontSize="9"
-            fill="#74806d"
-          >
-            {v}
-          </text>
-        ))}
-      </svg>
-      <div className="shade-add">
-        <select
-          aria-label={t("Obstacle direction", "遮擋方向")}
-          value={direction}
-          onChange={(e) => setDirection(+e.target.value)}
-        >
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((v) => (
-            <option key={v} value={v}>
-              {v}°{" "}
-              {v === 180
-                ? t("South", "南")
-                : v === 90
-                  ? t("East", "東")
-                  : v === 270
-                    ? t("West", "西")
-                    : v === 0
-                      ? t("North", "北")
-                      : ""}
-            </option>
-          ))}
-        </select>
-        <input
-          aria-label={t("Obstacle elevation", "遮擋仰角")}
-          type="number"
-          min="0"
-          max="80"
-          value={angle}
-          onChange={(e) => setAngle(Math.min(80, Math.max(0, +e.target.value)))}
-        />
-        <button
-          onClick={() => {
-            const next = [...values];
-            next[direction / 30] = angle;
-            onChange(next);
-          }}
-        >
-          {t("Set", "設定")}
-        </button>
-      </div>
-      <button
-        className="text-button advanced-button"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {t("12-direction measurements", "十二方位量度")}
-        <ChevronDown size={13} />
-      </button>
-      {expanded && (
-        <div className="horizon-grid">
-          {values.map((v, i) => (
-            <NumberField
-              key={i}
-              label={`${i * 30}°`}
-              value={v}
-              max={80}
-              onChange={(n) =>
-                onChange(values.map((old, j) => (j === i ? n : old)))
-              }
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Validation({ t }) {
-  const { data: meta, error } = useApi("/api/meta", undefined, 0),
-    { data: validation } = useApi("/api/validation", undefined, 0);
-  return (
-    <main className="validation-view">
-      <div className="page-intro">
-        <span className="eyebrow">{t("UNDER THE MODEL", "模型依據")}</span>
-        <h1>{t("Know what goes into your result.", "了解結果的依據。")}</h1>
-        <p>
-          {t(
-            "Reference data, reproducible checks and the assumptions behind every configuration.",
-            "參考數據、可重現的檢查，以及每個配置背後的假設。",
-          )}
-        </p>
-      </div>
-      {error && <p className="error-banner">{error}</p>}
-      <div className="validation-grid">
-        <section className="card">
-          <div className="card-title">
-            <ShieldCheck size={20} />
-            <h2>{t("Model checks", "模型檢查")}</h2>
-          </div>
-          <p className="muted">
-            {t(
-              "These are software and relationship checks, not field validation of annual yield.",
-              "以下是軟件及物理關係檢查，不代表全年發電量已經實地驗證。",
-            )}
-          </p>
-          {validation ? (
-            validation.checks.map((c, i) => (
-              <div className="check-row" key={i}>
-                <Check size={16} />
-                <div>
-                  <strong>{t(c.name_en, c.name_zh)}</strong>
-                  <p>{t(c.description_en, c.description_zh)}</p>
-                  <code>{c.observed}</code>
-                  {c.source_url && (
-                    <a
-                      className="check-source"
-                      href={c.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {t("Reference source", "參考來源")}{" "}
-                      <ExternalLink size={11} />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>{t("Loading validation report…", "正在載入檢查報告…")}</p>
-          )}
-        </section>
-        <section className="card">
-          <div className="card-title">
-            <Layers size={20} />
-            <h2>{t("Data & assumptions", "數據與假設")}</h2>
-          </div>
-          <dl className="source-list">
-            <dt>{t("Weather", "氣象")}</dt>
-            <dd>
-              NASA POWER · 2025 · 8,760 {t("hourly samples", "逐小時資料")}
-              <p>
-                {t(
-                  "One gridded reference location at 22.45° N, 114.16° E. Used for all rooftops; not an address-specific measurement. UTC data converted to Hong Kong time.",
-                  "所有天台採用北緯 22.45°、東經 114.16° 的網格參考資料，並非個別地址實測。UTC 資料轉為香港時間。",
-                )}
-              </p>
-              <a
-                href="https://power.larc.nasa.gov/docs/services/api/temporal/hourly/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                NASA POWER <ExternalLink size={12} />
-              </a>
-            </dd>
-            <dt>{t("Reference module", "參考面板")}</dt>
-            <dd>
-              450 W · 1.762 × 1.134 m · 22 kg
-              <p>
-                {t(
-                  "Generic engineering assumptions; not a selected commercial product. Rack weight: 8 kg/module; system factor: 0.85; annual degradation: 0.5%.",
-                  "一般工程假設，並非指定商品。支架每板 8 kg、系統係數 0.85、年衰減 0.5%。",
-                )}
-              </p>
-            </dd>
-            <dt>{t("Policy reference", "政策依據")}</dt>
-            <dd>
-              {t(
-                "EMSD FiT FAQ · checked 2 Oct 2026",
-                "機電署上網電價常見問題 · 2026 年 10 月 2 日核對",
-              )}
-              <p>
-                {t(
-                  "Continuous-cover village-house case only. Module + rack load check excludes ballast and wind load; it does not establish structural safety.",
-                  "只考慮村屋連續覆蓋安裝情形。面板及支架荷載未含壓重與風荷載，不能據此判定結構安全。",
-                )}
-              </p>
-              <a
-                href={
-                  meta?.settings.policy.source_url ||
-                  "https://re.emsd.gov.hk/tc_chi/fit/int/fit_int.html"
-                }
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t("Official source", "官方來源")} <ExternalLink size={12} />
-              </a>
-            </dd>
-            <dt>{t("Financial assumptions", "財務假設")}</dt>
-            <dd>
-              {t(
-                "Editable quote and costs. 25-year life; one inverter replacement at year 10. Simple cash flow, without discounting or inflation.",
-                "報價與費用可修改。壽命 25 年，第 10 年更換一次逆變器。採用簡單現金流，未計折現及通脹。",
-              )}
-            </dd>
-          </dl>
-        </section>
-      </div>
-      <section className="card limitations">
-        <h2>{t("What the model leaves out", "模型未涵蓋的因素")}</h2>
-        <p>
-          {t(
-            "Linear geometric shading does not model bypass-diode electrical losses, finite row-end shadows or nearby rooftop objects. Sky-view correction uses a horizontal approximation. No glass incidence-angle loss, detailed inverter clipping, structural design or address-specific weather. Future self-consumption depends on actual load and electrical arrangements; it is a scenario, not a guaranteed income.",
-            "採用線性幾何遮擋，未模擬旁路二極管電損、有限排長的陰影或天台近距離物件。天空可視因子使用水平面近似。未計玻璃入射角損失、詳細逆變器削峰、結構設計與地址專屬氣象。未來自用取決於實際用電及電力安排，只是情景假設，並非保證收入。",
-          )}
-        </p>
-      </section>
-    </main>
-  );
-}
 
 function App() {
   const [lang, setLang] = useState(
@@ -717,15 +151,23 @@ function App() {
   );
   const zh = lang === "zh";
   const t = (en, cn) => (zh ? cn : en);
-  const [inputs, setInputs] = useState({ ...defaults }),
-    [config, setConfig] = useState(defaultConfig),
+  const initialWorkspace = useRef(readWorkspace(defaults, defaultConfig));
+  const [inputs, setInputs] = useState(initialWorkspace.current.inputs),
+    [config, setConfig] = useState(initialWorkspace.current.config),
     [preset, setPreset] = useState("open"),
     [tab, setTab] = useState("design");
   const [day, setDay] = useState("2025-12-21"),
     [hour, setHour] = useState(12),
     [topView, setTopView] = useState(false),
-    [saved, setSaved] = useState([]);
+    [saved, setSaved] = useState(initialWorkspace.current.saved);
+  const [storageError, setStorageError] = useState("");
+  const [importError, setImportError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [evidence, setEvidence] = useState(null);
+  const importRef = useRef(null);
+  const invalidArea = inputs.house_area < inputs.width * inputs.depth;
   const [retry, setRetry] = useState(0);
+  const metadata = useApi(`/api/meta?retry=${retry}`, undefined, 0);
   const body = useMemo(() => ({ inputs, config }), [inputs, config]);
   const evaluation = useApi(`/api/evaluate?retry=${retry}`, body, 180),
     simulation = useApi(`/api/simulate?retry=${retry}`, inputs, 550),
@@ -759,17 +201,22 @@ function App() {
   }));
   const change = (key, value) => {
     setPreset("custom");
-    setInputs((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "width" || key === "depth")
-        next.house_area = Math.max(next.house_area, next.width * next.depth);
-      return next;
-    });
+    setInputs((prev) => ({ ...prev, [key]: value }));
   };
   useEffect(() => {
     localStorage.setItem("roofsun-language", lang);
     document.documentElement.lang = zh ? "zh-Hant" : "en";
   }, [lang]);
+  useEffect(() => {
+    setStorageError(
+      persistWorkspace(inputs, config, saved)
+        ? ""
+        : t(
+            "Browser storage is unavailable; export your designs to keep them.",
+            "瀏覽器儲存不可用，請匯出設計以保留結果。",
+          ),
+    );
+  }, [inputs, config, saved, lang]);
   const payback = result?.[inputs.post_fit ? "payback_B" : "payback_A"];
   function save() {
     if (!ready) return;
@@ -779,32 +226,61 @@ function App() {
         ...result,
         inputs: structuredClone(inputs),
         saved_at: new Date().toISOString(),
+        id: crypto.randomUUID(),
       },
     ]);
   }
-  function exportSaved() {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            schema: "roofsun-hk/v1",
-            simulated: true,
-            reference_weather: 2025,
-            plans: saved,
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
+  const reasonTextUI = (key) =>
+    ({
+      budget: t("Budget", "預算"),
+      profit: t("Profit/NPV", "收益／淨現值"),
+      payback: t("Payback", "回本"),
+    })[key];
+  const archive = () =>
+    buildArchive(
+      ready ? inputs : saved[0]?.inputs || inputs,
+      ready ? config : saved[0]?.config || config,
+      ready ? result : saved[0] || null,
+      saved,
+      metadata.data,
+      simulation.loading || simulation.error ? null : simulation.data,
+      evidence,
     );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "roofsun-plans.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  function exportSaved() {
+    downloadArchive(archive());
   }
+  async function importPlans(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportError("");
+    try {
+      const value = await restoreArchive(file, defaults);
+      setInputs(value.inputs);
+      setConfig(value.config);
+      setSaved(value.saved);
+      setPreset("custom");
+    } catch (error) {
+      setImportError(error.message);
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  }
+  function compareRows(pair) {
+    setSaved(
+      pair.map((r, i) => ({
+        ...r,
+        inputs: structuredClone(inputs),
+        saved_at: new Date().toISOString(),
+        id: crypto.randomUUID(),
+      })),
+    );
+    document
+      .getElementById("saved-plans")
+      ?.scrollIntoView({ behavior: "smooth" });
+  }
+
   return (
     <>
       <header className="site-header">
@@ -840,7 +316,10 @@ function App() {
         <div className="header-right">
           <span className="reference-tag">
             <span />
-            {t("Reference year 2025", "參考年份 2025")}
+            {t(
+              `Reference weather ${inputs.weather_year}`,
+              `參考氣象 ${inputs.weather_year}`,
+            )}
           </span>
           <button
             className="language-button"
@@ -851,7 +330,15 @@ function App() {
         </div>
       </header>
       {tab === "validation" ? (
-        <Validation t={t} />
+        <Suspense
+          fallback={
+            <p className="loading-page">
+              {t("Loading model evidence…", "正在載入模型證據…")}
+            </p>
+          }
+        >
+          <Validation t={t} />
+        </Suspense>
       ) : (
         <main className="workbench">
           <div className="workbench-heading">
@@ -906,6 +393,33 @@ function App() {
               </small>
             </div>
           </div>
+          <DecisionBanner
+            result={ready ? result : null}
+            search={
+              simulation.loading || simulation.error ? null : simulation.data
+            }
+            loading={evaluation.loading}
+            t={t}
+            onJump={() =>
+              document
+                .getElementById("choices")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          />
+          <DecisionControls inputs={inputs} change={change} t={t} />
+          {invalidArea && (
+            <p role="alert" className="error-banner">
+              {t(
+                "Available roof area exceeds the house covered area. Confirm and edit the house area; it has not been changed automatically.",
+                "可用天台面積超過屋宇有蓋面積。請核實並修改有蓋面積，系統沒有自動更改。",
+              )}
+            </p>
+          )}
+          {(storageError || importError) && (
+            <p role="alert" className="error-banner">
+              {storageError || importError}
+            </p>
+          )}
           <div className="main-grid">
             <aside className="input-panel card">
               <div className="card-title">
@@ -966,7 +480,7 @@ function App() {
                 <NumberField
                   label={t("House covered area", "屋宇有蓋面積")}
                   value={inputs.house_area}
-                  min={inputs.width * inputs.depth}
+                  min={1}
                   max={1500}
                   unit="m²"
                   onChange={(v) => change("house_area", v)}
@@ -1037,6 +551,7 @@ function App() {
                   />
                 </label>
               </details>
+              <EngineeringControls inputs={inputs} change={change} t={t} />
               <div className="reference-module">
                 <Layers size={17} />
                 <div>
@@ -1141,8 +656,8 @@ function App() {
               </div>
               <p className="scene-caption">
                 {t(
-                  "Hong Kong time · geometric shadow preview · annual results use all 8,760 weather hours",
-                  "香港時間 · 幾何陰影預覽 · 全年結果使用全部 8,760 小時氣象資料",
+                  `Hong Kong time · 2025 seasonal geometry preview · annual results use ${inputs.weather_year} weather (${inputs.weather_year === 2024 ? "8,784" : "8,760"} hours)`,
+                  `香港時間 · 2025 年季節幾何示意 · 全年結果採 ${inputs.weather_year} 年氣象（${inputs.weather_year === 2024 ? "8,784" : "8,760"} 小時）`,
                 )}
               </p>
               <div className="design-controls">
@@ -1171,7 +686,11 @@ function App() {
                   label={t("Rows", "排數")}
                   value={config.rows}
                   min={1}
-                  max={6}
+                  max={Math.max(
+                    6,
+                    simulation.data?.search_scope?.rows_limit || 6,
+                    config.rows,
+                  )}
                   onChange={(v) => setConfig((c) => ({ ...c, rows: v }))}
                 />
               </div>
@@ -1205,8 +724,8 @@ function App() {
                 </div>
                 <p>
                   {t(
-                    "Based on 2025 reference weather",
-                    "基於 2025 年參考氣象資料",
+                    `Based on ${inputs.weather_year} reference weather`,
+                    `基於 ${inputs.weather_year} 年參考氣象資料`,
                   )}
                 </p>
                 <div className="yield-stats">
@@ -1260,6 +779,34 @@ function App() {
                         : t("Not within 25 years", "25 年內未回本")
                       : "—"}
                   </strong>
+                </div>
+                <div className="finance-line">
+                  <span>{t("Sustained break-even", "持續回本")}</span>
+                  <strong>
+                    {ready
+                      ? result[
+                          inputs.post_fit
+                            ? "stable_payback_B"
+                            : "stable_payback_A"
+                        ]?.slice(0, 7) || t("Not within life", "壽命內未達成")
+                      : "—"}
+                  </strong>
+                </div>
+                <div className="finance-line">
+                  <span>
+                    {t("NPV at selected discount rate", "所選折現率淨現值")}
+                  </span>
+                  <strong>
+                    {ready
+                      ? money(result[inputs.post_fit ? "npv_B" : "npv_A"])
+                      : "—"}
+                  </strong>
+                </div>
+                <div className="finance-line">
+                  <span>
+                    {t("Net cash flow to FiT end", "計劃結束時淨現金流")}
+                  </span>
+                  <strong>{ready ? money(result.net_to_fit_end) : "—"}</strong>
                 </div>
                 <label className="scenario-switch">
                   <input
@@ -1332,7 +879,10 @@ function App() {
                     </div>
                     <div className="constraint">
                       <span>{t("Module + rack load", "面板＋支架荷載")}</span>
-                      <strong>{fmt(result.load_kg_m2, 1)} / 150 kg/m²</strong>
+                      <strong>
+                        {fmt(result.load_kg_m2, 1)} /{" "}
+                        {fmt(result.load_limit_kg_m2)} kg/m²
+                      </strong>
                     </div>
                     <Pill kind={result.compliant ? "success" : "warning"}>
                       {result.compliant ? (
@@ -1353,14 +903,17 @@ function App() {
                 )}
                 <p className="microcopy">
                   {t(
-                    "Includes spacing, coverage and assumed module/rack weight. Ballast, wind load and structural safety are not assessed.",
-                    "包含間距、覆蓋及假設面板／支架重量。未評估壓重、風荷載及結構安全。",
+                    "Includes spacing, coverage and assumed module/rack plus user-added weight. Wind forces, support/fixing design and structural safety are not assessed.",
+                    "包含間距、覆蓋、假設面板／支架及額外重量。未評估風力、支承／固定設計及結構安全。",
                   )}
                 </p>
               </section>
             </aside>
           </div>
-          {(evaluation.error || simulation.error || sun.error) && (
+          {(evaluation.error ||
+            simulation.error ||
+            sun.error ||
+            metadata.error) && (
             <div role="alert" className="error-banner">
               <AlertTriangle size={17} />
               <span>
@@ -1368,14 +921,22 @@ function App() {
                   "Could not calculate. Check inputs or ensure the local API is running.",
                   "無法計算，請檢查輸入或確認本機 API 正在運行。",
                 )}{" "}
-                {evaluation.error || simulation.error || sun.error}
+                {evaluation.error ||
+                  simulation.error ||
+                  sun.error ||
+                  metadata.error}
               </span>
               <button onClick={() => setRetry((r) => r + 1)}>
                 {t("Retry", "重試")}
               </button>
             </div>
           )}
-          <section className="recommendation-section">
+          <TradeoffSummary
+            result={ready ? result : null}
+            t={t}
+            onCompare={compareRows}
+          />
+          <section className="recommendation-section" id="choices">
             <div className="section-heading">
               <div>
                 <span className="eyebrow">
@@ -1389,10 +950,13 @@ function App() {
                 {simulation.loading ? (
                   <>
                     <LoaderCircle className="spin" size={14} />
-                    {t("Exploring 210 configurations…", "正在探索 210 個配置…")}
+                    {t(
+                      "Searching and refining configurations…",
+                      "正在搜尋及細化配置…",
+                    )}
                   </>
                 ) : (
-                  `${simulation.data?.configs.length || 0} ${t("feasible configurations", "個可行配置")}`
+                  `${simulation.data?.tested || 0} ${t("tested", "個已測試")} · ${simulation.data?.configs.length || 0} ${t("physically feasible", "個物理可行")} · ${simulation.data?.eligible_count || 0} ${t("meet goals", "個達標")}`
                 )}
               </span>
             </div>
@@ -1431,14 +995,65 @@ function App() {
                           ? t("Calculating…", "正在計算…")
                           : t("No feasible configuration", "沒有可行配置")}
                     </p>
+                    {r && !simulation.loading && (
+                      <p className="choice-reason">
+                        {key === "economy"
+                          ? t(
+                              "Lowest investment among designs meeting your goals.",
+                              "達標方案中初始投資最低。",
+                            )
+                          : key === "generation"
+                            ? t(
+                                "Most energy among designs meeting your goals.",
+                                "達標方案中發電最多。",
+                              )
+                            : t(
+                                "Closest to equal-weight cost/energy ideal among eligible frontier choices.",
+                                "達標前沿方案中，最接近成本／發電等權理想點。",
+                              )}
+                      </p>
+                    )}
+                    {r && !simulation.loading && (
+                      <p className="choice-details">
+                        {t("NPV", "淨現值")} {money(r.reason_details.npv)} ·{" "}
+                        {t("Sustained payback", "持續回本")}{" "}
+                        {r.reason_details.stable_payback?.slice(0, 7) || "—"}
+                      </p>
+                    )}
                   </button>
                 );
               })}
             </div>
+            <div className="no-install-option">
+              <strong>{t("Baseline: do not install", "基準：不安裝")}</strong>
+              <span>
+                HK$0 · 0 kWh/{t("yr", "年")} · {t("solar NPV", "太陽能淨現值")}{" "}
+                HK$0
+              </span>
+              <p>
+                {t(
+                  "Avoid solar investment and solar revenue. If no design meets your goals, defer installation or review the assumptions. Non-financial goals can be explored by disabling financial requirements.",
+                  "沒有太陽能投資或收益。若無方案達標，可暫緩安裝或核對假設。可關閉財務要求，以探索其他目標。",
+                )}
+              </p>
+            </div>
+            {simulation.data && !simulation.loading && (
+              <p className="microcopy">
+                {t("Rejected goals", "未達目標")}:{" "}
+                {Object.entries(simulation.data.rejection_counts)
+                  .map(([key, value]) => `${reasonTextUI(key)} ${value}`)
+                  .join(" · ")}{" "}
+                ·{" "}
+                {t(
+                  "Overlapping counts; one design may fail several goals.",
+                  "計數可重複，一個方案可能未達多個目標。",
+                )}
+              </p>
+            )}
             <p className="microcopy recommendation-note">
               {t(
-                "Choices come from the non-dominated cost–generation frontier. Balanced = closest to the ideal after normalizing cost and energy; not a financial guarantee.",
-                "推薦來自成本與發電量的取捨前沿。折中方案為成本及發電量標準化後最接近理想點的配置，並非財務保證。",
+                "Budget and financial goals filter the choices first. The equal-weight balanced criterion is a preference, not a financial optimum. Coarse search plus local refinement, equally spaced rows and southward orientations only; not a global optimum. North-facing arrays, grouped installation and irregular roofs are outside the search.",
+                "先按預算及財務目標篩選，再選取推薦。等權折中屬偏好，並非財務最優。採粗搜尋加局部細化、等間距排及南向範圍，不能保證全局最優；未搜尋北向、群組安裝及不規則屋頂。",
               )}
             </p>
           </section>
@@ -1541,6 +1156,14 @@ function App() {
                       fill="#2c5d42"
                       onClick={(p) => setConfig(p.config)}
                     />
+                    {!simulation.loading && simulation.data?.no_install && (
+                      <Scatter
+                        isAnimationActive={false}
+                        data={[simulation.data.no_install]}
+                        fill="#8a806f"
+                        shape="cross"
+                      />
+                    )}
                     {ready && (
                       <Scatter
                         isAnimationActive={false}
@@ -1645,18 +1268,70 @@ function App() {
               )}
             </p>
           </section>
-          <section className="card saved-card">
+          <Suspense
+            fallback={
+              <p>{t("Loading sensitivity tools…", "正在載入敏感性工具…")}</p>
+            }
+          >
+            <Evidence
+              inputs={inputs}
+              config={config}
+              t={t}
+              onEvidence={setEvidence}
+            />
+          </Suspense>
+          <section className="card saved-card" id="saved-plans">
             <div className="card-title">
               <h2>{t("Your side-by-side comparison", "並排比較你的方案")}</h2>
               <button
                 className="text-button"
                 onClick={exportSaved}
-                disabled={!saved.length}
+                disabled={
+                  (!ready && !saved.length) ||
+                  !metadata.data ||
+                  metadata.loading ||
+                  !!metadata.error
+                }
               >
                 <Download size={14} />
                 {t("Export JSON", "匯出 JSON")}
               </button>
+              <button
+                className="text-button"
+                disabled={
+                  !ready ||
+                  !metadata.data ||
+                  metadata.loading ||
+                  !!metadata.error
+                }
+                onClick={() => downloadReport(archive(), lang === "zh")}
+              >
+                {t("Download report", "下載報告")}
+              </button>
+              <button
+                className="text-button"
+                onClick={() => importRef.current?.click()}
+                disabled={importing}
+              >
+                {importing
+                  ? t("Recalculating…", "正在重新計算…")
+                  : t("Import JSON", "載入 JSON")}
+              </button>
+              <input
+                ref={importRef}
+                type="file"
+                accept=".json,application/json"
+                aria-label={t("Import design file", "載入設計檔案")}
+                hidden
+                onChange={importPlans}
+              />
             </div>
+            <p className="microcopy">
+              {t(
+                "Design inputs and saved A/B plans persist on this browser. Imports are recalculated with the current model; exported results are never trusted as new calculations.",
+                "設計輸入及 A/B 方案會保存在本瀏覽器。載入時會用當前模型重新計算，不直接採信匯出檔案的舊結果。",
+              )}
+            </p>
             {!saved.length ? (
               <div className="empty-comparison">
                 <Bookmark size={22} />
@@ -1670,7 +1345,10 @@ function App() {
             ) : (
               <div className="saved-grid">
                 {saved.map((r, i) => (
-                  <div key={r.saved_at} className="saved-plan">
+                  <div
+                    key={r.id || `${r.saved_at}-${i}`}
+                    className="saved-plan"
+                  >
                     <div className="saved-plan-title">
                       <strong>
                         {t("Plan", "方案")} {i === 0 ? "A" : "B"}
@@ -1694,6 +1372,18 @@ function App() {
                       <dd>{fmt(r.annual_kwh)} kWh</dd>
                       <dt>{t("Investment", "投資")}</dt>
                       <dd>{money(r.initial_cost)}</dd>
+                      <dt>{t("Specific yield", "單位容量發電")}</dt>
+                      <dd>{fmt(r.specific_yield, 1)} kWh/kW</dd>
+                      <dt>{t("NPV", "淨現值")}</dt>
+                      <dd>{money(r[r.inputs.post_fit ? "npv_B" : "npv_A"])}</dd>
+                      <dt>{t("Sustained break-even", "持續回本")}</dt>
+                      <dd>
+                        {r[
+                          r.inputs.post_fit
+                            ? "stable_payback_B"
+                            : "stable_payback_A"
+                        ]?.slice(0, 7) || t("Not within life", "壽命內未達成")}
+                      </dd>
                       <dt>{t("Shade loss", "遮擋損失")}</dt>
                       <dd>{fmt(r.shading_loss_pct, 1)}%</dd>
                       <dt>{t("First break-even", "首次回本")}</dt>

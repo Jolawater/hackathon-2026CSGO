@@ -34,7 +34,7 @@
       "name_zh": "遮擋關係",
       "description_en": "Identical layout with a 0° versus 40° surrounding horizon. More obstruction must reduce annual output.",
       "description_zh": "相同排布，周圍天際線分別設為 0° 與 40°；增加遮擋應令全年發電量下降。",
-      "observed": "clear=9867.3 kWh; obstructed=6787.6 kWh",
+      "observed": "clear=9887.0 kWh; obstructed=6794.4 kWh",
       "passed": true,
       "source_url": null
     },
@@ -43,25 +43,1025 @@
       "name_zh": "每月能量加總",
       "description_en": "Sum of rounded monthly generation must match the annual total within 0.12 kWh.",
       "description_zh": "四捨五入後的月發電量總和，與全年發電量相差應少於 0.12 kWh。",
-      "observed": "monthly sum=9867.27; annual=9867.3",
+      "observed": "monthly sum=9886.99; annual=9887.0",
       "passed": true,
       "source_url": null
     },
     {
       "name_en": "Configuration-search result",
       "name_zh": "配置搜索結果",
-      "description_en": "210 candidates; only configurations passing the selected preliminary checks enter recommendations.",
-      "description_zh": "搜索 210 個候選，只有通過所選初步條件檢查的配置才可推薦。",
-      "observed": "feasible=133; frontier=8; measured runtime=1.62s",
+      "description_en": "Coarse search plus local refinement; only physically feasible configurations meeting decision goals enter recommendations.",
+      "description_zh": "粗搜尋加局部細化，只有物理可行且符合決策目標的配置才可推薦。",
+      "observed": "feasible=191; frontier=11; measured runtime=0.70s",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Whole-generation reference pipeline",
+      "name_zh": "完整發電流程參考核對",
+      "description_en": "Three unobstructed single-row cases against ModelChain/PVWatts using identical weather/capacity. Temperature, losses and inverter assumptions differ. This is cross-model evidence, not measured accuracy.",
+      "description_zh": "三個無遮擋單排案例與同氣象／容量的 ModelChain/PVWatts 比較。溫度、損失及逆變器假設不同，屬模型核對，並非實測準確率。",
+      "observed": "tilt=0.0°: difference=3.93%; tilt=20.0°: difference=3.91%; tilt=40.0°: difference=4.0%",
+      "passed": true,
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "name_en": "Decision can reject installation",
+      "name_zh": "決策可建議暫緩安裝",
+      "description_en": "2032 commissioning, default conservative income: physically feasible options remain, but none meet positive-value/payback goals. No-install solar baseline is zero.",
+      "description_zh": "2032 年投產及預設保守收入下，仍有物理可行方案，但沒有方案符合正收益與回本目標；不安裝基準為零。",
+      "observed": "feasible=191; eligible=0; verdict=defer_installation",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Historical weather and sensitivity coverage",
+      "name_zh": "歷史氣象及敏感性覆蓋",
+      "description_en": "Three weather years (2024 includes 8,784 hours), eleven one-at-a-time scenarios and seven recommendation scenarios. Ranges are not confidence bounds.",
+      "description_zh": "三個氣象年份（2024 年為 8,784 小時）、十一個單項情景及七個推薦情景；範圍並非置信區間。",
+      "observed": "annual scenario envelope=[8954.1, 10807.5]; distinct choices=2",
       "passed": true,
       "source_url": null
     }
   ],
   "baseline": {
-    "annual_kwh": 9867.3,
+    "annual_kwh": 9887.0,
     "panels_count": 18,
     "capacity_kw": 8.1,
-    "shading_loss_pct": 3.8
+    "shading_loss_pct": 3.6
   },
-  "scope": "No measured rooftop or electrical-yield validation has been performed."
+  "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
+  "model_version": "2.0.0",
+  "references": [
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 0.0,
+        "azimuth": 180.0,
+        "rows": 1
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3341.4,
+      "reference_kwh": 3215.2,
+      "difference_pct": 3.93,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 264.35,
+          "reference_kwh": 254.63
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 209.53,
+          "reference_kwh": 201.34
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 260.02,
+          "reference_kwh": 249.77
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 296.62,
+          "reference_kwh": 285.35
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 305.81,
+          "reference_kwh": 294.26
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 322.55,
+          "reference_kwh": 310.84
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 323.79,
+          "reference_kwh": 311.83
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 298.54,
+          "reference_kwh": 286.89
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 309.58,
+          "reference_kwh": 298.32
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 286.91,
+          "reference_kwh": 276.21
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 234.43,
+          "reference_kwh": 225.44
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 229.28,
+          "reference_kwh": 220.33
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 20.0,
+        "azimuth": 180.0,
+        "rows": 1
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3420.3,
+      "reference_kwh": 3291.5,
+      "difference_pct": 3.91,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 301.29,
+          "reference_kwh": 290.52
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 220.26,
+          "reference_kwh": 211.73
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 265.25,
+          "reference_kwh": 254.81
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 293.31,
+          "reference_kwh": 282.09
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 295.44,
+          "reference_kwh": 284.14
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 306.89,
+          "reference_kwh": 295.57
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 309.24,
+          "reference_kwh": 297.64
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 292.52,
+          "reference_kwh": 281.0
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 314.37,
+          "reference_kwh": 302.93
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 303.24,
+          "reference_kwh": 292.05
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 259.13,
+          "reference_kwh": 249.44
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 259.35,
+          "reference_kwh": 249.6
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 40.0,
+        "azimuth": 180.0,
+        "rows": 1
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3256.3,
+      "reference_kwh": 3131.2,
+      "difference_pct": 4.0,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 313.79,
+          "reference_kwh": 302.58
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 216.06,
+          "reference_kwh": 207.58
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 252.25,
+          "reference_kwh": 242.12
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 270.04,
+          "reference_kwh": 259.41
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 266.28,
+          "reference_kwh": 255.68
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 271.34,
+          "reference_kwh": 260.88
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 274.2,
+          "reference_kwh": 263.45
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 265.67,
+          "reference_kwh": 254.83
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 296.0,
+          "reference_kwh": 285.03
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 297.12,
+          "reference_kwh": 286.06
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 264.21,
+          "reference_kwh": 254.32
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 269.33,
+          "reference_kwh": 259.24
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    }
+  ],
+  "weather_years": {
+    "2023": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20230101&end=20231231&format=JSON&time-standard=UTC",
+      "year": 2023,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8760,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20230101",
+        "end": "20231231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "c40fce16b4a1a1644b01f39d8128655a63431287a1759abce8202e4860e8325f"
+    },
+    "2024": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20240101&end=20241231&format=JSON&time-standard=UTC",
+      "year": 2024,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8784,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20240101",
+        "end": "20241231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
+    },
+    "2025": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20250101&end=20251231&format=JSON&time-standard=UTC",
+      "year": 2025,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8760,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20250101",
+        "end": "20251231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "b2d648d68bcaa831b7f9ad4813ecdbb13afa1373ed602de02107b85e795a2d5e"
+    }
+  },
+  "sensitivity": {
+    "model_version": "2.0.0",
+    "base": {
+      "config": {
+        "tilt": 20.0,
+        "azimuth": 180.0,
+        "rows": 3
+      },
+      "panels_count": 18,
+      "capacity_kw": 8.1,
+      "annual_kwh": 9887.0,
+      "specific_yield": 1220.6,
+      "shading_loss_pct": 3.6,
+      "initial_cost": 114040.0,
+      "fit_rate": 4,
+      "compliant": true,
+      "net": 145551.86,
+      "npv": 115556.57,
+      "stable_payback": "2029-11-30",
+      "decision": {
+        "eligible": true,
+        "reasons": [],
+        "scenario": "A",
+        "status": "meets_goals"
+      }
+    },
+    "scenarios": [
+      {
+        "id": "base",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 145551.86,
+        "npv": 115556.57,
+        "stable_payback": "2029-11-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "weather_minus_10",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 8954.1,
+        "specific_yield": 1105.4,
+        "shading_loss_pct": 3.7,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 119877.16,
+        "npv": 93123.69,
+        "stable_payback": "2030-04-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "weather_plus_10",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 10807.5,
+        "specific_yield": 1334.3,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 170885.03,
+        "npv": 137691.09,
+        "stable_payback": "2029-08-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "quote_minus_20",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 91232.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 168359.86,
+        "npv": 138364.57,
+        "stable_payback": "2029-05-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "quote_plus_20",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 136848.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 122743.86,
+        "npv": 92748.57,
+        "stable_payback": "2030-07-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "horizon_plus_5",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9846.6,
+        "specific_yield": 1215.6,
+        "shading_loss_pct": 4.0,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 144440.78,
+        "npv": 114585.21,
+        "stable_payback": "2029-12-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "horizon_minus_5",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 145551.86,
+        "npv": 115556.57,
+        "stable_payback": "2029-11-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "delay_6_months",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 126639.52,
+        "npv": 101086.07,
+        "stable_payback": "2030-06-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "electrical_alternative",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9372.3,
+        "specific_yield": 1157.1,
+        "shading_loss_pct": 8.7,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 131388.34,
+        "npv": 103190.81,
+        "stable_payback": "2030-02-28",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "row_geometry_alternative",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9867.3,
+        "specific_yield": 1218.2,
+        "shading_loss_pct": 3.8,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 145009.27,
+        "npv": 115083.26,
+        "stable_payback": "2029-12-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "id": "quote_30000",
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 243640.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 15951.86,
+        "npv": -14043.43,
+        "stable_payback": "2033-04-30",
+        "decision": {
+          "eligible": false,
+          "reasons": [
+            "profit"
+          ],
+          "scenario": "A",
+          "status": "does_not_meet_goals"
+        }
+      }
+    ],
+    "weather_years": [
+      {
+        "year": 2023,
+        "hours": 8760,
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9723.8,
+        "specific_yield": 1200.5,
+        "shading_loss_pct": 3.5,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 141055.95,
+        "npv": 111598.73,
+        "stable_payback": "2029-12-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "year": 2024,
+        "hours": 8784,
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9365.6,
+        "specific_yield": 1156.3,
+        "shading_loss_pct": 3.7,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 131177.95,
+        "npv": 102817.9,
+        "stable_payback": "2030-02-28",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "year": 2025,
+        "hours": 8760,
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 145551.86,
+        "npv": 115556.57,
+        "stable_payback": "2029-11-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      }
+    ],
+    "range": {
+      "annual_kwh": [
+        8954.1,
+        10807.5
+      ],
+      "npv": [
+        -14043.43,
+        138364.57
+      ]
+    },
+    "ranking": [
+      {
+        "year": 2023,
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5521.6,
+        "verdict": "options_available"
+      },
+      {
+        "year": 2024,
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5307.1,
+        "verdict": "options_available"
+      },
+      {
+        "year": 2025,
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5605.3,
+        "verdict": "options_available"
+      },
+      {
+        "scenario": "quote_plus_20",
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5605.3,
+        "verdict": "options_available"
+      },
+      {
+        "scenario": "horizon_plus_5",
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5582.3,
+        "verdict": "options_available"
+      },
+      {
+        "scenario": "delay_6_months",
+        "config": {
+          "tilt": 5.0,
+          "azimuth": 135.0,
+          "rows": 4
+        },
+        "annual_kwh": 5605.3,
+        "verdict": "options_available"
+      },
+      {
+        "scenario": "quote_30000",
+        "config": null,
+        "annual_kwh": null,
+        "verdict": "defer_installation"
+      }
+    ],
+    "ranking_stable": false,
+    "distinct_recommendations": 2,
+    "row_comparison": [
+      {
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 2
+        },
+        "panels_count": 12,
+        "capacity_kw": 5.4,
+        "annual_kwh": 6840.5,
+        "specific_yield": 1266.8,
+        "shading_loss_pct": 0.0,
+        "initial_cost": 76240.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 99509.17,
+        "npv": 80091.93,
+        "stable_payback": "2029-10-31",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 3
+        },
+        "panels_count": 18,
+        "capacity_kw": 8.1,
+        "annual_kwh": 9887.0,
+        "specific_yield": 1220.6,
+        "shading_loss_pct": 3.6,
+        "initial_cost": 114040.0,
+        "fit_rate": 4,
+        "compliant": true,
+        "net": 145551.86,
+        "npv": 115556.57,
+        "stable_payback": "2029-11-30",
+        "decision": {
+          "eligible": true,
+          "reasons": [],
+          "scenario": "A",
+          "status": "meets_goals"
+        }
+      },
+      {
+        "config": {
+          "tilt": 20.0,
+          "azimuth": 180.0,
+          "rows": 4
+        },
+        "panels_count": 0,
+        "capacity_kw": 0.0,
+        "annual_kwh": 0.0,
+        "specific_yield": 0,
+        "shading_loss_pct": 0,
+        "initial_cost": 0,
+        "fit_rate": 4,
+        "compliant": false,
+        "net": 0.0,
+        "npv": 0.0,
+        "stable_payback": "2027-01-01",
+        "decision": {
+          "eligible": false,
+          "reasons": [
+            "physical",
+            "profit"
+          ],
+          "scenario": "A",
+          "status": "does_not_meet_goals"
+        }
+      }
+    ],
+    "reference": {
+      "available": true,
+      "configuration": {
+        "tilt": 20.0,
+        "azimuth": 180.0,
+        "rows": 1
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3420.3,
+      "reference_kwh": 3291.5,
+      "difference_pct": 3.91,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 301.29,
+          "reference_kwh": 290.52
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 220.26,
+          "reference_kwh": 211.73
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 265.25,
+          "reference_kwh": 254.81
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 293.31,
+          "reference_kwh": 282.09
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 295.44,
+          "reference_kwh": 284.14
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 306.89,
+          "reference_kwh": 295.57
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 309.24,
+          "reference_kwh": 297.64
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 292.52,
+          "reference_kwh": 281.0
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 314.37,
+          "reference_kwh": 302.93
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 303.24,
+          "reference_kwh": 292.05
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 259.13,
+          "reference_kwh": 249.44
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 259.35,
+          "reference_kwh": 249.6
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    "scope": "One-at-a-time scenario envelope plus three historical weather years; not a confidence interval, probability or P90 estimate. Unmeasured rooftop effects remain."
+  }
 }

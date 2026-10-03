@@ -31,7 +31,33 @@ a=evaluate(Inputs(),Configuration());b=evaluate(Inputs(horizon=[40]*12),Configur
 record('Shading relationship','遮擋關係','Identical layout with a 0° versus 40° surrounding horizon. More obstruction must reduce annual output.','相同排布，周圍天際線分別設為 0° 與 40°；增加遮擋應令全年發電量下降。',f"clear={a['annual_kwh']} kWh; obstructed={b['annual_kwh']} kWh",0<b['annual_kwh']<a['annual_kwh'])
 record('Monthly energy accounting','每月能量加總','Sum of rounded monthly generation must match the annual total within 0.12 kWh.','四捨五入後的月發電量總和，與全年發電量相差應少於 0.12 kWh。',f"monthly sum={sum(a['monthly_kwh']):.2f}; annual={a['annual_kwh']}",abs(sum(a['monthly_kwh'])-a['annual_kwh'])<.12)
 start=time.perf_counter();s=search(Inputs());elapsed=time.perf_counter()-start
-record('Configuration-search result','配置搜索結果','210 candidates; only configurations passing the selected preliminary checks enter recommendations.','搜索 210 個候選，只有通過所選初步條件檢查的配置才可推薦。',f"feasible={len(s['configs'])}; frontier={len(s['frontier'])}; measured runtime={elapsed:.2f}s",len(s['configs'])>0 and all(r['compliant'] for r in s['configs']))
+record('Configuration-search result','配置搜索結果','Coarse search plus local refinement; only physically feasible configurations meeting decision goals enter recommendations.','粗搜尋加局部細化，只有物理可行且符合決策目標的配置才可推薦。',f"feasible={len(s['configs'])}; frontier={len(s['frontier'])}; measured runtime={elapsed:.2f}s",len(s['configs'])>0 and all(r['compliant'] for r in s['configs']))
 report={'pvlib_version':pvlib.__version__,'python_version':platform.python_version(),'checks':checks,'baseline':{k:a[k] for k in ['annual_kwh','panels_count','capacity_kw','shading_loss_pct']},'scope':'No measured rooftop or electrical-yield validation has been performed.'}
-(ROOT/'data/validation.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
-print(json.dumps(report,ensure_ascii=False,indent=2))
+
+
+# Full-year reference pipeline comparisons explicitly distinguish model agreement
+# from measured rooftop accuracy. No field-error threshold is invented.
+from backend.reliability import reference_case, analyse
+from backend.app import source_metadata
+references=[reference_case(Inputs(),Configuration(tilt=tilt,rows=1)) for tilt in [0,20,40]]
+assert all(r['reference_kwh']>0 and np.isfinite(r['difference_pct']) for r in references)
+record('Whole-generation reference pipeline','完整發電流程參考核對',
+       'Three unobstructed single-row cases against ModelChain/PVWatts using identical weather/capacity. Temperature, losses and inverter assumptions differ. This is cross-model evidence, not measured accuracy.',
+       '三個無遮擋單排案例與同氣象／容量的 ModelChain/PVWatts 比較。溫度、損失及逆變器假設不同，屬模型核對，並非實測準確率。',
+       '; '.join(f"tilt={r['configuration']['tilt']}°: difference={r['difference_pct']}%" for r in references),True,references[0]['source_url'])
+late=search(Inputs(commissioning='2032-01-01'))
+record('Decision can reject installation','決策可建議暫緩安裝',
+       '2032 commissioning, default conservative income: physically feasible options remain, but none meet positive-value/payback goals. No-install solar baseline is zero.',
+       '2032 年投產及預設保守收入下，仍有物理可行方案，但沒有方案符合正收益與回本目標；不安裝基準為零。',
+       f"feasible={len(late['configs'])}; eligible={late['eligible_count']}; verdict={late['verdict']}",late['eligible_count']==0 and late['verdict']=='defer_installation')
+analysis=analyse(Inputs(),Configuration())
+record('Historical weather and sensitivity coverage','歷史氣象及敏感性覆蓋',
+       'Three weather years (2024 includes 8,784 hours), eleven one-at-a-time scenarios and seven recommendation scenarios. Ranges are not confidence bounds.',
+       '三個氣象年份（2024 年為 8,784 小時）、十一個單項情景及七個推薦情景；範圍並非置信區間。',
+       f"annual scenario envelope={analysis['range']['annual_kwh']}; distinct choices={analysis['distinct_recommendations']}",len(analysis['weather_years'])==3 and len(analysis['scenarios'])==11)
+report.update(model_version='2.0.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
+              sensitivity=analysis,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
+temporary=ROOT/'data/validation.json.tmp'
+temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2))
+temporary.replace(ROOT/'data/validation.json')
+print(f"PASS: {len(checks)} checks, {len(references)} annual reference cases, three weather years.")

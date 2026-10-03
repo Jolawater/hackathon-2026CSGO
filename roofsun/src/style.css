@@ -1419,3 +1419,272 @@ footer > p {
 .chart {
   overflow: clip;
 }
+/* Decision and evidence additions share the workbench's visual hierarchy. */
+.decision-banner {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  background: #e8eedf;
+  border: 1px solid #cfddc5;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.decision-banner.caution {
+  background: #fcf1de;
+  border-color: #e5c994;
+}
+.decision-banner h2 {
+  font-size: 22px;
+  margin: 5px 0;
+}
+.decision-banner p {
+  font-size: 13px;
+  margin: 6px 0;
+  max-width: 850px;
+}
+.primary-action {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: #254f38;
+  color: #fff;
+  padding: 11px 16px;
+  border-radius: 8px;
+  white-space: normal;
+}
+.goals-card {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 18px 24px;
+}
+.goal-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.physical-tradeoff {
+  margin-top: 24px;
+  padding: 24px;
+}
+.tradeoff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 20px;
+  margin: 18px 0;
+}
+.tradeoff-grid strong {
+  font-size: 20px;
+}
+.tradeoff-grid p,
+.physical-tradeoff p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.choice-reason {
+  line-height: 1.5 !important;
+  font-size: 12px !important;
+}
+.choice-details {
+  font-size: 11px !important;
+  color: #526548 !important;
+  line-height: 1.5 !important;
+}
+.no-install-option {
+  margin-top: 14px;
+  border: 1px dashed #a8b69d;
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.no-install-option p {
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.evidence-card {
+  padding: 26px;
+  margin-top: 24px;
+}
+.evidence-card p,
+.reference-evidence p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.evidence-card h3,
+.reference-evidence h3 {
+  font-size: 17px;
+  margin-top: 25px;
+}
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.table-scroll table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  text-align: left;
+}
+.table-scroll td,
+.table-scroll th {
+  padding: 11px 12px;
+  border-bottom: 1px solid #e0e5d9;
+  vertical-align: top;
+}
+.table-scroll th {
+  background: #eff2e8;
+}
+.reference-evidence {
+  border-top: 1px solid #e0e5d9;
+  margin-top: 24px;
+}
+.engineering-controls {
+  border-top: 1px solid #e0e5d9;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+.engineering-controls[open] > summary {
+  margin-bottom: 16px;
+}
+.engineering-controls .goal-checkbox,
+.engineering-controls .select-field,
+.engineering-controls .text-field {
+  margin: 14px 0;
+}
+.select-field,
+.text-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.select-field select,
+.text-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #dce3d4;
+  border-radius: 7px;
+  background: #fafbf6;
+  color: inherit;
+}
+.obstacle-fields {
+  padding: 10px;
+  border: 1px solid #dce3d4;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.measurement-help {
+  font-size: 11px;
+  margin-top: 12px;
+  line-height: 1.7;
+}
+.measurement-help summary {
+  cursor: pointer;
+  color: #42613b;
+}
+.saved-card > .card-title {
+  flex-wrap: wrap;
+}
+.saved-card > .card-title h2 {
+  margin-right: auto;
+}
+.loading-page {
+  padding: 60px;
+}
+.choice-details {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1000px) {
+  .goals-card {
+    grid-template-columns: 1fr 1fr;
+  }
+  .goals-card > div:first-child {
+    grid-column: 1/-1;
+  }
+  .decision-banner {
+    align-items: flex-start;
+  }
+  .decision-banner h2 {
+    font-size: 19px;
+  }
+}
+@media (max-width: 600px) {
+  .decision-banner {
+    flex-direction: column;
+    padding: 18px;
+    gap: 8px;
+  }
+  .goals-card {
+    padding: 18px;
+    gap: 12px;
+  }
+  .goals-card .goal-checkbox {
+    grid-column: 1/-1;
+  }
+  .tradeoff-grid {
+    gap: 12px;
+  }
+  .tradeoff-grid strong {
+    font-size: 17px;
+  }
+  .physical-tradeoff,
+  .evidence-card {
+    padding: 18px;
+  }
+  .card-title {
+    flex-wrap: wrap;
+  }
+  .table-scroll td,
+  .table-scroll th {
+    padding: 9px 7px;
+  }
+  .saved-card > .card-title {
+    gap: 12px;
+  }
+}
+@media print {
+  .site-header,
+  .input-panel,
+  .goals-card,
+  button,
+  footer,
+  .time-controls,
+  .design-controls,
+  .scene-bottom {
+    display: none !important;
+  }
+  .main-grid {
+    display: block;
+  }
+  .card,
+  .result-panel,
+  .decision-banner {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  .workbench {
+    max-width: none;
+    padding: 0;
+  }
+  .scene-panel {
+    max-width: 600px;
+  }
+  .chart {
+    overflow: visible;
+  }
+}
