@@ -112,8 +112,66 @@ try {
   );
   assert.equal(r.mapped_inputs.house_area, 56);
   assert.deepEqual(r.mapped_inputs.exclusions, []);
-  r = await change(() => button("Door direction E").click());
-  assert.equal(r.mapped_inputs.roof_rotation, 90);
+  // North must point along the roof's projected geographic axis; both needle
+  // and upright N label move, rather than keeping the label above the dial.
+  const compassPositions = new Set();
+  for (const [name, bearing] of [
+    ["N", 0],
+    ["NE", 45],
+    ["SE", 135],
+    ["S", 180],
+    ["SW", 225],
+    ["W", 270],
+    ["NW", 315],
+    ["E", 90],
+  ]) {
+    if (bearing !== r.mapped_inputs.roof_rotation) {
+      r = await change(() => button(`Door direction ${name}`).click());
+    }
+    assert.equal(r.mapped_inputs.roof_rotation, bearing);
+    const compass = await page.locator(".scene-compass").evaluate((el) => {
+      const label = el.querySelector(".compass-north-label");
+      const needle = el.querySelector(".compass-needle");
+      const center = new DOMPoint(0, 0).matrixTransform(el.getCTM());
+      const tip = new DOMPoint(0, -18).matrixTransform(needle.getCTM());
+      return {
+        x: Number(label.getAttribute("x")),
+        y: Number(label.getAttribute("y")),
+        tipX: tip.x - center.x,
+        tipY: tip.y - center.y,
+        text: label.textContent.trim(),
+      };
+    });
+    const angle = (bearing * Math.PI) / 180;
+    const expected = [
+      -Math.sin(angle) + 0.58 * Math.cos(angle),
+      -0.31 * Math.sin(angle) - 0.52 * Math.cos(angle),
+    ];
+    const length = Math.hypot(...expected);
+    assert.equal(compass.text, "N");
+    assert(Math.abs(compass.x / 36 - expected[0] / length) < 1e-6);
+    assert(Math.abs(compass.y / 36 - expected[1] / length) < 1e-6);
+    assert(
+      Math.abs(compass.x * compass.tipY - compass.y * compass.tipX) /
+        (36 * Math.hypot(compass.tipX, compass.tipY)) <
+        1e-6,
+      "N aligns with the arrow tip",
+    );
+    assert(
+      compass.x * compass.tipX + compass.y * compass.tipY > 0,
+      "N sits on the north end, not south",
+    );
+    compassPositions.add(`${compass.x.toFixed(3)},${compass.y.toFixed(3)}`);
+    if (bearing === 0 || bearing === 90 || bearing === 180)
+      await page.locator(".scene-card").screenshot({
+        path: `${output}/compass-door-${name.toLowerCase()}.png`,
+      });
+  }
+  assert.equal(
+    compassPositions.size,
+    8,
+    "All eight roof directions move the N label",
+  );
   r = await change(
     async () => {
       await label("Floors above the roof").fill("2");
@@ -393,7 +451,7 @@ try {
   assert.equal(await label("Roof width").inputValue(), "8.06");
   assert.deepEqual(errors, [], "No browser runtime exceptions");
   console.log(
-    "PASS: seven input groups and mappings, persisted answers, real row trade-off, winter-noon/day animation, two read-only panels, nine sensitivity cases and stale-data handling, minimal exports, legacy/invalid imports, bilingual verbatim assumptions, 375px layout, no-space/no-payback, network retry, corrupt-storage recovery.",
+    "PASS: seven input groups and mappings, eight-direction compass alignment, persisted answers, real row trade-off, winter-noon/day animation, two read-only panels, nine sensitivity cases and stale-data handling, minimal exports, legacy/invalid imports, bilingual verbatim assumptions, 375px layout, no-space/no-payback, network retry, corrupt-storage recovery.",
   );
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png`, fullPage: true });

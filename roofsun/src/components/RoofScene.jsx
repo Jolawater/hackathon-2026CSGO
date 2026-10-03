@@ -28,6 +28,9 @@ export default function RoofScene({ inputs, config, result, sun, t, topView }) {
   const compassRotation =
     (Math.atan2(northPoint[0] - origin[0], origin[1] - northPoint[1]) * 180) /
     Math.PI;
+  const northVector = [northPoint[0] - origin[0], northPoint[1] - origin[1]],
+    northLength = Math.hypot(...northVector),
+    northLabel = northVector.map((value) => (value / northLength) * 36);
   const altitude = sun?.altitude ?? 0,
     sunAngle = (((sun?.azimuth ?? 180) - inputs.roof_rotation) * Math.PI) / 180;
   const dx =
@@ -279,12 +282,41 @@ export default function RoofScene({ inputs, config, result, sun, t, topView }) {
       >
         {fmt(d, 1)} m
       </text>
-      <g transform="translate(530,344)">
-        <circle r="25" fill="#f7f8ee" stroke="#d0d8c7" />
-        <g transform={`rotate(${compassRotation})`}>
-          <path d="M0-17 6 7 0 3 -6 7Z" fill="#244d39" />
+      <g
+        className="scene-compass"
+        transform="translate(530,344)"
+        role="img"
+        aria-label={t(
+          "North direction relative to the rooftop",
+          "按天台方位顯示北方方向",
+        )}
+      >
+        <title>
+          {t(
+            "N marks geographic north. The arrow and label follow the roof orientation.",
+            "N 代表地理北方，箭頭與標記會跟隨天台方位轉動。",
+          )}
+        </title>
+        <circle r="26" fill="#f7f8ee" stroke="#bdccb6" strokeWidth="1.2" />
+        <g className="compass-needle" transform={`rotate(${compassRotation})`}>
+          <path d="M0 18 5 3 0 6 -5 3Z" fill="#aebca8" />
+          <path d="M0-18 6 7 0 3 -6 7Z" fill="#244d39" />
         </g>
-        <text y="-33" textAnchor="middle" fontSize="11" fill="#496044">
+        <circle r="2" fill="#244d39" />
+        <text
+          className="compass-north-label"
+          x={northLabel[0]}
+          y={northLabel[1]}
+          dy=".35em"
+          textAnchor="middle"
+          fontSize="13"
+          fontWeight="700"
+          fill="#244d39"
+          paintOrder="stroke"
+          stroke="#f7f8ee"
+          strokeWidth="3"
+          strokeLinejoin="round"
+        >
           N
         </text>
       </g>
