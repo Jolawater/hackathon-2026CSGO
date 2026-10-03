@@ -1,0 +1,172 @@
+{
+  "scope": "Illustrative dimensions, obstacles and neighbouring facade, not measured properties or a legal certification. Roof footprints are within the official NTEH covered-area size limit only; other regulatory requirements are not certified.",
+  "village_house_area_limit_m2": 65.03,
+  "source_url": "https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf",
+  "source_section": "September 2024 edition, Part A, printed page 3: covered area at most 65.03 m² (700 sq ft)",
+  "checked": "2026-10-03",
+  "presets": [
+    {
+      "id": "open",
+      "en": "700 sq ft roof (illustrative)",
+      "zh": "700 呎天台（示例）",
+      "inputs": {
+        "width": 8.06,
+        "depth": 8.06,
+        "house_area": 65,
+        "village_house_mode": true,
+        "horizon": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "exclusions": [
+          {
+            "x": 0.5,
+            "y": 6.65,
+            "width": 2.2,
+            "depth": 0.9,
+            "height": 2
+          },
+          {
+            "x": 6.6,
+            "y": 6.7,
+            "width": 0.8,
+            "depth": 0.8,
+            "height": 1.1
+          }
+        ]
+      },
+      "config": {
+        "tilt": 40,
+        "azimuth": 180,
+        "rows": 3,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "neighbour_geometry": {
+        "floors_above": 0,
+        "distance_m": 10,
+        "azimuth": 180,
+        "sector_width": 60
+      }
+    },
+    {
+      "id": "shaded",
+      "en": "Village roof + neighbour (illustrative)",
+      "zh": "村屋與鄰屋遮擋（示例）",
+      "inputs": {
+        "width": 8.06,
+        "depth": 8.06,
+        "house_area": 65,
+        "village_house_mode": true,
+        "horizon": [
+          0,
+          0,
+          0,
+          0,
+          56.3,
+          68.9,
+          71.6,
+          68.9,
+          56.3,
+          0,
+          0,
+          0
+        ],
+        "exclusions": [
+          {
+            "x": 0.5,
+            "y": 6.65,
+            "width": 2.2,
+            "depth": 0.9,
+            "height": 2
+          },
+          {
+            "x": 6.6,
+            "y": 6.7,
+            "width": 0.8,
+            "depth": 0.8,
+            "height": 1.1
+          }
+        ]
+      },
+      "config": {
+        "tilt": 40,
+        "azimuth": 180,
+        "rows": 3,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "neighbour_geometry": {
+        "floors_above": 3,
+        "floor_height_m": 3,
+        "distance_m": 3,
+        "azimuth": 180,
+        "sector_width": 120
+      }
+    },
+    {
+      "id": "small",
+      "en": "Smaller village roof (illustrative)",
+      "zh": "較小村屋天台（示例）",
+      "inputs": {
+        "width": 6,
+        "depth": 5.4,
+        "house_area": 32.4,
+        "village_house_mode": true,
+        "horizon": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "exclusions": [
+          {
+            "x": 0.5,
+            "y": 4.6,
+            "width": 1.5,
+            "depth": 0.3,
+            "height": 2
+          },
+          {
+            "x": 4.7,
+            "y": 4.6,
+            "width": 0.7,
+            "depth": 0.3,
+            "height": 1
+          }
+        ]
+      },
+      "config": {
+        "tilt": 40,
+        "azimuth": 180,
+        "rows": 2,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "neighbour_geometry": {
+        "floors_above": 0,
+        "distance_m": 10,
+        "azimuth": 180,
+        "sector_width": 60
+      }
+    }
+  ]
+}

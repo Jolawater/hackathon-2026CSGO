@@ -198,7 +198,8 @@ export function TradeoffSummary({ result, t, onCompare }) {
       <div className="tradeoff-grid">
         <div>
           <strong>
-            {a.config.rows} → {b.config.rows} {t("rows", "排")}
+            {a.actual_rows ?? a.config.rows} → {b.actual_rows ?? b.config.rows}{" "}
+            {t("rows", "排")}
           </strong>
           <p>
             {a.panels_count} → {b.panels_count} {t("modules", "塊面板")}
@@ -261,6 +262,20 @@ export function EngineeringControls({ inputs, change, t }) {
       <summary>
         {t("Engineering, sources & uncertainty", "工程、來源與不確定性")}
       </summary>
+      <NumberField
+        label={t("Minimum row fill versus south", "每排板數相對朝南的最低比例")}
+        value={inputs.minimum_row_fill_ratio * 100}
+        min={0}
+        max={100}
+        unit="%"
+        onChange={(v) => change("minimum_row_fill_ratio", v / 100)}
+      />
+      <p className="microcopy">
+        {t(
+          "70% is an editable layout-quality assumption, not a legal limit. Explicit module caps allow intentionally partial rows.",
+          "70% 是可調的排布品質假設，並非法例限制。明確設定面板上限時可保留非整排。",
+        )}
+      </p>
       <label className="select-field">
         {t("Reference weather year", "參考氣象年份")}
         <select

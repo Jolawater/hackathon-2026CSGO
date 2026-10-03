@@ -11,9 +11,9 @@ This branch starts from Jim's RoofSun 2.1.0 (427b206). It adds an owner-facing e
 After the standard checks below, run `node scripts/owner-browser-test.mjs` against the running server. Both browser scripts support `ROOFSUN_BROWSER_CHANNEL=msedge` for an installed Microsoft Edge. `GET /api/validation` compares saved report fingerprints with current model/input files. Re-run `python scripts/validate.py` after changing those files; a stale report is not evidence that the current implementation passed.
 
 
-A bilingual engineering decision workbench for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.1.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
+A bilingual preliminary screening tool before contacting an installer for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.2.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
 
-香港村屋太陽能安裝前的雙語工程決策工作台。可調整排布、比較物理取捨，並按預算、持續回本及收益目標選擇方案或暫緩安裝。**結果為模擬，未聲稱實測準確率，也不能判定結構安全。**
+聯絡安裝商之前的雙語初步篩選工具，供香港村屋太陽能安裝前使用。可調整排布、比較物理取捨，並按預算、持續回本及收益目標選擇方案或暫緩安裝。**結果為模擬，並非工程設計或財務建議；未聲稱實測準確率，也不能判定結構安全。**
 
 ## Run locally / 本機啟動
 
@@ -113,7 +113,7 @@ If Chromium is unavailable:
 npx playwright install chromium
 ```
 
-The test suite covers known finance formulas, sustained payback, tariff cliffs, cache separation, load/exclusion/shadow effects, finite-row polygon-projection agreement, multiple weather years, decision refusal and evidence scope. Browser checks include persistence, tampered-result imports, provenance reports, invalid-area handling, rejected goals, stale evidence, bilingual navigation, charts, mobile layout and failed-request retry. See [the 3 Oct review-response record](docs/REVIEW_FIXES_2026-10-03.md) for each correction and its remaining limits. GitHub Actions runs model tests, evidence generation, production build and browser checks on `Jim's-RoofSun-HK`.
+The test suite covers known finance formulas, sustained payback, tariff cliffs, cache separation, load/exclusion/shadow effects, finite-row polygon-projection agreement, multiple weather years, decision refusal and evidence scope. Browser checks include persistence, tampered-result imports, provenance reports, invalid-area handling, rejected goals, stale evidence, bilingual navigation, charts, mobile layout and failed-request retry. See [the v2.2 P0 response](docs/REVIEW_V2_P0_RESPONSE.md) and [the earlier v2.1 review-response record](docs/REVIEW_FIXES_2026-10-03.md) for each correction and its remaining limits. GitHub Actions runs model tests, evidence generation, production build and browser checks on `Jim's-RoofSun-HK`.
 
 To explicitly regenerate source weather (never done at runtime):
 
@@ -124,3 +124,31 @@ python scripts/download_weather.py --year 2025
 ```
 
 Do not use the illustrative preset roofs, assumed quotes or reference module as surveyed properties or commercial specifications.
+
+### v2 audit: explicit rows / 實際排數
+
+Every result returns requested and actual row counts. If not every requested row can be built, `rows_unbuildable` rejects the design. An editable **assumed** 70% minimum per-row module count relative to the same south-facing layout rejects severe rotated underfill; this is a packing-quality criterion, not a physical law or regulation. Explicit module caps bypass that density assumption, but never bypass the actual-row-count check. Search deduplicates by actual rows/count and physical row positions/segments, so geometrically different pitches are retained. A zero-module result has no recovery date.
+
+### Compact layouts and access / 緊湊排布與檢修
+
+Search tests both spread and coverage-limited compact layouts. Compact mode tests row pitch/translation and an additional coverage-boundary pitch; the **actual convex hull**, including gaps, must pass the coverage check. Minimum horizontal maintenance clearance defaults to **assumed 0.3 m**, is editable, and applies to both strategies. It is not a certified walkway requirement. Coverage and gap are part of the layout/physical-cache keys. If no compact configuration meets coverage, evaluation explicitly returns the failing coverage check instead of silently deleting a row.
+
+For the assumed 8.06 × 8.06 m / 65 m² roof, three rows of 18 reference modules can fit at 40° with the 0.3 m minimum gap; 35° cannot meet both constraints unless the gap assumption is reduced. At a deliberately hypothetical HK$14,000/kW quote, highest NPV and fastest sustained payback are distinct. At HK$25,000/kW they may coincide. Recommendations report the actual optimum within tested candidates; they never force different financial choices for storytelling. Total generation versus specific yield still provides a physical trade-off.
+
+### Position and village examples / 定位及村屋示例
+
+**Product position: preliminary screening before contacting an installer / 聯絡安裝商前的初步篩選工具. Results are simulations, not engineering design or financial advice / 結果屬模擬，並非工程設計或財務建議。**
+
+`data/roof_presets.json` supplies the three bilingual, explicitly illustrative examples. Roof dimensions, stairhood/water-tank rectangles, heights and neighbouring-facade dimensions are **assumptions**, not surveyed properties. The open/shaded examples use 8.06 × 8.06 m with 65 m² covered area; the smaller example uses 6 × 5.4 m with 32.4 m² covered area. Available roof area approximately equals building covered area. Objects are excluded from module placement and contribute the existing centre-ray shading approximation; their weights are not modelled.
+
+The **65.03 m² (700 sq ft)** NTEH covered-area size limit is verified in the [Lands Department September 2024 guide, Part A, printed page 3](https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf), checked 3 October 2026. It is a source-backed size limit, not an assumed value. Satisfying it alone does not establish legal status, compliance with other dimensional conditions, or structural approval. Village mode warns when entered covered area exceeds it; it does not return an API error or silently rewrite the roof. An inconsistent available roof larger than the entered building covered area remains an input error (with metric floating-point tolerance).
+
+The shaded example assumes a facade 3 floors × 3 m above the module plane, 3 m away, centred south and spanning 120°. Its 12 sampled horizon elevations are derived from those **illustrative assumptions**, not a measurement or a typical-village statistic. Under the default illustrative quote, the open example has eligible choices whereas this heavily shaded case suggests deferral. This outcome comes from calculation, not a hard-coded preset verdict. The smaller roof also contains illustrative objects. The empty API request uses the same assumed clean-roof dimensions and compact configuration; objects are supplied explicitly by the website presets.
+
+新增排板條件會回傳「要求排數」與「實際排數」。未能完成要求，或旋轉後每排面板少於同條件正南排布的假設 70% 密度時，會標示 `rows_unbuildable`，並排除於推薦之外。70% 是可調的排板品質假設，並非物理定律或法規。明確設定面板塊數上限時，可放置不完整的一排，但仍須完成要求的排數；零塊面板不會顯示回本日期。
+
+搜尋同時測試展開與緊湊排布，實際凸包包含排間空隙。假設的最小水平檢修間隙預設為 0.3 m，可調整，並非經認證的通道要求。65 m² 示例在 40° 可放置 3 排／18 塊；35° 若維持 0.3 m 間隙則超出覆蓋限制。最高淨現值與最快持續回本可能是同一方案，不會為展示效果強行分開；在明確標示為假設的較低報價情景，則可出現不同選擇。
+
+三個示例的天台、樓梯頂篷、水箱及鄰屋尺寸均為假設，並非實測物業。空曠／重遮擋示例採 8.06 × 8.06 m 天台與 65 m² 有蓋面積；較小示例為 6 × 5.4 m 與 32.4 m²。重遮擋示例假設鄰近樓宇高出面板平面 3 層、每層 3 m、相距 3 m，南向角寬 120°；這不是一般村屋遮擋的統計值。系統根據計算及預設財務條件建議暫緩安裝，沒有硬編碼示例結論。
+
+65.03 m²（700 平方呎）有蓋面積上限已核對上述地政總署《興建新界豁免管制屋宇須知》2024 年 9 月版本甲部第 3 頁，核對日期為 2026 年 10 月 3 日。尺寸在上限內不代表已確認物業合法或結構安全。村屋模式輸入超出上限時會提示適用範圍，仍可計算；天台面積大於輸入的屋宇有蓋面積則須修正資料。

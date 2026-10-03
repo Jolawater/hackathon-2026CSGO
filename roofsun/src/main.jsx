@@ -83,11 +83,13 @@ import {
 const Validation = lazy(() => import("./components/Validation.jsx"));
 const Evidence = lazy(() => import("./components/Evidence.jsx"));
 
+import roofPresets from "../data/roof_presets.json";
 const defaults = {
-  width: 8,
-  depth: 6,
+  width: 8.06,
+  depth: 8.06,
   roof_rotation: 0,
-  house_area: 80,
+  house_area: 65,
+  village_house_mode: true,
   horizon: Array(12).fill(0),
   price_per_kw: 25000,
   fixed_cost: 5000,
@@ -97,6 +99,8 @@ const defaults = {
   post_fit: false,
   self_use_rate: 1.4,
   self_use_share: 0.5,
+  minimum_access_gap_m: 0.3,
+  minimum_row_fill_ratio: 0.7,
   minimum_capacity_kw: 2,
   budget: 0,
   max_payback_years: 7,
@@ -110,40 +114,24 @@ const defaults = {
   finite_rows: true,
   electrical_model: "linear",
   bypass_blocks: 3,
-  exclusions: [],
+  exclusions: roofPresets.presets[0].inputs.exclusions,
   quote_source: "Illustrative assumption; replace with an installer quote",
   quote_date: "",
   panel_source:
     "Generic 450 W engineering reference, not a verified commercial model",
 };
-const defaultConfig = { tilt: 20, azimuth: 180, rows: 3, panel_limit: 0 };
-const presets = [
-  { id: "open", en: "Open rooftop", zh: "空曠天台", inputs: { ...defaults } },
-  {
-    id: "shaded",
-    en: "Neighbouring buildings",
-    zh: "鄰近樓宇遮擋",
-    inputs: {
-      ...defaults,
-      horizon: [0, 0, 5, 15, 25, 35, 40, 35, 20, 5, 0, 0],
-    },
-  },
-  {
-    id: "small",
-    en: "Compact rooftop",
-    zh: "小型天台",
-    inputs: {
-      ...defaults,
-      width: 5,
-      depth: 5,
-      house_area: 50,
-      horizon: [0, 0, 0, 5, 10, 15, 15, 10, 0, 0, 0, 0],
-    },
-  },
-];
+const defaultConfig = roofPresets.presets[0].config;
+const presets = roofPresets.presets.map((p) => ({
+  ...p,
+  inputs: { ...defaults, ...p.inputs },
+}));
 
 const errorNames = {
   no_space: ["Not enough room for a module", "空間不足以放置面板"],
+  rows_unbuildable: [
+    "Requested row count or assumed row density cannot be achieved",
+    "未能達到要求排數或假設的每排板數密度",
+  ],
   overlap: ["Rows overlap or exceed the roof", "排數過多，面板重疊或超出天台"],
   coverage: [
     "Continuous-cover area exceeds the selected limit",
@@ -164,7 +152,14 @@ function App() {
   const initialWorkspace = useRef(readWorkspace(defaults, defaultConfig));
   const [inputs, setInputs] = useState(initialWorkspace.current.inputs),
     [config, setConfig] = useState(initialWorkspace.current.config),
-    [preset, setPreset] = useState("open"),
+    [preset, setPreset] = useState(
+      () =>
+        presets.find(
+          (p) =>
+            JSON.stringify(p.inputs) ===
+            JSON.stringify(initialWorkspace.current.inputs),
+        )?.id || "custom",
+    ),
     [tab, setTab] = useState("design");
   const [day, setDay] = useState("2025-12-21"),
     [hour, setHour] = useState(12),
@@ -183,7 +178,7 @@ function App() {
   const [importing, setImporting] = useState(false);
   const [evidence, setEvidence] = useState(null);
   const importRef = useRef(null);
-  const invalidArea = inputs.house_area < inputs.width * inputs.depth;
+  const invalidArea = inputs.house_area + 1e-8 < inputs.width * inputs.depth;
   const [retry, setRetry] = useState(0);
   const metadata = useApi(`/api/meta?retry=${retry}`, undefined, 0);
   const body = useMemo(() => ({ inputs, config }), [inputs, config]);
@@ -395,10 +390,7 @@ function App() {
                   if (p) {
                     setPreset(p.id);
                     setInputs(structuredClone(p.inputs));
-                    setConfig({
-                      ...defaultConfig,
-                      rows: p.id === "small" ? 2 : 3,
-                    });
+                    setConfig({ ...p.config });
                   }
                 }}
               >
@@ -413,8 +405,8 @@ function App() {
               </select>
               <small>
                 {t(
-                  "Illustrative inputs · actual model calculations",
-                  "示例輸入 · 真實模型計算",
+                  "Roof, objects and neighbour dimensions are assumed · simulated results",
+                  "天台、物件及鄰屋尺寸為假設 · 結果屬模擬",
                 )}
               </small>
             </div>
@@ -462,6 +454,20 @@ function App() {
             </summary>
             <DecisionControls inputs={inputs} change={change} t={t} />
           </details>
+          {ready && result.warnings?.includes("village_house_area") && (
+            <p role="alert" className="error-banner">
+              {t(
+                "Village-house scope warning: covered area exceeds 65.03 m² (700 sq ft). These preliminary village-house checks may not apply; calculations remain available.",
+                "村屋適用範圍提示：有蓋面積超過 65.03 m²（700 平方呎），這些村屋初步檢查可能不適用；仍可進行計算。",
+              )}{" "}
+              <a href={roofPresets.source_url} target="_blank" rel="noreferrer">
+                {t(
+                  "Lands Department guide, Part A p.3",
+                  "地政總署須知，甲部第 3 頁",
+                )}
+              </a>
+            </p>
+          )}
           {invalidArea && (
             <p role="alert" className="error-banner">
               {t(
@@ -553,7 +559,20 @@ function App() {
                   "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
                 )}
               </p>
+              <label className="goal-checkbox">
+                <input
+                  type="checkbox"
+                  checked={inputs.village_house_mode}
+                  onChange={(e) =>
+                    change("village_house_mode", e.target.checked)
+                  }
+                />
+                {t("Village-house screening mode", "村屋初步篩選模式")}
+              </label>
               <NeighbourInput
+                presetGeometry={
+                  presets.find((p) => p.id === preset)?.neighbour_geometry
+                }
                 key={resetCount}
                 horizon={inputs.horizon}
                 onChange={(v) => change("horizon", v)}
@@ -728,6 +747,52 @@ function App() {
                   `香港時間 · 2025 年季節幾何示意 · 全年結果採 ${inputs.weather_year} 年氣象（${inputs.weather_year === 2024 ? "8,784" : "8,760"} 小時）`,
                 )}
               </p>
+              <div className="module-cap">
+                <label className="select-field">
+                  {t("Layout strategy", "排布方式")}
+                  <select
+                    aria-label={t("Layout strategy", "排布方式")}
+                    value={config.layout_mode || defaultConfig.layout_mode}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, layout_mode: e.target.value }))
+                    }
+                  >
+                    <option value="spread">
+                      {t("Spread across roof", "在可用天台深度展開")}
+                    </option>
+                    <option value="compact">
+                      {t(
+                        "Compact within coverage limit",
+                        "在覆蓋上限內緊湊排布",
+                      )}
+                    </option>
+                  </select>
+                </label>
+                <NumberField
+                  label={t(
+                    "Minimum maintenance gap (assumed)",
+                    "最小檢修間隙（假設）",
+                  )}
+                  value={inputs.minimum_access_gap_m}
+                  min={0}
+                  max={3}
+                  step={0.05}
+                  unit="m"
+                  onChange={(v) => change("minimum_access_gap_m", v)}
+                />
+                <p className="microcopy">
+                  {t(
+                    "0.3 m is an editable screening assumption, not a certified access requirement. Row gaps are horizontal clear distances; coverage includes inter-row gaps.",
+                    "0.3 m 是可調的篩選假設，並非經認證的通道要求。間隙指水平淨距；覆蓋面積包含排間空隙。",
+                  )}
+                  {ready && result.minimum_clear_gap_m != null
+                    ? t(
+                        ` Built minimum gap: ${result.minimum_clear_gap_m} m.`,
+                        ` 實際最小間隙：${result.minimum_clear_gap_m} m。`,
+                      )
+                    : ""}
+                </p>
+              </div>
               <div className="design-controls">
                 <Slider
                   id="tilt"
@@ -762,6 +827,14 @@ function App() {
                   onChange={(v) => setConfig((c) => ({ ...c, rows: v }))}
                 />
               </div>
+              <p className="scene-caption">
+                {ready
+                  ? t(
+                      `Built ${result.actual_rows} of ${config.rows} requested rows.`,
+                      `已建出 ${result.actual_rows} 排／要求 ${config.rows} 排。`,
+                    )
+                  : t("Checking actual row count…", "正在核對實際排數…")}
+              </p>
               <div className="module-cap">
                 <label className="goal-checkbox">
                   <input
@@ -886,7 +959,7 @@ function App() {
                   <strong>
                     {ready
                       ? !result.panels_count
-                        ? t("Not applicable", "不適用")
+                        ? "—"
                         : payback
                           ? payback.slice(0, 7)
                           : t("Not within 25 years", "25 年內未回本")
@@ -898,7 +971,7 @@ function App() {
                   <strong>
                     {ready
                       ? !result.panels_count
-                        ? t("Not applicable", "不適用")
+                        ? "—"
                         : result[
                             inputs.post_fit
                               ? "stable_payback_B"
@@ -1114,7 +1187,7 @@ function App() {
                     </div>
                     <p>
                       {r && !simulation.loading
-                        ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.config.rows} ${t("rows", "排")}`
+                        ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.actual_rows ?? r.config.rows} ${t("rows", "排")}`
                         : simulation.loading
                           ? t("Calculating…", "正在計算…")
                           : t(
@@ -1521,8 +1594,14 @@ function App() {
                       </button>
                     </div>
                     <p>
-                      {r.config.tilt}° · {r.config.azimuth}° · {r.config.rows}{" "}
-                      {t("rows", "排")} · {r.inputs.width} × {r.inputs.depth} m
+                      {r.config.tilt}° · {r.config.azimuth}° ·{" "}
+                      {r.actual_rows != null
+                        ? `${r.actual_rows} ${t("rows", "排")}`
+                        : t(
+                            `${r.config.rows} requested rows (legacy result)`,
+                            `要求 ${r.config.rows} 排（舊版結果）`,
+                          )}{" "}
+                      · {r.inputs.width} × {r.inputs.depth} m
                     </p>
                     <dl>
                       <dt>{t("Annual generation", "全年發電")}</dt>
@@ -1578,12 +1657,15 @@ function App() {
       <footer>
         <span>
           RoofSun HK <span className="footer-dot">·</span>{" "}
-          {t("Explore before you install.", "安裝之前，先探索。")}
+          {t(
+            "Screening before contacting an installer.",
+            "聯絡安裝商前的初步篩選工具。",
+          )}
         </span>
         <p>
           {t(
-            "Simulation for preliminary exploration. Results do not replace site surveys, structural design or electrical assessment.",
-            "模擬只供初步探索，結果不能代替實地勘察、結構設計或電力評估。",
+            "Preliminary screening before contacting an installer. Simulated results are not engineering design or financial advice.",
+            "聯絡安裝商前的初步篩選工具。結果屬模擬，並非工程設計或財務建議。",
           )}
         </p>
         <button

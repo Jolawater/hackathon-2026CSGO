@@ -20,7 +20,7 @@ def test_rotated_modules_stay_inside_roof(azimuth):
     inputs=Inputs(roof_rotation=17)
     panels,rows,coverage,error=layout(inputs,Configuration(azimuth=azimuth,tilt=30,rows=2))
     assert panels and not error
-    allowed=box(.5,.5,7.5,5.5).buffer(1e-7)
+    allowed=box(.5,.5,inputs.width-.5,inputs.depth-.5).buffer(1e-7)
     for panel in panels: assert allowed.covers(Polygon(panel['corners']))
     for i,panel in enumerate(panels):
         for other in panels[i+1:]:assert Polygon(panel['corners']).intersection(Polygon(other['corners'])).area<1e-7
@@ -60,16 +60,16 @@ def test_small_roof_has_no_modules_or_recommendations():
 
 
 def test_coverage_failure_is_excluded_from_search():
-    inputs=Inputs(house_area=48)
-    result=evaluate(inputs,Configuration())
+    inputs=Inputs(width=8,depth=6,house_area=48,minimum_access_gap_m=0)
+    result=evaluate(inputs,Configuration(tilt=20,rows=3,layout_mode="spread"))
     assert 'coverage' in result['violations']
     assert all(r['coverage_m2']<=24.01 for r in search(inputs)['configs'])
 
 
 def test_night_and_front_row_shadows():
-    sun=sun_preview(Inputs(),Configuration(),pd.Timestamp('2025-12-21').date(),0)
+    sun=sun_preview(Inputs(width=8,depth=6,house_area=80,minimum_access_gap_m=0),Configuration(tilt=20,rows=3,layout_mode="spread"),pd.Timestamp('2025-12-21').date(),0)
     assert sun['altitude']<0 and not sun['beam_clear']
-    day=sun_preview(Inputs(),Configuration(),pd.Timestamp('2025-12-21').date(),12)
+    day=sun_preview(Inputs(width=8,depth=6,house_area=80,minimum_access_gap_m=0),Configuration(tilt=20,rows=3,layout_mode="spread"),pd.Timestamp('2025-12-21').date(),12)
     assert day['row_shade'][0]==0 and day['row_shade'][1]>0
 
 
@@ -115,10 +115,10 @@ def test_budget_and_late_start_can_reject_every_installation():
 
 
 def test_optional_financial_goals_and_budget_remain_distinct():
-    inputs=Inputs(commissioning='2032-01-01',require_profit=False,max_payback_years=0,budget=70000)
+    inputs=Inputs(commissioning='2032-01-01',require_profit=False,max_payback_years=0,budget=80000)
     result=search(inputs)
     assert result['recommendations']
-    assert all(r['initial_cost']<=70000 for r in result['recommendations'].values())
+    assert all(r['initial_cost']<=80000 for r in result['recommendations'].values())
     assert all(r['decision']['eligible'] for r in result['recommendations'].values())
 
 
@@ -152,7 +152,7 @@ def test_first_payback_does_not_promise_persistent_payback():
 
 def test_tariff_cliff_can_make_more_generation_less_profitable():
     inputs=Inputs(width=10,depth=8,house_area=150)
-    a=evaluate(inputs,Configuration(rows=3));b=evaluate(inputs,Configuration(rows=4))
+    a=evaluate(inputs,Configuration(rows=3,tilt=40));b=evaluate(inputs,Configuration(rows=4,tilt=40))
     assert a['capacity_kw']<=10<b['capacity_kw']
     assert a['fit_rate']==4 and b['fit_rate']==3
     assert b['annual_kwh']>a['annual_kwh']
@@ -285,20 +285,20 @@ def test_reference_case_without_a_module_returns_an_explicit_unavailable_result(
 
 @pytest.mark.parametrize('tilt',range(0,41,5))
 def test_complete_boundary_rows_survive_all_slider_tilts(tilt):
-    panels,rows,_,error=layout(Inputs(depth=7),Configuration(tilt=tilt,rows=2))
+    panels,rows,_,error=layout(Inputs(width=8,depth=7),Configuration(tilt=tilt,rows=2))
     assert error is None and len(panels)==12
     assert [r['count'] for r in rows]==[6,6]
     assert all(box(.5,.5,7.5,6.5).buffer(1e-8).covers(Polygon(p['corners'])) for p in panels)
 
 
-def test_thirty_degree_default_retains_eighteen_modules():
-    assert evaluate(Inputs(),Configuration(tilt=30))['panels_count']==18
+def test_historical_thirty_degree_layout_retains_eighteen_modules_without_access_gap():
+    assert evaluate(Inputs(width=8,depth=6,house_area=80,minimum_access_gap_m=0),Configuration(tilt=30,rows=3,layout_mode="spread"))['panels_count']==18
 
 
 def test_rotated_rows_search_translation_and_pitch_instead_of_roof_corners():
-    inp=Inputs(depth=7)
-    one=layout(inp,Configuration(azimuth=150,rows=1))[0]
-    two=layout(inp,Configuration(azimuth=150,rows=2))[0]
+    inp=Inputs(width=8,depth=7)
+    one=layout(inp,Configuration(tilt=20,azimuth=150,rows=1))[0]
+    two=layout(inp,Configuration(tilt=20,azimuth=150,rows=2))[0]
     assert len(one)==6 and len(two)>=len(one)*1.5
     for i,p in enumerate(two):
         poly=Polygon(p['corners'])
@@ -371,3 +371,129 @@ def test_generation_record_requires_evidence_and_matching_calendar_period():
     for change in [{'generation_kwh':0},{'source':''},{'start_month':12,'months':2},{'installed_capacity_kw':-1}]:
         assert client.post('/api/reference-case',json={'measurement':{**record,**change}}).status_code==422
     assert client.post('/api/reference-case',json={'inputs':{'width':1,'depth':1},'measurement':record}).status_code==422
+
+
+def test_audit_complete_tilt_row_direction_grid_is_explicit_about_unbuildable_rows():
+    inp=Inputs(width=8,depth=7)
+    for tilt in range(0,41,5):
+        for requested in range(1,5):
+            south=evaluate(inp,Configuration(tilt=tilt,rows=requested))
+            for az in [135,150,165,180,195,210,225]:
+                r=evaluate(inp,Configuration(tilt=tilt,rows=requested,azimuth=az))
+                assert r['requested_rows']==requested and r['actual_rows']==len(r['rows'])
+                if 'rows_unbuildable' not in r['violations']:
+                    assert r['actual_rows']==requested
+                    if south['actual_rows']==requested:
+                        assert all(row['count']>=.7*south['rows'][i]['count'] for i,row in enumerate(r['rows']))
+
+
+def test_rounded_village_roof_does_not_silently_lose_a_row():
+    r=evaluate(Inputs(width=8.06,depth=8.06,house_area=65),Configuration(tilt=25,rows=3))
+    assert r['actual_rows']==3 or 'rows_unbuildable' in r['violations']
+    zero=evaluate(Inputs(width=1.5,depth=1.5),Configuration())
+    assert zero['payback_A'] is None and zero['payback_years_A'] is None
+    assert 'rows_unbuildable' in zero['violations']
+    response=TestClient(app).post('/api/evaluate',json={'inputs':{'width':1.5,'depth':1.5}})
+    assert response.status_code==200
+    for scenario in ['A','B']:
+        assert response.json()[f'payback_{scenario}'] is None
+        assert response.json()[f'payback_years_{scenario}'] is None
+        assert response.json()[f'stable_payback_{scenario}'] is None
+
+
+def test_search_deduplicates_actual_geometry_not_requested_labels():
+    candidates=search(Inputs())['configs']
+    signatures=[]
+    for r in candidates:
+        _,rows,_,_=layout(Inputs(),Configuration(**r['config']))
+        signatures.append((r['config']['tilt'],r['config']['azimuth'],r['actual_rows'],r['panels_count'],
+                           tuple((round(row['y'],8),tuple(tuple(round(v,8) for v in interval) for interval in row['intervals'])) for row in rows)))
+        assert r['actual_rows']==r['requested_rows']
+    assert len(set(signatures))==len(signatures)
+
+
+def test_compact_village_layout_fits_eighteen_modules_and_real_access_gap():
+    inp=Inputs(width=8.06,depth=8.06,house_area=65)
+    compact=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='compact'))
+    spread=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='spread'))
+    assert compact['compliant'] and compact['actual_rows']==3
+    assert compact['panels_count']==18 and compact['capacity_kw']==8.1
+    assert compact['coverage_m2']<=32.5 and compact['minimum_clear_gap_m']>=.3-1e-4
+    assert 'coverage' in spread['violations']
+    assert compact['specific_yield']<spread['specific_yield']
+    # 35 degrees cannot meet both 0.3 m access and this coverage limit.
+    thirty_five=evaluate(inp,Configuration(tilt=35,rows=3,layout_mode='compact'))
+    assert 'coverage' in thirty_five['violations']
+    assert evaluate(inp.model_copy(update={'minimum_access_gap_m':.2}),Configuration(tilt=35,rows=3,layout_mode='compact'))['compliant']
+
+
+def test_physical_and_financial_tradeoffs_are_supported_without_forcing_distinct_choices():
+    inp=Inputs(width=8.06,depth=8.06,house_area=65,price_per_kw=14000)
+    # Quote is a deliberately labelled synthetic test assumption, not a market price.
+    searched=search(inp)
+    fast=searched['recommendations']['payback'];value=searched['recommendations']['npv']
+    assert fast['config']!=value['config']
+    assert fast['payback_years_A']<value['payback_years_A'] and fast['npv_A']<value['npv_A']
+    two=evaluate(inp,Configuration(tilt=40,rows=2,layout_mode='compact'))
+    three=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='compact'))
+    assert three['annual_kwh']>two['annual_kwh'] and three['specific_yield']<two['specific_yield']
+
+
+def test_search_contains_both_layout_strategies_and_gap_invalidates_physical_cache():
+    from backend.decision import physical_search
+    inp=Inputs(width=8.06,depth=8.06,house_area=65)
+    result=search(inp)
+    assert {r['config']['layout_mode'] for r in result['configs']}=={'spread','compact'}
+    misses=physical_search.cache_info().misses
+    search(inp.model_copy(update={'minimum_access_gap_m':.35}))
+    assert physical_search.cache_info().misses>misses
+    assert TestClient(app).post('/api/evaluate',json={'inputs':{'minimum_access_gap_m':-.1}}).status_code==422
+
+
+def test_village_presets_have_supported_dimensions_obstacles_and_distinct_decisions():
+    import json
+    from backend.model import ROOT, POLICY
+    document=json.loads((ROOT/'data/roof_presets.json').read_text())
+    assert POLICY['village_house_area_limit_m2']==65.03
+    assert 'landsd.gov.hk' in document['source_url'] and 'printed page 3' in document['source_section']
+    choices={}
+    for preset in document['presets']:
+        inp=Inputs(**preset['inputs']);cfg=Configuration(**preset['config'])
+        assert inp.house_area<=65.03 and abs(inp.width*inp.depth-inp.house_area)<.1
+        assert inp.exclusions and inp.village_house_mode
+        r=evaluate(inp,cfg)
+        assert r['compliant'] and r['actual_rows']==cfg.rows
+        choices[preset['id']]=search(inp)
+    assert choices['open']['recommendations']
+    assert choices['shaded']['verdict']!=choices['open']['verdict'] or choices['shaded']['recommendations']['npv']['config']!=choices['open']['recommendations']['npv']['config']
+
+
+def test_village_size_scope_is_a_warning_not_a_silent_legal_approval_or_api_error():
+    client=TestClient(app)
+    r=client.post('/api/evaluate',json={'inputs':{'width':8,'depth':8,'house_area':70,'village_house_mode':True}})
+    assert r.status_code==200 and 'village_house_area' in r.json()['warnings']
+    assert 'village_house_area' not in r.json()['violations']
+    generic=client.post('/api/evaluate',json={'inputs':{'width':8,'depth':8,'house_area':70,'village_house_mode':False}})
+    assert generic.status_code==200 and generic.json()['warnings']==[]
+    assert Inputs(width=6,depth=5.4,house_area=32.4).house_area==32.4
+    # Scope warnings are recomputed from current inputs, even on a geometry cache hit.
+    inp=Inputs(width=8,depth=8,house_area=70)
+    village=search(inp)
+    generic=search(inp.model_copy(update={'village_house_mode':False}))
+    assert generic['physical_cache_hit'] and generic['configs']
+    assert all('village_house_area' in r['warnings'] for r in village['configs'])
+    assert all(r['warnings']==[] for r in generic['configs'])
+
+
+def test_rotated_obstacle_packing_remains_disjoint_after_search_optimisation():
+    # Independent Shapely intersection checks across oblique module footprints.
+    from backend.model import Exclusion
+    obstacles=[Exclusion(x=2,y=2,width=1.2,depth=1.5),Exclusion(x=6,y=5.7,width=.8,depth=1.2)]
+    inp=Inputs(exclusions=obstacles)
+    for az in [135,150,165,180,195,210,225]:
+        for tilt in [0,25,40]:
+            panels,_,_,_=layout(inp,Configuration(tilt=tilt,azimuth=az,rows=2))
+            assert panels
+            for panel in panels:
+                for obj in obstacles:
+                    assert Polygon(panel['corners']).intersection(box(obj.x,obj.y,obj.x+obj.width,obj.y+obj.depth)).area<1e-7

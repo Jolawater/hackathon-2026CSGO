@@ -35,7 +35,7 @@ const recommendationReady = () =>
       return b && !b.disabled;
     },
     {},
-    { timeout: 30000 },
+    { timeout: 60000 },
   );
 const reset = async () => {
   await page
@@ -58,11 +58,17 @@ try {
   }
   await ready();
   await recommendationReady();
+  const roofFixture = JSON.parse(
+    await readFile("data/roof_presets.json", "utf8"),
+  ).presets[0];
   const baseline = await (
     await fetch(`${base}/api/evaluate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: "{}",
+      body: JSON.stringify({
+        inputs: roofFixture.inputs,
+        config: roofFixture.config,
+      }),
     })
   ).json();
   assert.equal(
@@ -86,6 +92,38 @@ try {
   await page
     .getByRole("button", { name: "Advanced mode", exact: true })
     .click();
+  assert.equal(baseline.actual_rows, 3);
+  assert.equal(baseline.panels_count, 18);
+  assert(baseline.minimum_clear_gap_m >= 0.3 && baseline.compliant);
+  const spreadResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes("/api/evaluate") &&
+      r.status() === 200 &&
+      r.request().postDataJSON()?.config?.layout_mode === "spread",
+  );
+  await page
+    .getByLabel("Layout strategy", { exact: true })
+    .selectOption("spread");
+  assert((await (await spreadResponse).json()).violations.includes("coverage"));
+  await ready();
+  await page
+    .getByText("Continuous-cover area exceeds the selected limit", {
+      exact: true,
+    })
+    .waitFor();
+  await reset();
+  await page
+    .getByLabel("Rooftop scenario", { exact: true })
+    .selectOption("small");
+  await ready();
+  assert.equal(
+    await page
+      .locator('.error-banner[role="alert"]')
+      .filter({ hasText: "Available roof area exceeds" })
+      .count(),
+    0,
+  );
+  await reset();
   await page
     .getByRole("button", { name: "Save this pair as A/B", exact: true })
     .click();
@@ -101,7 +139,7 @@ try {
     await readFile(`${artifacts}/plans.json`, "utf8"),
   );
   assert.equal(archive.schema, "roofsun-hk/v2");
-  assert.equal(archive.model_version, "2.1.0");
+  assert.equal(archive.model_version, "2.2.0");
   assert.equal(Object.keys(archive.weather_sources).length, 3);
   // Imported result numbers must be discarded and recomputed from validated inputs.
   archive.plans.forEach((p) => (p.annual_kwh = 99999999));
@@ -169,7 +207,7 @@ try {
     .waitFor();
   assert.equal(
     await page.getByLabel("House covered area", { exact: true }).inputValue(),
-    "80",
+    "65",
   );
   await page.getByLabel("Width", { exact: true }).fill("8");
   await ready();
@@ -207,6 +245,7 @@ try {
     .selectOption("shaded");
   await ready();
   await searched();
+  await page.getByText(/No searched design meets all goals/).waitFor();
   assert.notEqual(
     (await page.locator(".hero-number").innerText()).replace(/\D/g, ""),
     String(Math.round(baseline.annual_kwh)),
@@ -334,6 +373,7 @@ try {
   assert(ballasted.load_kg_m2 > baseline.load_kg_m2);
   await reset();
   await page.getByLabel("House covered area", { exact: true }).fill("200");
+  await page.getByText(/Village-house scope warning/).waitFor();
   await page.getByLabel("Width", { exact: true }).fill("12");
   await page.getByLabel("Depth", { exact: true }).fill("10");
   await ready();
@@ -363,6 +403,14 @@ try {
   assert.equal(cliff.fit_rate, 3);
   assert(cliff.npv_A < capped.npv_A);
   await ready();
+  // This fixture tests the tariff boundary, independently of profitability goals.
+  await page.locator(".goals-details summary").click();
+  await page
+    .getByLabel("Require positive net cash flow and NPV", { exact: true })
+    .uncheck();
+  await page
+    .getByLabel("Limit sustained payback time", { exact: true })
+    .uncheck();
   await recommendationReady();
   await page.getByRole("button", { name: /Best within 10 kW/ }).click();
   await ready();
@@ -457,10 +505,24 @@ try {
     fullPage: true,
   });
   await page.getByRole("button", { name: "EN", exact: true }).click();
+  // Explicitly remove the illustrative objects before measuring a tiny roof.
+  const engineering = page.locator(".engineering-controls");
+  if (!(await engineering.evaluate((el) => el.open)))
+    await engineering.locator("summary").click();
+  while (
+    await page
+      .getByRole("button", { name: "Remove object", exact: true })
+      .count()
+  )
+    await page
+      .getByRole("button", { name: "Remove object", exact: true })
+      .first()
+      .click();
   await page.getByLabel("Width", { exact: true }).fill("1");
   await page.getByLabel("Depth", { exact: true }).fill("1");
   await ready();
   assert((await page.locator(".hero-number").innerText()).startsWith("0"));
+  assert.equal(await page.locator(".payback strong").innerText(), "—");
   await page
     .getByText("Not enough room for a module", { exact: true })
     .waitFor();

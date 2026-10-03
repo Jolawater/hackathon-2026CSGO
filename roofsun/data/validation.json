@@ -34,7 +34,7 @@
       "name_zh": "遮擋關係",
       "description_en": "Identical layout with a 0° versus 40° surrounding horizon. More obstruction must reduce annual output.",
       "description_zh": "相同排布，周圍天際線分別設為 0° 與 40°；增加遮擋應令全年發電量下降。",
-      "observed": "clear=9887.0 kWh; obstructed=6794.4 kWh",
+      "observed": "clear=9392.3 kWh; obstructed=6492.9 kWh",
       "passed": true,
       "source_url": null
     },
@@ -43,7 +43,7 @@
       "name_zh": "每月能量加總",
       "description_en": "Sum of rounded monthly generation must match the annual total within 0.12 kWh.",
       "description_zh": "四捨五入後的月發電量總和，與全年發電量相差應少於 0.12 kWh。",
-      "observed": "monthly sum=9886.99; annual=9887.0",
+      "observed": "monthly sum=9392.31; annual=9392.3",
       "passed": true,
       "source_url": null
     },
@@ -52,7 +52,7 @@
       "name_zh": "配置搜索結果",
       "description_en": "Coarse search plus local refinement; only physically feasible configurations meeting decision goals enter recommendations.",
       "description_zh": "粗搜尋加局部細化，只有物理可行且符合決策目標的配置才可推薦。",
-      "observed": "feasible=206; frontier=12; measured runtime=1.53s",
+      "observed": "feasible=100; frontier=7; measured runtime=2.91s",
       "passed": true,
       "source_url": null
     },
@@ -70,7 +70,7 @@
       "name_zh": "決策可建議暫緩安裝",
       "description_en": "2032 commissioning, default conservative income: physically feasible options remain, but none meet positive-value/payback goals. No-install solar baseline is zero.",
       "description_zh": "2032 年投產及預設保守收入下，仍有物理可行方案，但沒有方案符合正收益與回本目標；不安裝基準為零。",
-      "observed": "feasible=206; eligible=0; verdict=defer_installation",
+      "observed": "feasible=100; eligible=0; verdict=defer_installation",
       "passed": true,
       "source_url": null
     },
@@ -79,7 +79,7 @@
       "name_zh": "歷史氣象及敏感性覆蓋",
       "description_en": "Three weather years (2024 includes 8,784 hours), twelve one-at-a-time scenarios and eight recommendation scenarios. Ranges are not confidence bounds.",
       "description_zh": "三個氣象年份（2024 年為 8,784 小時）、十二個單項情景及八個推薦情景；範圍並非置信區間。",
-      "observed": "annual scenario envelope=[8482.9, 10807.5]; distinct choices=2",
+      "observed": "annual scenario envelope=[8055.1, 10269.7]; distinct choices=2",
       "passed": true,
       "source_url": null
     },
@@ -100,16 +100,34 @@
       "observed": "9 tilt cases; rotated two-row case",
       "passed": true,
       "source_url": null
+    },
+    {
+      "name_en": "Coverage-limited village packing with access",
+      "name_zh": "村屋覆蓋限制及檢修間隙",
+      "description_en": "Assumed 65 m² roof: 18 reference modules at 40° with at least the assumed 0.3 m horizontal gap; actual hull <=32.5 m².",
+      "description_zh": "假設 65 m² 天台，40° 的 18 塊參考面板；水平間隙至少為假設的 0.3 m，實際凸包面積不超過 32.5 m²。",
+      "observed": "rows=3; modules=18; hull=32.5 m²; gap=0.3636 m",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Village example dimensions and scope",
+      "name_zh": "村屋示例尺寸及適用範圍",
+      "description_en": "Illustrative roofs fall within the source-backed 65.03 m² covered-area size limit, not a full legal or structural certification.",
+      "description_zh": "示例尺寸在有來源的 65.03 m² 有蓋面積上限內；並非完整合法性或結構認證。",
+      "observed": "open: 65 m²; shaded: 65 m²; small: 32.4 m²",
+      "passed": true,
+      "source_url": "https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf"
     }
   ],
   "baseline": {
-    "annual_kwh": 9887.0,
+    "annual_kwh": 9392.3,
     "panels_count": 18,
     "capacity_kw": 8.1,
-    "shading_loss_pct": 3.6
+    "shading_loss_pct": 3.9
   },
   "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
-  "model_version": "2.1.0",
+  "model_version": "2.2.0",
   "references": [
     {
       "available": true,
@@ -117,6 +135,7 @@
         "tilt": 0.0,
         "azimuth": 180.0,
         "rows": 1,
+        "layout_mode": "compact",
         "panel_limit": 0
       },
       "capacity_kw": 2.7,
@@ -197,6 +216,7 @@
         "tilt": 20.0,
         "azimuth": 180.0,
         "rows": 1,
+        "layout_mode": "compact",
         "panel_limit": 0
       },
       "capacity_kw": 2.7,
@@ -277,6 +297,7 @@
         "tilt": 40.0,
         "azimuth": 180.0,
         "rows": 1,
+        "layout_mode": "compact",
         "panel_limit": 0
       },
       "capacity_kw": 2.7,
@@ -543,27 +564,28 @@
       "scope": "Independent radiation-input check, not measured PV yield or calibration. NASA POWER is a grid point at 22.45 N, 114.16 E; HKO is a different station at King's Park. Annual differences include location, source, rounding and UTC/local-calendar boundaries. Historical normals and one recent year have different periods. No automatic correction, inferred bias, P90 or field-accuracy claim. Same-year HKO observations for 2023 and 2024 have not yet been incorporated.",
       "measured_pv_case_available": false
     },
-    "model_version": "2.1.0",
+    "model_version": "2.2.0",
     "base": {
       "config": {
-        "tilt": 20.0,
+        "tilt": 40.0,
         "azimuth": 180.0,
         "rows": 3,
+        "layout_mode": "compact",
         "panel_limit": 0
       },
       "panels_count": 18,
       "capacity_kw": 8.1,
-      "annual_kwh": 9887.0,
-      "specific_yield": 1220.6,
-      "shading_loss_pct": 3.6,
+      "annual_kwh": 9392.3,
+      "specific_yield": 1159.5,
+      "shading_loss_pct": 3.9,
       "initial_cost": 207500.0,
       "fit_rate": 4,
       "compliant": true,
-      "max_acceptable_quote": 229596.57,
-      "max_acceptable_per_kw": 27727.97,
-      "net": 52091.86,
-      "npv": 22096.57,
-      "stable_payback": "2032-05-31",
+      "max_acceptable_quote": 217687.08,
+      "max_acceptable_per_kw": 26257.66,
+      "net": 38476.16,
+      "npv": 10187.08,
+      "stable_payback": "2032-08-31",
       "decision": {
         "eligible": true,
         "reasons": [],
@@ -575,24 +597,25 @@
       {
         "id": "base",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27727.97,
-        "net": 52091.86,
-        "npv": 22096.57,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26257.66,
+        "net": 38476.16,
+        "npv": 10187.08,
+        "stable_payback": "2032-08-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -603,24 +626,25 @@
       {
         "id": "weather_minus_15",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 8482.9,
-        "specific_yield": 1047.3,
-        "shading_loss_pct": 3.7,
+        "annual_kwh": 8055.1,
+        "specific_yield": 994.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 195835.44,
-        "max_acceptable_per_kw": 23559.93,
-        "net": 13451.84,
-        "npv": -11664.56,
-        "stable_payback": "2033-04-30",
+        "max_acceptable_quote": 185535.38,
+        "max_acceptable_per_kw": 22288.32,
+        "net": 1676.14,
+        "npv": -21964.62,
+        "stable_payback": "2033-08-31",
         "decision": {
           "eligible": false,
           "reasons": [
@@ -633,24 +657,25 @@
       {
         "id": "weather_minus_10",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 8954.1,
-        "specific_yield": 1105.4,
-        "shading_loss_pct": 3.7,
+        "annual_kwh": 8503.6,
+        "specific_yield": 1049.8,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 207163.69,
-        "max_acceptable_per_kw": 24958.48,
-        "net": 26417.16,
-        "npv": -336.31,
-        "stable_payback": "2032-12-31",
+        "max_acceptable_quote": 196320.25,
+        "max_acceptable_per_kw": 23619.78,
+        "net": 14020.24,
+        "npv": -11179.75,
+        "stable_payback": "2033-04-30",
         "decision": {
           "eligible": false,
           "reasons": [
@@ -663,24 +688,25 @@
       {
         "id": "weather_plus_10",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 10807.5,
-        "specific_yield": 1334.3,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 10269.7,
+        "specific_yield": 1267.9,
+        "shading_loss_pct": 3.8,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 251731.09,
-        "max_acceptable_per_kw": 30460.63,
-        "net": 77425.03,
-        "npv": 44231.09,
-        "stable_payback": "2031-11-30",
+        "max_acceptable_quote": 238782.98,
+        "max_acceptable_per_kw": 28862.1,
+        "net": 62621.94,
+        "npv": 31282.98,
+        "stable_payback": "2032-03-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -691,24 +717,25 @@
       {
         "id": "quote_minus_20",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 166000.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27851.43,
-        "net": 93591.86,
-        "npv": 63596.57,
-        "stable_payback": "2031-04-30",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26381.12,
+        "net": 79976.16,
+        "npv": 51687.08,
+        "stable_payback": "2031-07-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -719,28 +746,30 @@
       {
         "id": "quote_plus_20",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 249000.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27604.51,
-        "net": 10591.86,
-        "npv": -19403.43,
-        "stable_payback": "2033-06-30",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26134.21,
+        "net": -3023.84,
+        "npv": -31312.92,
+        "stable_payback": null,
         "decision": {
           "eligible": false,
           "reasons": [
-            "profit"
+            "profit",
+            "payback"
           ],
           "scenario": "A",
           "status": "does_not_meet_goals"
@@ -749,24 +778,25 @@
       {
         "id": "horizon_plus_5",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9846.6,
-        "specific_yield": 1215.6,
-        "shading_loss_pct": 4.0,
+        "annual_kwh": 9354.9,
+        "specific_yield": 1154.9,
+        "shading_loss_pct": 4.2,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 228625.21,
-        "max_acceptable_per_kw": 27608.05,
-        "net": 50980.78,
-        "npv": 21125.21,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 216787.46,
+        "max_acceptable_per_kw": 26146.6,
+        "net": 37447.35,
+        "npv": 9287.46,
+        "stable_payback": "2032-09-30",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -777,24 +807,25 @@
       {
         "id": "horizon_minus_5",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27727.97,
-        "net": 52091.86,
-        "npv": 22096.57,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26257.66,
+        "net": 38476.16,
+        "npv": 10187.08,
+        "stable_payback": "2032-08-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -805,52 +836,56 @@
       {
         "id": "delay_6_months",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 215126.07,
-        "max_acceptable_per_kw": 25941.49,
-        "net": 33179.52,
-        "npv": 7626.07,
-        "stable_payback": "2032-10-31",
+        "max_acceptable_quote": 204069.85,
+        "max_acceptable_per_kw": 24576.52,
+        "net": 20643.6,
+        "npv": -3430.15,
+        "stable_payback": "2033-02-28",
         "decision": {
-          "eligible": true,
-          "reasons": [],
+          "eligible": false,
+          "reasons": [
+            "profit"
+          ],
           "scenario": "A",
-          "status": "meets_goals"
+          "status": "does_not_meet_goals"
         }
       },
       {
         "id": "electrical_alternative",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9372.3,
-        "specific_yield": 1157.1,
-        "shading_loss_pct": 8.7,
+        "annual_kwh": 9020.9,
+        "specific_yield": 1113.7,
+        "shading_loss_pct": 7.7,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 217230.81,
-        "max_acceptable_per_kw": 26201.33,
-        "net": 37928.34,
-        "npv": 9730.81,
-        "stable_payback": "2032-08-31",
+        "max_acceptable_quote": 208769.69,
+        "max_acceptable_per_kw": 25156.75,
+        "net": 28256.67,
+        "npv": 1269.69,
+        "stable_payback": "2032-11-30",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -861,24 +896,25 @@
       {
         "id": "row_geometry_alternative",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9867.3,
-        "specific_yield": 1218.2,
-        "shading_loss_pct": 3.8,
+        "annual_kwh": 9353.9,
+        "specific_yield": 1154.8,
+        "shading_loss_pct": 4.2,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229123.26,
-        "max_acceptable_per_kw": 27669.54,
-        "net": 51549.27,
-        "npv": 21623.26,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 216765.87,
+        "max_acceptable_per_kw": 26143.93,
+        "net": 37419.92,
+        "npv": 9265.87,
+        "stable_payback": "2032-09-30",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -889,28 +925,30 @@
       {
         "id": "quote_30000",
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 248000.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27727.97,
-        "net": 11591.86,
-        "npv": -18403.43,
-        "stable_payback": "2033-06-30",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26257.66,
+        "net": -2023.84,
+        "npv": -30312.92,
+        "stable_payback": null,
         "decision": {
           "eligible": false,
           "reasons": [
-            "profit"
+            "profit",
+            "payback"
           ],
           "scenario": "A",
           "status": "does_not_meet_goals"
@@ -922,24 +960,25 @@
         "year": 2023,
         "hours": 8760,
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9723.8,
-        "specific_yield": 1200.5,
-        "shading_loss_pct": 3.5,
+        "annual_kwh": 9196.1,
+        "specific_yield": 1135.3,
+        "shading_loss_pct": 3.8,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 225638.73,
-        "max_acceptable_per_kw": 27239.35,
-        "net": 47595.95,
-        "npv": 18138.73,
-        "stable_payback": "2032-06-30",
+        "max_acceptable_quote": 212933.87,
+        "max_acceptable_per_kw": 25670.85,
+        "net": 33072.55,
+        "npv": 5433.87,
+        "stable_payback": "2032-10-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -951,53 +990,57 @@
         "year": 2024,
         "hours": 8784,
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9365.6,
-        "specific_yield": 1156.3,
-        "shading_loss_pct": 3.7,
+        "annual_kwh": 8907.2,
+        "specific_yield": 1099.6,
+        "shading_loss_pct": 4.1,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 216857.9,
-        "max_acceptable_per_kw": 26155.3,
-        "net": 37717.95,
-        "npv": 9357.9,
-        "stable_payback": "2032-09-30",
+        "max_acceptable_quote": 205815.38,
+        "max_acceptable_per_kw": 24792.02,
+        "net": 25097.79,
+        "npv": -1684.62,
+        "stable_payback": "2032-12-31",
         "decision": {
-          "eligible": true,
-          "reasons": [],
+          "eligible": false,
+          "reasons": [
+            "profit"
+          ],
           "scenario": "A",
-          "status": "meets_goals"
+          "status": "does_not_meet_goals"
         }
       },
       {
         "year": 2025,
         "hours": 8760,
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27727.97,
-        "net": 52091.86,
-        "npv": 22096.57,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26257.66,
+        "net": 38476.16,
+        "npv": 10187.08,
+        "stable_payback": "2032-08-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -1008,46 +1051,49 @@
     ],
     "range": {
       "annual_kwh": [
-        8482.9,
-        10807.5
+        8055.1,
+        10269.7
       ],
       "npv": [
-        -19403.43,
-        63596.57
+        -31312.92,
+        51687.08
       ]
     },
     "ranking": [
       {
         "year": 2023,
         "config": {
-          "tilt": 20.0,
+          "tilt": 15.0,
           "azimuth": 180.0,
-          "rows": 3,
+          "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "annual_kwh": 9723.8,
+        "annual_kwh": 6727.8,
         "verdict": "options_available"
       },
       {
         "year": 2024,
         "config": {
-          "tilt": 20.0,
+          "tilt": 15.0,
           "azimuth": 180.0,
-          "rows": 3,
+          "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "annual_kwh": 9365.6,
+        "annual_kwh": 6486.7,
         "verdict": "options_available"
       },
       {
         "year": 2025,
         "config": {
-          "tilt": 20.0,
+          "tilt": 15.0,
           "azimuth": 180.0,
-          "rows": 3,
+          "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "annual_kwh": 9887.0,
+        "annual_kwh": 6847.0,
         "verdict": "options_available"
       },
       {
@@ -1065,23 +1111,25 @@
       {
         "scenario": "horizon_plus_5",
         "config": {
-          "tilt": 20.0,
+          "tilt": 15.0,
           "azimuth": 180.0,
-          "rows": 3,
+          "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "annual_kwh": 9846.6,
+        "annual_kwh": 6819.8,
         "verdict": "options_available"
       },
       {
         "scenario": "delay_6_months",
         "config": {
-          "tilt": 20.0,
+          "tilt": 15.0,
           "azimuth": 180.0,
-          "rows": 3,
+          "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "annual_kwh": 9887.0,
+        "annual_kwh": 6847.0,
         "verdict": "options_available"
       },
       {
@@ -1096,24 +1144,25 @@
     "row_comparison": [
       {
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 2,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 12,
         "capacity_kw": 5.4,
-        "annual_kwh": 6840.5,
-        "specific_yield": 1266.8,
+        "annual_kwh": 6512.2,
+        "specific_yield": 1206.0,
         "shading_loss_pct": 0.0,
         "initial_cost": 140000.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 156331.93,
-        "max_acceptable_per_kw": 28024.43,
-        "net": 35749.17,
-        "npv": 16331.93,
-        "stable_payback": "2032-04-30",
+        "max_acceptable_quote": 148425.8,
+        "max_acceptable_per_kw": 26560.33,
+        "net": 26712.9,
+        "npv": 8425.8,
+        "stable_payback": "2032-07-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -1123,24 +1172,25 @@
       },
       {
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 3,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
         "panels_count": 18,
         "capacity_kw": 8.1,
-        "annual_kwh": 9887.0,
-        "specific_yield": 1220.6,
-        "shading_loss_pct": 3.6,
+        "annual_kwh": 9392.3,
+        "specific_yield": 1159.5,
+        "shading_loss_pct": 3.9,
         "initial_cost": 207500.0,
         "fit_rate": 4,
         "compliant": true,
-        "max_acceptable_quote": 229596.57,
-        "max_acceptable_per_kw": 27727.97,
-        "net": 52091.86,
-        "npv": 22096.57,
-        "stable_payback": "2032-05-31",
+        "max_acceptable_quote": 217687.08,
+        "max_acceptable_per_kw": 26257.66,
+        "net": 38476.16,
+        "npv": 10187.08,
+        "stable_payback": "2032-08-31",
         "decision": {
           "eligible": true,
           "reasons": [],
@@ -1150,29 +1200,29 @@
       },
       {
         "config": {
-          "tilt": 20.0,
+          "tilt": 40.0,
           "azimuth": 180.0,
           "rows": 4,
+          "layout_mode": "compact",
           "panel_limit": 0
         },
-        "panels_count": 0,
-        "capacity_kw": 0.0,
-        "annual_kwh": 0.0,
-        "specific_yield": 0,
-        "shading_loss_pct": 0,
-        "initial_cost": 0,
-        "fit_rate": 4,
+        "panels_count": 24,
+        "capacity_kw": 10.8,
+        "annual_kwh": 12385.9,
+        "specific_yield": 1146.8,
+        "shading_loss_pct": 4.9,
+        "initial_cost": 275000.0,
+        "fit_rate": 3,
         "compliant": false,
-        "max_acceptable_quote": null,
-        "max_acceptable_per_kw": null,
-        "net": 0.0,
-        "npv": 0.0,
+        "max_acceptable_quote": 215217.93,
+        "max_acceptable_per_kw": 19464.62,
+        "net": -31853.88,
+        "npv": -59782.07,
         "stable_payback": null,
         "decision": {
           "eligible": false,
           "reasons": [
             "physical",
-            "minimum_capacity",
             "profit",
             "payback"
           ],
@@ -1184,75 +1234,76 @@
     "reference": {
       "available": true,
       "configuration": {
-        "tilt": 20.0,
+        "tilt": 40.0,
         "azimuth": 180.0,
         "rows": 1,
+        "layout_mode": "compact",
         "panel_limit": 0
       },
       "capacity_kw": 2.7,
-      "roofsun_kwh": 3420.3,
-      "reference_kwh": 3291.5,
-      "difference_pct": 3.91,
+      "roofsun_kwh": 3256.3,
+      "reference_kwh": 3131.2,
+      "difference_pct": 4.0,
       "monthly": [
         {
           "month": 1,
-          "roofsun_kwh": 301.29,
-          "reference_kwh": 290.52
+          "roofsun_kwh": 313.79,
+          "reference_kwh": 302.58
         },
         {
           "month": 2,
-          "roofsun_kwh": 220.26,
-          "reference_kwh": 211.73
+          "roofsun_kwh": 216.06,
+          "reference_kwh": 207.58
         },
         {
           "month": 3,
-          "roofsun_kwh": 265.25,
-          "reference_kwh": 254.81
+          "roofsun_kwh": 252.25,
+          "reference_kwh": 242.12
         },
         {
           "month": 4,
-          "roofsun_kwh": 293.31,
-          "reference_kwh": 282.09
+          "roofsun_kwh": 270.04,
+          "reference_kwh": 259.41
         },
         {
           "month": 5,
-          "roofsun_kwh": 295.44,
-          "reference_kwh": 284.14
+          "roofsun_kwh": 266.28,
+          "reference_kwh": 255.68
         },
         {
           "month": 6,
-          "roofsun_kwh": 306.89,
-          "reference_kwh": 295.57
+          "roofsun_kwh": 271.34,
+          "reference_kwh": 260.88
         },
         {
           "month": 7,
-          "roofsun_kwh": 309.24,
-          "reference_kwh": 297.64
+          "roofsun_kwh": 274.2,
+          "reference_kwh": 263.45
         },
         {
           "month": 8,
-          "roofsun_kwh": 292.52,
-          "reference_kwh": 281.0
+          "roofsun_kwh": 265.67,
+          "reference_kwh": 254.83
         },
         {
           "month": 9,
-          "roofsun_kwh": 314.37,
-          "reference_kwh": 302.93
+          "roofsun_kwh": 296.0,
+          "reference_kwh": 285.03
         },
         {
           "month": 10,
-          "roofsun_kwh": 303.24,
-          "reference_kwh": 292.05
+          "roofsun_kwh": 297.12,
+          "reference_kwh": 286.06
         },
         {
           "month": 11,
-          "roofsun_kwh": 259.13,
-          "reference_kwh": 249.44
+          "roofsun_kwh": 264.21,
+          "reference_kwh": 254.32
         },
         {
           "month": 12,
-          "roofsun_kwh": 259.35,
-          "reference_kwh": 249.6
+          "roofsun_kwh": 269.33,
+          "reference_kwh": 259.24
         }
       ],
       "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
@@ -1343,24 +1394,24 @@
     "scope": "Independent radiation-input check, not measured PV yield or calibration. NASA POWER is a grid point at 22.45 N, 114.16 E; HKO is a different station at King's Park. Annual differences include location, source, rounding and UTC/local-calendar boundaries. Historical normals and one recent year have different periods. No automatic correction, inferred bias, P90 or field-accuracy claim. Same-year HKO observations for 2023 and 2024 have not yet been incorporated.",
     "measured_pv_case_available": false
   },
-  "generated_at": "2026-10-03T06:00:55.452130+00:00",
+  "generated_at": "2026-10-03T06:52:06.354941+00:00",
   "input_sha256": {
     "backend/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "backend/app.py": "3eec1f95c6aebfc675e5b8366e739890a882db9868ace4cdf302d38d69901f82",
-    "backend/decision.py": "2e9801a92885b660ca3d6070e69e9ee57fd6d8548642ecd0bf0f6ba91e6ec3db",
+    "backend/app.py": "84da6ea0059915cebebe82be1dc91f377fe3b71f96ce23658f4bc15166df8b0c",
+    "backend/decision.py": "4afb50918d3641cf185d6609c49c524c1156ba6d2a128dd714198725462b3477",
     "backend/finance.py": "99cc8d402f6f76b84d13a05771e5428932b015821b7ef7fa8c4cd6bc52446e00",
-    "backend/model.py": "72a58004aae0d195f9218d0702d91e4fd6f2f72c3509c40e44698176731343f5",
+    "backend/model.py": "3629d64879cbc67abef32f8a46866ef69251d510184dad02aa73e5a0e7a5fe23",
     "backend/reference.py": "c04a1bf253fdb379950cd2df5538df27d63b161342ad1913514854c40d7a8005",
     "backend/reliability.py": "3d7309302485a3d4ec4f65733a0766db03e1315d76da964b7e4d25b4dee8cca7",
     "backend/validation_status.py": "5ee5b0ddff1421a3e93a0e1e93d38d3f3cd18283e404cd1fd187a8d39b405e5f",
     "data/hko_reference.json": "1c3390bb96661f674ce232a2568115938e980dbe036616a7a44f368e5606d596",
-    "data/settings.json": "28cee47e6bcde7855d24803ed5398c581fabbdb556069f02492d03044ce8f5e5",
+    "data/settings.json": "f31b410dee41d4a6cc99cdf3f7f483a86b0e37b31632922d42431ebce1e7a47e",
     "data/weather_2023.csv": "8ff92d8706128a1fab75116749e1d1eb3b7fac237ceec2d1bb92dbb994d42d65",
     "data/weather_2024.csv": "301a99958e046624e4c81c24e287a6b6ac516e08ee5e1ef818180b6af85212d4",
     "data/weather_2025.csv": "3ca01afc8bdf5ce30a593f0743ab6c45966eeebbfe5454d34fb266a3d7a40f27",
     "data/weather_metadata.json": "6816476c45015cab3577f6fc86d10a5bff7bce06390c73c362b132e038ba5816",
     "data/weather_metadata_2023.json": "e7e282095c1874e3bede47bbe83c199c40fe9112b3a3aa418ec33e1cbe8460c7",
     "data/weather_metadata_2024.json": "eae56e1180a0ad6665f1bdfc3f33b464cdbaee78b94f711fa291a228b072625e",
-    "scripts/validate.py": "9d7d2ae490a8de4a0b3d6625feb60e30dc3cfb9380489ea6c91019587393aaae"
+    "scripts/validate.py": "3f6081053237002d919b538e180c53ff001027a59345e13ab37311dac3bd1a17"
   }
 }
