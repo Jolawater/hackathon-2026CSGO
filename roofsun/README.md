@@ -115,3 +115,7 @@ Install Chromium once if needed: `npx playwright install chromium`. Browser test
 Model tests retain the physical/financial regression suite and add all seven mappings, computed calibration, invalid observations, three-band boundaries, same-configuration NPV points, row trade-offs, nine sensitivities, no-space/late-start cases and archive migration. Browser checks cover the complete seven-input flow, row/play actions, exactly two panels, bilingual content, 375 px widths, minimal exports, stale evidence, failed imports, storage recovery and network retry. GitHub Actions runs the same four checks on this branch.
 
 See [v3 implementation record](docs/SEVEN_INPUTS_V3_RESPONSE.md). Earlier [v2.2 P0 record](docs/REVIEW_V2_P0_RESPONSE.md) and [v2.1 corrections](docs/REVIEW_FIXES_2026-10-03.md) describe historical versions; their old UI instructions do not apply to v3.
+
+### Monthly generation and seasonal evidence
+
+The current layout has a 12-month generation chart, updated by row comparisons. `scripts/hko_check.py` aggregates the bundled original HKO daily readings and computes Pearson correlation against model monthly generation; the evidence panel lists the 12 pairs. The uniform annual calibration preserves NASA’s monthly shape. Seasonal correlation is not measured rooftop yield accuracy.

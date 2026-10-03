@@ -42,8 +42,9 @@ def calculate(root=ROOT):
         weather_path=root/f'data/weather_{year}.csv'
         with weather_path.open() as f:nasa=sum(float(r['ghi_wm2']) for r in csv.DictReader(f))/1000
         hko=sum(observations.values())/3.6
+        monthly=[sum(v for stamp,v in observations.items() if int(stamp[5:7])==month)/3.6 for month in range(1,13)]
         results.append({'year':year,'days':len(observations),'hko_kwh_m2':hko,'nasa_kwh_m2':nasa,
-                        'ratio':hko/nasa,'flagged_days':flags[year],
+                        'ratio':hko/nasa,'monthly_kwh_m2':monthly,'flagged_days':flags[year],
                         'nasa_sha256':hashlib.sha256(weather_path.read_bytes()).hexdigest()})
     combined=sum(r['hko_kwh_m2'] for r in results)/sum(r['nasa_kwh_m2'] for r in results)
     return {'source_url':SOURCE_URL,'source_sha256':hashlib.sha256(source).hexdigest(),
@@ -52,6 +53,17 @@ def calculate(root=ROOT):
             'flag_policy':'Reported daily totals marked # are retained and counted; they are incomplete observations, not filled or invented values.',
             'scope':'Annual scaling of NASA hourly shape to King\'s Park totals. Different locations and local/UTC calendar boundaries; not measured PV accuracy or a confidence interval.',
             'years':results,'combined_ratio':combined}
+
+def compare_monthly(model_kwh,year=2025,report=None):
+    """Pearson seasonal relationship, not PV accuracy; inputs retain their units."""
+    import numpy as np
+    if report is None:report=calculate()
+    observed=next(r for r in report['years'] if r['year']==year)['monthly_kwh_m2']
+    model=np.asarray(model_kwh,dtype=float);hko=np.asarray(observed,dtype=float)
+    if model.shape!=(12,) or not np.isfinite(model).all():raise ValueError('Twelve finite monthly generation values required')
+    coefficient=float(np.corrcoef(model,hko)[0,1]) if np.ptp(model)>0 and np.ptp(hko)>0 else None
+    return {'year':year,'pearson_r':coefficient,'months':[{'month':i+1,'model_kwh':float(model[i]),'hko_kwh_m2':float(hko[i])} for i in range(12)],
+            'source_url':report['source_url'],'scope':'Annual scaling preserves NASA hourly shape. Seasonal correlation with HKO irradiance is not measured rooftop generation accuracy.'}
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--download',action='store_true');args=parser.parse_args()

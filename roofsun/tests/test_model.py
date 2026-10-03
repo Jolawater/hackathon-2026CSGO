@@ -719,3 +719,22 @@ def test_shutdown_prorates_maintenance_and_does_not_replace_after_partial_month_
     expected_income=100*(1-.005)**((pd.Timestamp('2033-12-01')-pd.Timestamp('2023-12-20')).days/365.2425)*4*15/31
     assert r['cashflow'][december]['A']-r['cashflow'][december-1]['A']==pytest.approx(expected_income-15,abs=.02)
     assert r['cashflow'][december+1]['A']==r['cashflow'][december]['A']
+
+
+def test_monthly_hko_sums_and_seasonal_correlation_are_computed_from_observations():
+    from scripts.hko_check import calculate,compare_monthly
+    from backend.screening import screen,ScreeningRequest
+    report=calculate()
+    for year in report['years']:
+        assert len(year['monthly_kwh_m2'])==12
+        assert sum(year['monthly_kwh_m2'])==pytest.approx(year['hko_kwh_m2'])
+    result=screen(ScreeningRequest())
+    comparison=compare_monthly(result['result']['monthly_kwh'],2025,report)
+    assert comparison==result['monthly_comparison']
+    assert comparison['pearson_r']==pytest.approx(np.corrcoef(result['result']['monthly_kwh'],report['years'][2]['monthly_kwh_m2'])[0,1])
+    assert .95<comparison['pearson_r']<.98
+    assert compare_monthly([0]*12,2025,report)['pearson_r'] is None
+    with pytest.raises(ValueError):compare_monthly([1]*11,2025,report)
+    more=screen(ScreeningRequest(selected_rows=3))
+    assert more['monthly_comparison']['months'][0]['model_kwh']==more['result']['monthly_kwh'][0]
+    assert more['monthly_comparison']['months']!=comparison['months']

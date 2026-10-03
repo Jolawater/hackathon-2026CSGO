@@ -93,7 +93,13 @@ record('Conservative shutdown after FiT','上網電價後停用的保守情景',
        'A 在上網電價結束後沒有收入、維護或逆變器更換；B 繼續自用及付運作費。數值按已標示的預設假設模擬。',
        f"NPV A={owner_finance['npv_A']}; quote/kW={owner_finance['max_acceptable_per_kw_A']}; conclusion={owner_screen['verdict']}",
        len(set(after_cutoff))==1 and owner_finance['cashflow'][replacement_index]['B']<owner_finance['cashflow'][replacement_index-1]['B'] and owner_screen['verdict']=='marginal')
-report.update(model_version=MODEL_VERSION,checks=checks,references=references,weather_years=source_metadata()['weather_years'],
+from scripts.hko_check import compare_monthly
+monthly_comparison=compare_monthly(owner_finance['monthly_kwh'],2025,radiation)
+record('Monthly seasonality versus HKO','月度季節形狀與天文台對比',
+       'Pearson correlation: model PV generation versus independently observed monthly irradiance. Checks seasonal shape, not measured electrical accuracy.',
+       '模型發電與獨立實測月度輻照的 Pearson 相關系數；核對季節形狀，並非實測發電準確率。',
+       f"2025: r={monthly_comparison['pearson_r']:.6f}; 12 months", .95<monthly_comparison['pearson_r']<.98,radiation['source_url'])
+report.update(monthly_comparison=monthly_comparison,model_version=MODEL_VERSION,checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,calibration=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'
 temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2))

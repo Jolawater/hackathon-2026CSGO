@@ -24,6 +24,7 @@ import OwnerInputs, {
   neighbourHorizon,
 } from "./components/Screening.jsx";
 import RoofScene from "./components/RoofScene.jsx";
+import MonthlyGeneration from "./components/MonthlyGeneration.jsx";
 import Assumptions from "./components/Assumptions.jsx";
 import Evidence, { verdictText } from "./components/Evidence.jsx";
 import assumptions from "../data/owner_assumptions.json";
@@ -456,6 +457,7 @@ function App() {
                     "播放 06:00–18:00；全年發電按全年計算。",
                   )}
                 </p>
+                {r && <MonthlyGeneration result={r} t={t} />}
               </section>
               <section className="tradeoff-card">
                 <span className="eyebrow">
@@ -659,6 +661,7 @@ function App() {
             )}
             <Evidence
               calibration={meta.data?.calibration}
+              monthlyComparison={screen?.monthly_comparison}
               validation={validation.data}
               analysis={analysis}
               loading={analysisLoading}

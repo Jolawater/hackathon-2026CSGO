@@ -52,7 +52,7 @@
       "name_zh": "配置搜索結果",
       "description_en": "Coarse search plus local refinement supplies physically feasible candidates; the owner interface selects highest current NPV, then tests three financial scenarios.",
       "description_zh": "粗搜尋加局部細化提供物理可行配置；業主介面選出當前淨現值最高方案，再測試三個財務情景。",
-      "observed": "feasible=100; frontier=7; measured runtime=1.71s",
+      "observed": "feasible=100; frontier=7; measured runtime=1.90s",
       "passed": true,
       "source_url": null
     },
@@ -127,6 +127,15 @@
       "observed": "NPV A=18298.97; quote/kW=28388.7; conclusion=marginal",
       "passed": true,
       "source_url": null
+    },
+    {
+      "name_en": "Monthly seasonality versus HKO",
+      "name_zh": "月度季節形狀與天文台對比",
+      "description_en": "Pearson correlation: model PV generation versus independently observed monthly irradiance. Checks seasonal shape, not measured electrical accuracy.",
+      "description_zh": "模型發電與獨立實測月度輻照的 Pearson 相關系數；核對季節形狀，並非實測發電準確率。",
+      "observed": "2025: r=0.961149; 12 months",
+      "passed": true,
+      "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv"
     }
   ],
   "baseline": {
@@ -136,6 +145,74 @@
     "shading_loss_pct": 7.7
   },
   "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
+  "monthly_comparison": {
+    "year": 2025,
+    "pearson_r": 0.9611488171425586,
+    "months": [
+      {
+        "month": 1,
+        "model_kwh": 572.35,
+        "hko_kwh_m2": 127.6
+      },
+      {
+        "month": 2,
+        "model_kwh": 425.86,
+        "hko_kwh_m2": 97.58888888888889
+      },
+      {
+        "month": 3,
+        "model_kwh": 516.82,
+        "hko_kwh_m2": 119.1861111111111
+      },
+      {
+        "month": 4,
+        "model_kwh": 575.98,
+        "hko_kwh_m2": 131.225
+      },
+      {
+        "month": 5,
+        "model_kwh": 583.3,
+        "hko_kwh_m2": 131.54444444444445
+      },
+      {
+        "month": 6,
+        "model_kwh": 608.46,
+        "hko_kwh_m2": 138.48055555555555
+      },
+      {
+        "month": 7,
+        "model_kwh": 612.62,
+        "hko_kwh_m2": 150.18055555555554
+      },
+      {
+        "month": 8,
+        "model_kwh": 576.0,
+        "hko_kwh_m2": 131.6472222222222
+      },
+      {
+        "month": 9,
+        "model_kwh": 613.65,
+        "hko_kwh_m2": 139.23055555555555
+      },
+      {
+        "month": 10,
+        "model_kwh": 586.09,
+        "hko_kwh_m2": 131.35833333333332
+      },
+      {
+        "month": 11,
+        "model_kwh": 495.52,
+        "hko_kwh_m2": 110.04722222222222
+      },
+      {
+        "month": 12,
+        "model_kwh": 493.23,
+        "hko_kwh_m2": 102.13888888888889
+      }
+    ],
+    "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+    "scope": "Annual scaling preserves NASA hourly shape. Seasonal correlation with HKO irradiance is not measured rooftop generation accuracy."
+  },
   "model_version": "3.1.0",
   "references": [
     {
@@ -691,6 +768,20 @@
           "hko_kwh_m2": 1418.6944444444446,
           "nasa_kwh_m2": 1533.3452,
           "ratio": 0.9252283467835192,
+          "monthly_kwh_m2": [
+            98.53333333333333,
+            113.86944444444444,
+            113.07222222222222,
+            91.8611111111111,
+            125.60277777777777,
+            126.39722222222221,
+            164.73333333333332,
+            137.9611111111111,
+            127.60277777777777,
+            105.50555555555555,
+            121.425,
+            92.13055555555556
+          ],
           "flagged_days": [
             "2023-06-18",
             "2023-08-15"
@@ -703,6 +794,20 @@
           "hko_kwh_m2": 1390.325,
           "nasa_kwh_m2": 1470.33923,
           "ratio": 0.9455811091975013,
+          "monthly_kwh_m2": [
+            106.91666666666666,
+            90.175,
+            106.64999999999999,
+            85.575,
+            107.42777777777778,
+            117.81666666666666,
+            146.375,
+            150.7888888888889,
+            131.65,
+            136.98888888888888,
+            94.69444444444444,
+            115.26666666666665
+          ],
           "flagged_days": [],
           "nasa_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
         },
@@ -712,6 +817,20 @@
           "hko_kwh_m2": 1510.2277777777776,
           "nasa_kwh_m2": 1555.59948,
           "ratio": 0.970833300727111,
+          "monthly_kwh_m2": [
+            127.6,
+            97.58888888888889,
+            119.1861111111111,
+            131.225,
+            131.54444444444445,
+            138.48055555555555,
+            150.18055555555554,
+            131.6472222222222,
+            139.23055555555555,
+            131.35833333333332,
+            110.04722222222222,
+            102.13888888888889
+          ],
           "flagged_days": [
             "2025-08-29",
             "2025-08-30",
@@ -743,6 +862,20 @@
         "hko_kwh_m2": 1418.6944444444446,
         "nasa_kwh_m2": 1533.3452,
         "ratio": 0.9252283467835192,
+        "monthly_kwh_m2": [
+          98.53333333333333,
+          113.86944444444444,
+          113.07222222222222,
+          91.8611111111111,
+          125.60277777777777,
+          126.39722222222221,
+          164.73333333333332,
+          137.9611111111111,
+          127.60277777777777,
+          105.50555555555555,
+          121.425,
+          92.13055555555556
+        ],
         "flagged_days": [
           "2023-06-18",
           "2023-08-15"
@@ -755,6 +888,20 @@
         "hko_kwh_m2": 1390.325,
         "nasa_kwh_m2": 1470.33923,
         "ratio": 0.9455811091975013,
+        "monthly_kwh_m2": [
+          106.91666666666666,
+          90.175,
+          106.64999999999999,
+          85.575,
+          107.42777777777778,
+          117.81666666666666,
+          146.375,
+          150.7888888888889,
+          131.65,
+          136.98888888888888,
+          94.69444444444444,
+          115.26666666666665
+        ],
         "flagged_days": [],
         "nasa_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
       },
@@ -764,6 +911,20 @@
         "hko_kwh_m2": 1510.2277777777776,
         "nasa_kwh_m2": 1555.59948,
         "ratio": 0.970833300727111,
+        "monthly_kwh_m2": [
+          127.6,
+          97.58888888888889,
+          119.1861111111111,
+          131.225,
+          131.54444444444445,
+          138.48055555555555,
+          150.18055555555554,
+          131.6472222222222,
+          139.23055555555555,
+          131.35833333333332,
+          110.04722222222222,
+          102.13888888888889
+        ],
         "flagged_days": [
           "2025-08-29",
           "2025-08-30",

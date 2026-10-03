@@ -84,6 +84,7 @@ export function NpvRange({ interval, t }) {
 }
 export default function Evidence({
   calibration,
+  monthlyComparison,
   validation,
   analysis,
   loading,
@@ -139,6 +140,57 @@ export default function Evidence({
             {t("HKO source CSV", "天文台原始 CSV")}
           </a>
         </p>
+      </section>
+      <section className="evidence-block monthly-evidence">
+        <h4>{t("Monthly pattern versus HKO", "月度形狀與天文台對比")}</h4>
+        {monthlyComparison ? (
+          <>
+            <p>
+              {t("Current layout /", "當前配置 /")} {monthlyComparison.year} ·{" "}
+              {t("Pearson correlation", "Pearson 相關系數")}:{" "}
+              <strong data-testid="monthly-correlation">
+                {monthlyComparison.pearson_r == null
+                  ? "—"
+                  : monthlyComparison.pearson_r.toFixed(3)}
+              </strong>
+            </p>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t("Month", "月份")}</th>
+                    <th>{t("Model generation (kWh)", "模型發電 (kWh)")}</th>
+                    <th>
+                      {t("HKO irradiance (kWh/m²)", "天文台輻照 (kWh/m²)")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyComparison.months.map((m) => (
+                    <tr key={m.month}>
+                      <th>{m.month}</th>
+                      <td>{fmt(m.model_kwh)}</td>
+                      <td>{fmt(m.hko_kwh_m2, 1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="help">
+              {t(
+                "The annual multiplier does not change NASA’s monthly pattern. Correlation checks the seasonal pattern against observed irradiance; it does not establish measured panel accuracy. Calculated from the source CSV by scripts/hko_check.py.",
+                "全年比例不改變 NASA 的月度形狀。相關系數核對實測輻照的季節規律，並非面板實測準確率。由 scripts/hko_check.py 按來源 CSV 計算。",
+              )}
+            </p>
+          </>
+        ) : (
+          <p>
+            {t(
+              "Choose a feasible layout to compare its monthly pattern.",
+              "找到可行排布後，會顯示該配置的月度對比。",
+            )}
+          </p>
+        )}
       </section>
       <div className="evidence-pair">
         <section className="evidence-block">

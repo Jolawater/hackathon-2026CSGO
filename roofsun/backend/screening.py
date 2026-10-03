@@ -11,6 +11,7 @@ import math
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 from .calibration import calibration, weather_ratio
+from scripts.hko_check import compare_monthly
 from .model import Inputs, Configuration, evaluate, search, sun_preview, MODEL_VERSION, POLICY
 
 COST_BANDS={
@@ -152,6 +153,7 @@ def screen_cached(serialized):
     sun_path=[{'hour':h/2,**sun_preview(inputs,config,date(2025,12,21),h/2)} for h in range(12,37)]
     return {**base,'result':result,'recommended':recommended_result,'interval':interval,'verdict':interval['verdict'],
             'reason':'scenario_range','alternatives':{k:v['actual_rows'] for k,v in alternatives.items()},
+            'monthly_comparison':compare_monthly(result['monthly_kwh'],inputs.weather_year,calibration()),
             'tradeoff':tradeoff,'sun_path':sun_path,'delay':delay_cost(inputs,config),
             'recommended_interval':interval if config==Configuration(**recommended['config']) else npv_interval(inputs,Configuration(**recommended['config'])),
             'is_recommended':config==Configuration(**recommended['config'])}

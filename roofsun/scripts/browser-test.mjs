@@ -100,6 +100,34 @@ try {
   );
   assert.equal(baseline.result.actual_rows, 2);
   assert.equal(baseline.verdict, "marginal");
+  await page
+    .getByTestId("monthly-chart")
+    .locator(".recharts-bar-rectangle")
+    .first()
+    .waitFor();
+  assert.equal(
+    await page
+      .getByTestId("monthly-chart")
+      .locator(".recharts-bar-rectangle")
+      .count(),
+    12,
+  );
+  assert.equal(await page.locator(".monthly-extreme").count(), 2);
+  assert.deepEqual(
+    JSON.parse(
+      await page.getByTestId("monthly-chart").getAttribute("data-monthly"),
+    ),
+    baseline.result.monthly_kwh,
+  );
+  await page.locator(".recharts-bar-rectangle").nth(1).hover();
+  await page.getByText("kWh/kW", { exact: false }).last().waitFor();
+  assert(
+    await page
+      .locator(".chart-tooltip")
+      .innerText()
+      .then((s) => s.includes("kWh/kW")),
+  );
+  await page.mouse.move(0, 0);
   await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
 
   // All seven groups drive real API inputs, including both measurements in groups 1/3.
@@ -247,6 +275,14 @@ try {
   );
   assert.equal(r.result.actual_rows, 3);
   assert.equal(r.result.panels_count, 18);
+  await page.waitForFunction(
+    (expected) =>
+      document
+        .querySelector('[data-testid="monthly-chart"]')
+        ?.getAttribute("data-monthly") === JSON.stringify(expected),
+    r.result.monthly_kwh,
+  );
+  assert.notDeepEqual(r.result.monthly_kwh, baseline.result.monthly_kwh);
   assert(r.result.compliant);
   assert(r.result.annual_kwh > baseline.result.annual_kwh);
   assert(r.result.specific_yield < baseline.result.specific_yield);
@@ -273,6 +309,11 @@ try {
     (await page.locator(".assumptions-panel").innerText()).includes("0.970833"),
   );
   await page.locator(".evidence-panel summary").click();
+  assert.equal(await page.locator(".monthly-evidence tbody tr").count(), 12);
+  assert.equal(
+    await page.getByTestId("monthly-correlation").innerText(),
+    baseline.monthly_comparison.pearson_r.toFixed(3),
+  );
   await page
     .getByRole("heading", { name: "NASA versus HKO observations", exact: true })
     .waitFor();
