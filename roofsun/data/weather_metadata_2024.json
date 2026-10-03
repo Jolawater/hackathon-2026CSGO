@@ -1,0 +1,35 @@
+{
+  "provider": "NASA POWER",
+  "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20240101&end=20241231&format=JSON&time-standard=UTC",
+  "year": 2024,
+  "lat": 22.45,
+  "lon": 114.16,
+  "time_standard": "UTC",
+  "hours": 8784,
+  "parameters": {
+    "ALLSKY_SFC_SW_DWN": {
+      "units": "Wh/m^2",
+      "longname": "All Sky Surface Shortwave Downward Irradiance"
+    },
+    "T2M": {
+      "units": "C",
+      "longname": "Temperature at 2 Meters"
+    }
+  },
+  "header": {
+    "title": "NASA/POWER Source Native Resolution Hourly Data",
+    "api": {
+      "version": "v2.10.2",
+      "name": "POWER Hourly API"
+    },
+    "sources": [
+      "SYN1DEG",
+      "MERRA2"
+    ],
+    "fill_value": -999.0,
+    "time_standard": "UTC",
+    "start": "20240101",
+    "end": "20241231"
+  },
+  "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined."
+}

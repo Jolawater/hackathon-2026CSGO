@@ -1,0 +1,948 @@
+{
+  "pvlib_version": "0.15.2",
+  "python_version": "3.12.14",
+  "checks": [
+    {
+      "name_en": "Published solar-position benchmark",
+      "name_zh": "已發表太陽位置基準",
+      "description_en": "NREL SPA report example: 17 Oct 2003, Colorado. Required angular error < 0.00001°.",
+      "description_zh": "NREL SPA 報告的 2003 年 10 月 17 日科羅拉多參考案例，要求角度誤差小於 0.00001°。",
+      "observed": "zenith error=0.00000002°, azimuth error=0.00000049°",
+      "passed": true,
+      "source_url": "https://www.nrel.gov/docs/fy08osti/34302.pdf"
+    },
+    {
+      "name_en": "Row-shadow geometry cross-check",
+      "name_zh": "排間陰影幾何交叉核對",
+      "description_en": "Our ray/plane formula versus pvlib in 25 fixed-tilt cases. This checks implementation consistency, not real module electrical losses.",
+      "description_zh": "自建光線與面板交點公式，對照 pvlib 的 25 個固定傾角案例。這是實作一致性檢查，並非實際面板電損驗證。",
+      "observed": "25 cases; max shade-fraction difference=3.33e-16",
+      "passed": true,
+      "source_url": "https://pvlib-python.readthedocs.io/en/v0.15.2/reference/generated/pvlib.shading.shaded_fraction1d.html"
+    },
+    {
+      "name_en": "Hourly weather integrity",
+      "name_zh": "逐小時气象資料完整性",
+      "description_en": "Hourly means, UTC converted to Hong Kong time. Negative fill values rejected during download.",
+      "description_zh": "逐小時平均資料由 UTC 轉為香港時間，下載時拒絕缺失值。",
+      "observed": "hours=8760; night irradiance=0.0",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Shading relationship",
+      "name_zh": "遮擋關係",
+      "description_en": "Identical layout with a 0° versus 40° surrounding horizon. More obstruction must reduce annual output.",
+      "description_zh": "相同排布，周圍天際線分別設為 0° 與 40°；增加遮擋應令全年發電量下降。",
+      "observed": "clear=8772.3 kWh; obstructed=6064.9 kWh",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Monthly energy accounting",
+      "name_zh": "每月能量加總",
+      "description_en": "Sum of rounded monthly generation must match the annual total within 0.12 kWh.",
+      "description_zh": "四捨五入後的月發電量總和，與全年發電量相差應少於 0.12 kWh。",
+      "observed": "monthly sum=8772.29; annual=8772.3",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Configuration-search result",
+      "name_zh": "配置搜索結果",
+      "description_en": "Coarse search plus local refinement supplies physically feasible candidates; the owner interface selects highest current NPV, then tests three financial scenarios.",
+      "description_zh": "粗搜尋加局部細化提供物理可行配置；業主介面選出當前淨現值最高方案，再測試三個財務情景。",
+      "observed": "feasible=100; frontier=7; measured runtime=1.80s",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Whole-generation reference pipeline",
+      "name_zh": "完整發電流程參考核對",
+      "description_en": "Three unobstructed single-row cases against ModelChain/PVWatts using identical weather/capacity. Temperature, losses and inverter assumptions differ. This is cross-model evidence, not measured accuracy.",
+      "description_zh": "三個無遮擋單排案例與同氣象／容量的 ModelChain/PVWatts 比較。溫度、損失及逆變器假設不同，屬模型核對，並非實測準確率。",
+      "observed": "tilt=0.0°: difference=3.93%; tilt=20.0°: difference=3.91%; tilt=40.0°: difference=4.0%",
+      "passed": true,
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "name_en": "Decision can reject installation",
+      "name_zh": "決策可建議暫緩安裝",
+      "description_en": "2032 commissioning: a physically feasible candidate remains visible, but all three NPV scenarios are non-positive.",
+      "description_zh": "2032 年投產：保留物理可行的候選配置，但三個淨現值情景均不為正。",
+      "observed": "candidate=2.7 kW; NPV upper=-45842.96; verdict=not_recommended",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Historical weather and sensitivity coverage",
+      "name_zh": "歷史氣象及敏感性覆蓋",
+      "description_en": "Nine one-at-a-time scenarios for the recommended configuration, with separate searches for recommendation changes. The NPV range is three deterministic points, not a confidence bound.",
+      "description_zh": "當前推薦配置的九個單項情景，另行搜尋配置是否改變。淨現值範圍來自三個確定情景，並非置信區間。",
+      "observed": "scenarios=9; NPV points=[{'id': 'conservative', 'weather_scale': 0.9473521078055045, 'discount_rate': 0.08, 'npv': -3372.63, 'annual_kwh': 6508.8}, {'id': 'current', 'weather_scale': 0.970833300727111, 'discount_rate': 0.04, 'npv': 18298.97, 'annual_kwh': 6659.9}, {'id': 'optimistic', 'weather_scale': 1.0, 'discount_rate': 0.0, 'npv': 46323.87, 'annual_kwh': 6846.8}]",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Independent irradiance input comparison",
+      "name_zh": "獨立輻照輸入比較",
+      "description_en": "King's Park daily MJ/m² / 3.6 versus bundled NASA hourly annual totals, for 2023–25. Incomplete daily observations remain flagged; no rooftop generation accuracy is claimed.",
+      "description_zh": "京士柏每日 MJ/m² 除以 3.6，與 NASA 逐時全年總量比較（2023–25 年）。不完整日數保留標記，不聲稱已驗證天台發電準確率。",
+      "observed": "2023: HKO/NASA=0.925228, flagged=2; 2024: HKO/NASA=0.945581, flagged=0; 2025: HKO/NASA=0.970833, flagged=4",
+      "passed": true,
+      "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv"
+    },
+    {
+      "name_en": "Boundary and rotated packing regressions",
+      "name_zh": "邊界及旋轉排板回歸",
+      "description_en": "8 x 7 m, two rows, 0–40° every 5° retains 12 modules; 150° two rows retains at least 9 complete non-overlapping modules.",
+      "description_zh": "8 x 7 m、兩排、0–40° 每 5° 均保留 12 塊；150° 兩排至少保留 9 塊完整且不重疊面板。",
+      "observed": "9 tilt cases; rotated two-row case",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Coverage-limited village packing with access",
+      "name_zh": "村屋覆蓋限制及檢修間隙",
+      "description_en": "Assumed 65 m² roof: 18 reference modules at 40° with at least the assumed 0.3 m horizontal gap; actual hull <=32.5 m².",
+      "description_zh": "假設 65 m² 天台，40° 的 18 塊參考面板；水平間隙至少為假設的 0.3 m，實際凸包面積不超過 32.5 m²。",
+      "observed": "rows=3; modules=18; hull=32.5 m²; gap=0.3636 m",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Village example dimensions and scope",
+      "name_zh": "村屋示例尺寸及適用範圍",
+      "description_en": "Illustrative roofs fall within the source-backed 65.03 m² covered-area size limit, not a full legal or structural certification.",
+      "description_zh": "示例尺寸在有來源的 65.03 m² 有蓋面積上限內；並非完整合法性或結構認證。",
+      "observed": "open: 65 m²; shaded: 65 m²; small: 32.4 m²",
+      "passed": true,
+      "source_url": "https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf"
+    },
+    {
+      "name_en": "Conservative shutdown after FiT",
+      "name_zh": "上網電價後停用的保守情景",
+      "description_en": "A has no income, maintenance or inverter replacement after FiT. B continues self-use and operating costs. Values are simulated under the labelled default assumptions.",
+      "description_zh": "A 在上網電價結束後沒有收入、維護或逆變器更換；B 繼續自用及付運作費。數值按已標示的預設假設模擬。",
+      "observed": "NPV A=18298.97; quote/kW=28388.7; conclusion=marginal",
+      "passed": true,
+      "source_url": null
+    },
+    {
+      "name_en": "Monthly seasonality versus HKO",
+      "name_zh": "月度季節形狀與天文台對比",
+      "description_en": "Pearson correlation: model PV generation versus independently observed monthly irradiance. Checks seasonal shape, not measured electrical accuracy.",
+      "description_zh": "模型發電與獨立實測月度輻照的 Pearson 相關系數；核對季節形狀，並非實測發電準確率。",
+      "observed": "2025: r=0.961149; 12 months",
+      "passed": true,
+      "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv"
+    },
+    {
+      "name_en": "Five-minute winter-solstice preview",
+      "name_zh": "五分鐘冬至日照預覽",
+      "description_en": "145 pvlib samples from 06:00 to 18:00 HK time. Noon shade and beam visibility match the evaluation preview; highlights use the nearest sample, not shadow-map pixels.",
+      "description_zh": "香港時間 06:00 至 18:00 共 145 個 pvlib 樣本。正午遮擋及直射光可見性與評估預覽一致；高亮採用最近模型樣本，並非陰影貼圖像素。",
+      "observed": "samples=145; noon shaded=0/12",
+      "passed": true,
+      "source_url": null
+    }
+  ],
+  "baseline": {
+    "annual_kwh": 8772.3,
+    "panels_count": 18,
+    "capacity_kw": 8.1,
+    "shading_loss_pct": 7.7
+  },
+  "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
+  "monthly_comparison": {
+    "year": 2025,
+    "pearson_r": 0.9611488171425586,
+    "months": [
+      {
+        "month": 1,
+        "model_kwh": 572.35,
+        "hko_kwh_m2": 127.6
+      },
+      {
+        "month": 2,
+        "model_kwh": 425.86,
+        "hko_kwh_m2": 97.58888888888889
+      },
+      {
+        "month": 3,
+        "model_kwh": 516.82,
+        "hko_kwh_m2": 119.1861111111111
+      },
+      {
+        "month": 4,
+        "model_kwh": 575.98,
+        "hko_kwh_m2": 131.225
+      },
+      {
+        "month": 5,
+        "model_kwh": 583.3,
+        "hko_kwh_m2": 131.54444444444445
+      },
+      {
+        "month": 6,
+        "model_kwh": 608.46,
+        "hko_kwh_m2": 138.48055555555555
+      },
+      {
+        "month": 7,
+        "model_kwh": 612.62,
+        "hko_kwh_m2": 150.18055555555554
+      },
+      {
+        "month": 8,
+        "model_kwh": 576.0,
+        "hko_kwh_m2": 131.6472222222222
+      },
+      {
+        "month": 9,
+        "model_kwh": 613.65,
+        "hko_kwh_m2": 139.23055555555555
+      },
+      {
+        "month": 10,
+        "model_kwh": 586.09,
+        "hko_kwh_m2": 131.35833333333332
+      },
+      {
+        "month": 11,
+        "model_kwh": 495.52,
+        "hko_kwh_m2": 110.04722222222222
+      },
+      {
+        "month": 12,
+        "model_kwh": 493.23,
+        "hko_kwh_m2": 102.13888888888889
+      }
+    ],
+    "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+    "scope": "Annual scaling preserves NASA hourly shape. Seasonal correlation with HKO irradiance is not measured rooftop generation accuracy."
+  },
+  "model_version": "3.1.0",
+  "references": [
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 0.0,
+        "azimuth": 180.0,
+        "rows": 1,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3341.4,
+      "reference_kwh": 3215.2,
+      "difference_pct": 3.93,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 264.35,
+          "reference_kwh": 254.63
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 209.53,
+          "reference_kwh": 201.34
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 260.02,
+          "reference_kwh": 249.77
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 296.62,
+          "reference_kwh": 285.35
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 305.81,
+          "reference_kwh": 294.26
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 322.55,
+          "reference_kwh": 310.84
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 323.79,
+          "reference_kwh": 311.83
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 298.54,
+          "reference_kwh": 286.89
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 309.58,
+          "reference_kwh": 298.32
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 286.91,
+          "reference_kwh": 276.21
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 234.43,
+          "reference_kwh": 225.44
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 229.28,
+          "reference_kwh": 220.33
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 20.0,
+        "azimuth": 180.0,
+        "rows": 1,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3420.3,
+      "reference_kwh": 3291.5,
+      "difference_pct": 3.91,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 301.29,
+          "reference_kwh": 290.52
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 220.26,
+          "reference_kwh": 211.73
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 265.25,
+          "reference_kwh": 254.81
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 293.31,
+          "reference_kwh": 282.09
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 295.44,
+          "reference_kwh": 284.14
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 306.89,
+          "reference_kwh": 295.57
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 309.24,
+          "reference_kwh": 297.64
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 292.52,
+          "reference_kwh": 281.0
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 314.37,
+          "reference_kwh": 302.93
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 303.24,
+          "reference_kwh": 292.05
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 259.13,
+          "reference_kwh": 249.44
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 259.35,
+          "reference_kwh": 249.6
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    },
+    {
+      "available": true,
+      "configuration": {
+        "tilt": 40.0,
+        "azimuth": 180.0,
+        "rows": 1,
+        "layout_mode": "compact",
+        "panel_limit": 0
+      },
+      "capacity_kw": 2.7,
+      "roofsun_kwh": 3256.3,
+      "reference_kwh": 3131.2,
+      "difference_pct": 4.0,
+      "monthly": [
+        {
+          "month": 1,
+          "roofsun_kwh": 313.79,
+          "reference_kwh": 302.58
+        },
+        {
+          "month": 2,
+          "roofsun_kwh": 216.06,
+          "reference_kwh": 207.58
+        },
+        {
+          "month": 3,
+          "roofsun_kwh": 252.25,
+          "reference_kwh": 242.12
+        },
+        {
+          "month": 4,
+          "roofsun_kwh": 270.04,
+          "reference_kwh": 259.41
+        },
+        {
+          "month": 5,
+          "roofsun_kwh": 266.28,
+          "reference_kwh": 255.68
+        },
+        {
+          "month": 6,
+          "roofsun_kwh": 271.34,
+          "reference_kwh": 260.88
+        },
+        {
+          "month": 7,
+          "roofsun_kwh": 274.2,
+          "reference_kwh": 263.45
+        },
+        {
+          "month": 8,
+          "roofsun_kwh": 265.67,
+          "reference_kwh": 254.83
+        },
+        {
+          "month": 9,
+          "roofsun_kwh": 296.0,
+          "reference_kwh": 285.03
+        },
+        {
+          "month": 10,
+          "roofsun_kwh": 297.12,
+          "reference_kwh": 286.06
+        },
+        {
+          "month": 11,
+          "roofsun_kwh": 264.21,
+          "reference_kwh": 254.32
+        },
+        {
+          "month": 12,
+          "roofsun_kwh": 269.33,
+          "reference_kwh": 259.24
+        }
+      ],
+      "reference_tool": "pvlib ModelChain / PVWatts DC + inverter / SAPM temperature",
+      "reference_version": "0.15.2",
+      "reference_wind_ms": 1,
+      "scope": "Cross-model comparison, not measured accuracy. Shared weather, location and irradiance components. Reference uses SAPM temperature with assumed 1 m/s wind, default PVWatts losses and explicit inverter efficiency; RoofSun uses NOCT temperature and 0.85 system factor.",
+      "source_url": "https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.modelchain.ModelChain.with_pvwatts.html"
+    }
+  ],
+  "weather_years": {
+    "2023": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20230101&end=20231231&format=JSON&time-standard=UTC",
+      "year": 2023,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8760,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20230101",
+        "end": "20231231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "c40fce16b4a1a1644b01f39d8128655a63431287a1759abce8202e4860e8325f"
+    },
+    "2024": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20240101&end=20241231&format=JSON&time-standard=UTC",
+      "year": 2024,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8784,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20240101",
+        "end": "20241231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
+    },
+    "2025": {
+      "provider": "NASA POWER",
+      "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.45&longitude=114.16&start=20250101&end=20251231&format=JSON&time-standard=UTC",
+      "year": 2025,
+      "lat": 22.45,
+      "lon": 114.16,
+      "time_standard": "UTC",
+      "hours": 8760,
+      "parameters": {
+        "ALLSKY_SFC_SW_DWN": {
+          "units": "Wh/m^2",
+          "longname": "All Sky Surface Shortwave Downward Irradiance"
+        },
+        "T2M": {
+          "units": "C",
+          "longname": "Temperature at 2 Meters"
+        }
+      },
+      "header": {
+        "title": "NASA/POWER Source Native Resolution Hourly Data",
+        "api": {
+          "version": "v2.10.2",
+          "name": "POWER Hourly API"
+        },
+        "sources": [
+          "SYN1DEG",
+          "MERRA2"
+        ],
+        "fill_value": -999.0,
+        "time_standard": "UTC",
+        "start": "20250101",
+        "end": "20251231"
+      },
+      "note": "Gridded satellite/model weather at one reference point, not rooftop measurements. Hourly means; geometry evaluated at interval midpoint. All roofs use this reference weather; local shading is user-defined.",
+      "csv_sha256": "b2d648d68bcaa831b7f9ad4813ecdbb13afa1373ed602de02107b85e795a2d5e"
+    }
+  },
+  "sensitivity": {
+    "available": true,
+    "model_version": "3.1.0",
+    "configuration": {
+      "tilt": 15.0,
+      "azimuth": 180.0,
+      "rows": 2,
+      "layout_mode": "compact",
+      "panel_limit": 0
+    },
+    "interval": {
+      "points": [
+        {
+          "id": "conservative",
+          "weather_scale": 0.9473521078055045,
+          "discount_rate": 0.08,
+          "npv": -3372.63,
+          "annual_kwh": 6508.8
+        },
+        {
+          "id": "current",
+          "weather_scale": 0.970833300727111,
+          "discount_rate": 0.04,
+          "npv": 18298.97,
+          "annual_kwh": 6659.9
+        },
+        {
+          "id": "optimistic",
+          "weather_scale": 1.0,
+          "discount_rate": 0.0,
+          "npv": 46323.87,
+          "annual_kwh": 6846.8
+        }
+      ],
+      "min": -3372.63,
+      "max": 46323.87,
+      "verdict": "marginal",
+      "scope": "Three deterministic scenarios for the same configuration, not a confidence interval or probability."
+    },
+    "scenarios": [
+      {
+        "id": "quote_minus_20",
+        "npv": 45298.97,
+        "annual_kwh": 6659.9,
+        "payback_years": 4.41,
+        "verdict": "worthwhile",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "quote_plus_20",
+        "npv": -8701.03,
+        "annual_kwh": 6659.9,
+        "payback_years": 6.49,
+        "verdict": "marginal",
+        "recommendation_changed": true,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 1,
+          "layout_mode": "spread",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "delay_6_months",
+        "npv": 8710.72,
+        "annual_kwh": 6659.9,
+        "payback_years": 5.42,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "delay_12_months",
+        "npv": -1429.25,
+        "annual_kwh": 6659.9,
+        "payback_years": 5.41,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "neighbour_plus_floor",
+        "npv": 16536.22,
+        "annual_kwh": 6586.6,
+        "payback_years": 5.49,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "high_other_costs",
+        "npv": 9020.8,
+        "annual_kwh": 6659.9,
+        "payback_years": 5.75,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "linear_electrical",
+        "npv": 18304.25,
+        "annual_kwh": 6660.1,
+        "payback_years": 5.41,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "weather_2023",
+        "npv": 8533.79,
+        "annual_kwh": 6254.8,
+        "payback_years": 5.75,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      },
+      {
+        "id": "weather_2024",
+        "npv": 6011.81,
+        "annual_kwh": 6154.7,
+        "payback_years": 5.91,
+        "verdict": "marginal",
+        "recommendation_changed": false,
+        "alternative_config": {
+          "tilt": 15.0,
+          "azimuth": 180.0,
+          "rows": 2,
+          "layout_mode": "compact",
+          "panel_limit": 0
+        },
+        "scope": "NPV and conclusion use the current recommended configuration; change flag independently re-runs the configuration search."
+      }
+    ],
+    "calibration": {
+      "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+      "source_sha256": "c861bd7958557da5631d54f11003681c78b82dd4100dfd1810604de83b4a50a1",
+      "source_units": "MJ/m² per day; divide by 3.6 for kWh/m²",
+      "acquisition": "Original daily_KP_GSR_ALL.csv supplied by the user on 2026-10-03; bundled unchanged, not downloaded by this run.",
+      "flag_policy": "Reported daily totals marked # are retained and counted; they are incomplete observations, not filled or invented values.",
+      "scope": "Annual scaling of NASA hourly shape to King's Park totals. Different locations and local/UTC calendar boundaries; not measured PV accuracy or a confidence interval.",
+      "years": [
+        {
+          "year": 2023,
+          "days": 365,
+          "hko_kwh_m2": 1418.6944444444446,
+          "nasa_kwh_m2": 1533.3452,
+          "ratio": 0.9252283467835192,
+          "monthly_kwh_m2": [
+            98.53333333333333,
+            113.86944444444444,
+            113.07222222222222,
+            91.8611111111111,
+            125.60277777777777,
+            126.39722222222221,
+            164.73333333333332,
+            137.9611111111111,
+            127.60277777777777,
+            105.50555555555555,
+            121.425,
+            92.13055555555556
+          ],
+          "flagged_days": [
+            "2023-06-18",
+            "2023-08-15"
+          ],
+          "nasa_sha256": "c40fce16b4a1a1644b01f39d8128655a63431287a1759abce8202e4860e8325f"
+        },
+        {
+          "year": 2024,
+          "days": 366,
+          "hko_kwh_m2": 1390.325,
+          "nasa_kwh_m2": 1470.33923,
+          "ratio": 0.9455811091975013,
+          "monthly_kwh_m2": [
+            106.91666666666666,
+            90.175,
+            106.64999999999999,
+            85.575,
+            107.42777777777778,
+            117.81666666666666,
+            146.375,
+            150.7888888888889,
+            131.65,
+            136.98888888888888,
+            94.69444444444444,
+            115.26666666666665
+          ],
+          "flagged_days": [],
+          "nasa_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
+        },
+        {
+          "year": 2025,
+          "days": 365,
+          "hko_kwh_m2": 1510.2277777777776,
+          "nasa_kwh_m2": 1555.59948,
+          "ratio": 0.970833300727111,
+          "monthly_kwh_m2": [
+            127.6,
+            97.58888888888889,
+            119.1861111111111,
+            131.225,
+            131.54444444444445,
+            138.48055555555555,
+            150.18055555555554,
+            131.6472222222222,
+            139.23055555555555,
+            131.35833333333332,
+            110.04722222222222,
+            102.13888888888889
+          ],
+          "flagged_days": [
+            "2025-08-29",
+            "2025-08-30",
+            "2025-08-31",
+            "2025-09-01"
+          ],
+          "nasa_sha256": "b2d648d68bcaa831b7f9ad4813ecdbb13afa1373ed602de02107b85e795a2d5e"
+        }
+      ],
+      "combined_ratio": 0.9473521078055045
+    },
+    "field_case": {
+      "available": false,
+      "status": "pending"
+    },
+    "scope": "One input changes at a time. Scenarios and recommendation changes are simulations, not probabilities or measured accuracy."
+  },
+  "calibration": {
+    "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv",
+    "source_sha256": "c861bd7958557da5631d54f11003681c78b82dd4100dfd1810604de83b4a50a1",
+    "source_units": "MJ/m² per day; divide by 3.6 for kWh/m²",
+    "acquisition": "Original daily_KP_GSR_ALL.csv supplied by the user on 2026-10-03; bundled unchanged, not downloaded by this run.",
+    "flag_policy": "Reported daily totals marked # are retained and counted; they are incomplete observations, not filled or invented values.",
+    "scope": "Annual scaling of NASA hourly shape to King's Park totals. Different locations and local/UTC calendar boundaries; not measured PV accuracy or a confidence interval.",
+    "years": [
+      {
+        "year": 2023,
+        "days": 365,
+        "hko_kwh_m2": 1418.6944444444446,
+        "nasa_kwh_m2": 1533.3452,
+        "ratio": 0.9252283467835192,
+        "monthly_kwh_m2": [
+          98.53333333333333,
+          113.86944444444444,
+          113.07222222222222,
+          91.8611111111111,
+          125.60277777777777,
+          126.39722222222221,
+          164.73333333333332,
+          137.9611111111111,
+          127.60277777777777,
+          105.50555555555555,
+          121.425,
+          92.13055555555556
+        ],
+        "flagged_days": [
+          "2023-06-18",
+          "2023-08-15"
+        ],
+        "nasa_sha256": "c40fce16b4a1a1644b01f39d8128655a63431287a1759abce8202e4860e8325f"
+      },
+      {
+        "year": 2024,
+        "days": 366,
+        "hko_kwh_m2": 1390.325,
+        "nasa_kwh_m2": 1470.33923,
+        "ratio": 0.9455811091975013,
+        "monthly_kwh_m2": [
+          106.91666666666666,
+          90.175,
+          106.64999999999999,
+          85.575,
+          107.42777777777778,
+          117.81666666666666,
+          146.375,
+          150.7888888888889,
+          131.65,
+          136.98888888888888,
+          94.69444444444444,
+          115.26666666666665
+        ],
+        "flagged_days": [],
+        "nasa_sha256": "fc864fcfaf550465973be89c5eee9fb0b46c26a6c85d1815e0791dbe1ce4a04e"
+      },
+      {
+        "year": 2025,
+        "days": 365,
+        "hko_kwh_m2": 1510.2277777777776,
+        "nasa_kwh_m2": 1555.59948,
+        "ratio": 0.970833300727111,
+        "monthly_kwh_m2": [
+          127.6,
+          97.58888888888889,
+          119.1861111111111,
+          131.225,
+          131.54444444444445,
+          138.48055555555555,
+          150.18055555555554,
+          131.6472222222222,
+          139.23055555555555,
+          131.35833333333332,
+          110.04722222222222,
+          102.13888888888889
+        ],
+        "flagged_days": [
+          "2025-08-29",
+          "2025-08-30",
+          "2025-08-31",
+          "2025-09-01"
+        ],
+        "nasa_sha256": "b2d648d68bcaa831b7f9ad4813ecdbb13afa1373ed602de02107b85e795a2d5e"
+      }
+    ],
+    "combined_ratio": 0.9473521078055045
+  }
+}

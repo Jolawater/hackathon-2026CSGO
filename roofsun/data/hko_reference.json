@@ -1,0 +1,18 @@
+{
+  "checked": "2026-10-03",
+  "observations": {
+    "2025": {
+      "station": "King's Park",
+      "monthly_daily_mj_m2": [14.82,12.55,13.84,15.75,15.28,16.62,17.44,15.29,16.71,15.25,13.21,11.86],
+      "reported_annual_daily_mj_m2": 14.89,
+      "source_url": "https://www.hko.gov.hk/en/wxinfo/pastwx/2025/ywx2025.htm",
+      "table": "Table 2b: Summary of meteorological observations in Hong Kong, 2025",
+      "note": "The annual summary gives July 17.44 and annual 14.89 MJ/m²/day. It supersedes different values in the earlier December monthly bulletin. Annual integration here uses month length and rounded monthly observations."
+    }
+  },
+  "normals": [
+    {"period":"1981–2010","mean_daily_mj_m2":12.85,"source_url":"https://www.hko.gov.hk/en/education/weather/sunshine-and-uv/00443-solar-energy-resources-in-hong-kong-from-a-climatological-point-of-view.html"},
+    {"period":"1991–2020","mean_daily_mj_m2":13.23,"source_url":"https://www.hko.gov.hk/en/cis/normal/1991_2020/normals.htm"}
+  ],
+  "scope": "Independent radiation-input check, not measured PV yield or calibration. NASA POWER is a grid point at 22.45 N, 114.16 E; HKO is a different station at King's Park. Annual differences include location, source, rounding and UTC/local-calendar boundaries. Historical normals and one recent year have different periods. No automatic correction, inferred bias, P90 or field-accuracy claim. Same-year HKO observations for 2023 and 2024 have not yet been incorporated."
+}

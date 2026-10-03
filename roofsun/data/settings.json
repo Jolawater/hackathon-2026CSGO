@@ -1,0 +1,44 @@
+{
+  "panel": {
+    "name": "Generic 450 W reference module",
+    "power_w": 450,
+    "length_m": 1.762,
+    "width_m": 1.134,
+    "mass_kg": 22,
+    "rack_mass_kg": 8,
+    "noct_c": 45,
+    "temp_coefficient": -0.0035,
+    "degradation": 0.005,
+    "status": "Explicit engineering assumptions, not a manufacturer's specification"
+  },
+  "model": {
+    "system_efficiency": 0.85,
+    "albedo": 0.2,
+    "edge_margin_m": 0.5
+  },
+  "policy": {
+    "fit_small": 4,
+    "fit_medium": 3,
+    "fit_large": 2.5,
+    "fit_end": "2033-12-31",
+    "coverage_limit": 0.5,
+    "load_limit": 150,
+    "source_url": "https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20(TC).pdf",
+    "checked": "2026-10-02",
+    "scope": "Preliminary checks for continuous-cover installation on a New Territories Exempted House; not structural approval",
+    "village_house_area_limit_m2": 65.03,
+    "village_house_source_url": "https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf",
+    "village_house_source_section": "September 2024 edition, Part A, printed page 3: covered area at most 65.03 m² (700 sq ft)",
+    "village_house_checked": "2026-10-03"
+  },
+  "finance": {
+    "life_years": 25,
+    "self_use_rate": 1.4,
+    "status": "Post-2033 avoided-cost scenario is an adjustable assumption, not a future tariff forecast"
+  },
+  "location": {
+    "lat": 22.45,
+    "lon": 114.16,
+    "name": "New Territories reference point"
+  }
+}
