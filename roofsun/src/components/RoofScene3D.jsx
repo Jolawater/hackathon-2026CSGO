@@ -219,10 +219,10 @@ export default function RoofScene3D({ inputs, config, result, sun, t }) {
     });
     // Direct owner answers, never invert a sampled horizon into buildings.
     // Distance is from the nearest roof edge; facade spans the assumed 120° sector.
-    const neighbour = inputs.neighbour,
-      neighbourMeshes = [];
-    if (neighbour.floors > 0) {
-      const az = ((180 - inputs.roof_rotation) * Math.PI) / 180;
+    const neighbourMeshes = [];
+    for (const neighbour of inputs.neighbours || []) {
+      if (neighbour.floors <= 0) continue;
+      const az = ((neighbour.direction - inputs.roof_rotation) * Math.PI) / 180;
       const direction = new THREE.Vector3(Math.sin(az), 0, -Math.cos(az));
       const edge = (Math.abs(direction.x) * w + Math.abs(direction.z) * d) / 2;
       const thickness = 3; // Illustrative facade depth; not a model input.
@@ -242,10 +242,17 @@ export default function RoofScene3D({ inputs, config, result, sun, t }) {
       );
       m.rotation.y = -az;
       neighbourMeshes.push(m);
+      const names = zh
+        ? ["北", "東北", "東", "東南", "南", "西南", "西", "西北"]
+        : ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+      m.userData.direction = neighbour.direction;
       m.userData.dimensionText = zh
-        ? `南面鄰屋 · 高出 ${relative} 米 · 相距 ${neighbour.distance} 米`
-        : `Southern neighbour · ${relative} m higher · ${neighbour.distance} m away`;
+        ? `${names[neighbour.direction / 45]}面鄰屋 · 高出 ${relative} 米 · 相距 ${neighbour.distance} 米`
+        : `${names[neighbour.direction / 45]} neighbour · ${relative} m higher · ${neighbour.distance} m away`;
     }
+    renderer.domElement.dataset.neighbourDirections = JSON.stringify(
+      neighbourMeshes.map((m) => m.userData.direction),
+    );
     const group = new THREE.Group();
     scene.add(group);
     const panelRecords = [];

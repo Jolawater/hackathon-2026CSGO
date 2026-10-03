@@ -9,7 +9,7 @@ from typing import Literal
 import json
 import math
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .calibration import calibration, weather_ratio
 from scripts.hko_check import compare_monthly
 from .model import Inputs, Configuration, evaluate, search, sun_preview, MODEL_VERSION, POLICY
@@ -28,14 +28,29 @@ class RoofDimensions(OwnerModel):
     width:float=Field(default=8.06,ge=1,le=30)
     depth:float=Field(default=8.06,ge=1,le=30)
 
-class SouthNeighbour(OwnerModel):
+class Neighbour(OwnerModel):
+    direction:Literal[0,45,90,135,180,225,270,315]=180
     floors:float=Field(default=0,ge=0,le=15)
     distance:float=Field(default=10,ge=.5,le=200)
 
+SouthNeighbour = Neighbour  # Old Python callers retain the south-facing default.
+
+def migrate_neighbours(value):
+    if not isinstance(value,dict):return value
+    value=dict(value)
+    old=value.pop("neighbour",None)
+    if old is not None and "neighbours" not in value:
+        old=old.model_dump() if isinstance(old,BaseModel) else old
+        value["neighbours"]=[{"direction":180,**old}]
+    return value
+
 class SevenInputs(OwnerModel):
+    @model_validator(mode="before")
+    @classmethod
+    def migrate(cls,value):return migrate_neighbours(value)
     roof:RoofDimensions=Field(default_factory=RoofDimensions)
     door_direction:Literal[0,45,90,135,180,225,270,315]=0
-    neighbour:SouthNeighbour=Field(default_factory=SouthNeighbour)
+    neighbours:list[Neighbour]=Field(default_factory=lambda:[Neighbour()],min_length=1,max_length=3)
     price_per_kw:float=Field(default=25000,gt=0,le=100000)
     cost_band:Literal['low','medium','high']='medium'
     commissioning_month:str=Field(default='2027-01',pattern=r'^(202[6-9]|203[0-3])-(0[1-9]|1[0-2])$')
@@ -46,20 +61,30 @@ class ScreeningRequest(OwnerModel):
     selected_rows:int|None=Field(default=None,ge=1,le=24)
 
 
-def south_horizon(floors,distance):
+def facade_horizon(floors,distance,direction=180):
     # Same 12-sector facade projection as the former Screening.jsx converter.
     result=[]
     for i in range(12):
-        delta=abs((i*30-180+540)%360-180)
+        delta=abs((i*30-direction+540)%360-180)
         angle=min(80,math.degrees(math.atan2(floors*3*math.cos(math.radians(delta)),distance))) if delta<=60 else 0
         result.append(round(angle,1))
     return result
 
 
+def south_horizon(floors,distance):return facade_horizon(floors,distance,180)
+
+def neighbours_horizon(neighbours):
+    horizons=[facade_horizon(n.floors,n.distance,n.direction) for n in neighbours]
+    return [max(values) for values in zip(*horizons)] if horizons else [0]*12
+
+def higher_neighbours(neighbours):
+    all_zero=all(n.floors==0 for n in neighbours)
+    return [n.model_copy(update={"floors":min(15,n.floors+(1 if not all_zero or i==0 else 0))}) for i,n in enumerate(neighbours)]
+
 def model_inputs(owner:SevenInputs):
     return Inputs(width=owner.roof.width,depth=owner.roof.depth,
         house_area=owner.roof.width*owner.roof.depth,exclusions=[],village_house_mode=True,
-        roof_rotation=owner.door_direction,horizon=south_horizon(owner.neighbour.floors,owner.neighbour.distance),
+        roof_rotation=owner.door_direction,horizon=neighbours_horizon(owner.neighbours),
         price_per_kw=owner.price_per_kw,**COST_BANDS[owner.cost_band],
         commissioning=date.fromisoformat(owner.commissioning_month+'-01'),post_fit=owner.post_fit,
         self_use_rate=1.4,self_use_share=.5,discount_rate=.04,cost_inflation=0,
@@ -173,7 +198,7 @@ def analyse_seven_cached(serialized):
            ('quote_plus_20',{'price_per_kw':inputs.price_per_kw*1.2}),
            ('delay_6_months',{'commissioning':(pd.Timestamp(inputs.commissioning)+pd.DateOffset(months=6)).date()}),
            ('delay_12_months',{'commissioning':(pd.Timestamp(inputs.commissioning)+pd.DateOffset(months=12)).date()}),
-           ('neighbour_plus_floor',{'horizon':south_horizon(owner.neighbour.floors+1,owner.neighbour.distance)}),
+           ('neighbour_plus_floor',{'horizon':neighbours_horizon(higher_neighbours(owner.neighbours))}),
            ('high_other_costs',COST_BANDS['high']),('linear_electrical',{'electrical_model':'linear'}),
            ('weather_2023',{'weather_year':2023,'weather_scale':weather_ratio(2023)}),
            ('weather_2024',{'weather_year':2024,'weather_scale':weather_ratio(2024)})]
@@ -199,7 +224,7 @@ def analyse_seven(request):return analyse_seven_cached(request.model_dump_json()
 
 def import_owner(payload):
     """Only the seven owner answers survive import; all fixed assumptions reset."""
-    original=payload.get('inputs')
+    original=migrate_neighbours(payload.get('inputs'))
     if isinstance(original,dict) and isinstance(original.get('roof'),dict):
         allowed={key:original[key] for key in SevenInputs.model_fields if key in original}
         return SevenInputs.model_validate(allowed),False

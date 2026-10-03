@@ -9,16 +9,16 @@ export const COST_BANDS = {
 export const OWNER_DEFAULTS = {
   roof: { width: 8.06, depth: 8.06 },
   door_direction: 0,
-  neighbour: { floors: 0, distance: 10 },
+  neighbours: [{ direction: 180, floors: 0, distance: 10 }],
   price_per_kw: 25000,
   cost_band: "medium",
   commissioning_month: "2027-01",
   post_fit: false,
 };
 // Preserved conversion from the earlier Screening.jsx: a constant-height facade.
-export function neighbourHorizon(floors, distance) {
+export function facadeHorizon(floors, distance, direction = 180) {
   return Array.from({ length: 12 }, (_, i) => {
-    const delta = Math.abs(((i * 30 - 180 + 540) % 360) - 180);
+    const delta = Math.abs(((i * 30 - direction + 540) % 360) - 180);
     return delta <= 60
       ? Math.round(
           Math.min(
@@ -34,7 +34,15 @@ export function neighbourHorizon(floors, distance) {
       : 0;
   });
 }
-const directions = [
+export function neighbourHorizon(neighbours) {
+  const horizons = neighbours.map((n) =>
+    facadeHorizon(n.floors, n.distance, n.direction),
+  );
+  return Array.from({ length: 12 }, (_, i) =>
+    Math.max(0, ...horizons.map((h) => h[i])),
+  );
+}
+export const directions = [
   ["N", "北"],
   ["NE", "東北"],
   ["E", "東"],
@@ -62,6 +70,13 @@ function Group({ number, title, children }) {
 }
 export default function OwnerInputs({ inputs, onChange, t }) {
   const set = (key, value) => onChange({ ...inputs, [key]: value });
+  const editNeighbour = (index, key, value) =>
+    set(
+      "neighbours",
+      inputs.neighbours.map((n, i) =>
+        i === index ? { ...n, [key]: value } : n,
+      ),
+    );
   const costs = COST_BANDS[inputs.cost_band];
   return (
     <form
@@ -127,38 +142,106 @@ export default function OwnerInputs({ inputs, onChange, t }) {
       <Group
         number={3}
         title={t(
-          "How much higher is the nearest southern neighbour?",
-          "南面最近的鄰屋比天台高幾層？相距幾米？",
+          "Any neighbours taller than your roof?",
+          "附近有沒有比你天台高的鄰屋？",
         )}
       >
-        <div className="field-pair">
-          <NumberField
-            label={t("Floors above the roof", "高出天台的層數")}
-            value={inputs.neighbour.floors}
-            min={0}
-            max={15}
-            step={0.5}
-            unit={t("floors", "層")}
-            onChange={(v) =>
-              set("neighbour", { ...inputs.neighbour, floors: v })
-            }
-          />
-          <NumberField
-            label={t("Distance to neighbour", "與鄰屋距離")}
-            value={inputs.neighbour.distance}
-            min={0.5}
-            max={200}
-            step={0.5}
-            unit="m"
-            onChange={(v) =>
-              set("neighbour", { ...inputs.neighbour, distance: v })
-            }
-          />
-        </div>
+        {inputs.neighbours.map((n, index) => (
+          <div className="neighbour-row" key={index}>
+            <label>
+              {t(`Neighbour ${index + 1} direction`, `鄰屋 ${index + 1} 方向`)}
+              <select
+                aria-label={t(
+                  `Neighbour ${index + 1} direction`,
+                  `鄰屋 ${index + 1} 方向`,
+                )}
+                value={n.direction}
+                onChange={(e) =>
+                  editNeighbour(index, "direction", +e.target.value)
+                }
+              >
+                {directions.map(([en, cn], i) => {
+                  const delta = (i * 45 - inputs.door_direction + 360) % 360;
+                  const relative = {
+                    0: t("in front of the door", "正門前面"),
+                    180: t("behind the house", "屋後"),
+                    270: t("on your left", "左手邊"),
+                    90: t("on your right", "右手邊"),
+                  }[delta];
+                  return (
+                    <option key={en} value={i * 45}>
+                      {t(en, cn)}
+                      {relative ? ` · ${relative}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <div className="field-pair">
+              <NumberField
+                label={t(
+                  `Floors above the roof ${index + 1}`,
+                  `高出天台的層數 ${index + 1}`,
+                )}
+                value={n.floors}
+                min={0}
+                max={15}
+                step={0.5}
+                unit={t("floors", "層")}
+                onChange={(v) => editNeighbour(index, "floors", v)}
+              />
+              <NumberField
+                label={t(
+                  `Distance to neighbour ${index + 1}`,
+                  `與鄰屋距離 ${index + 1}`,
+                )}
+                value={n.distance}
+                min={0.5}
+                max={200}
+                step={0.5}
+                unit="m"
+                onChange={(v) => editNeighbour(index, "distance", v)}
+              />
+            </div>
+            {inputs.neighbours.length > 1 && (
+              <button
+                type="button"
+                aria-label={t(
+                  `Remove neighbour ${index + 1}`,
+                  `移除鄰屋 ${index + 1}`,
+                )}
+                onClick={() =>
+                  set(
+                    "neighbours",
+                    inputs.neighbours.filter((_, i) => i !== index),
+                  )
+                }
+              >
+                × {t("Remove", "移除")}
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          className="add-neighbour"
+          disabled={inputs.neighbours.length >= 3}
+          onClick={() => {
+            const direction = [180, 90, 270, 0, 135, 225, 45, 315].find(
+              (d) => !inputs.neighbours.some((n) => n.direction === d),
+            );
+            set("neighbours", [
+              ...inputs.neighbours,
+              { direction, floors: 0, distance: 10 },
+            ]);
+          }}
+        >
+          {t("+ Add another neighbour (up to 3)", "＋ 再加一棟（最多 3 棟）")}
+        </button>
         <p className="help">
           {t(
-            "No higher neighbour to the south? Enter 0 floors.",
-            "南面沒有較高鄰屋，就填 0 層。",
+            "Enter 0 floors if none. East, west and north neighbours can also block light; the effect depends on height, distance and direction. Relative directions assume you stand at the door facing out.",
+            "沒有就填 0 層。東、西、北面的鄰屋也會擋光，影響取決於高度、距離與方向。左右以站在門口面向外為準。",
           )}
         </p>
       </Group>
