@@ -1,11 +1,23 @@
 import React from "react";
-import { ShieldCheck, Layers, Check, ExternalLink } from "lucide-react";
+import {
+  ShieldCheck,
+  Layers,
+  Check,
+  X,
+  CircleHelp,
+  ExternalLink,
+} from "lucide-react";
+import EvidenceMap from "./EvidenceMap.jsx";
 import { useApi } from "../lib/api.js";
 import { RadiationEvidence } from "./Screening.jsx";
 import { ReferenceEvidence } from "./Evidence.jsx";
 export default function Validation({ t }) {
   const { data: meta, error } = useApi("/api/meta", undefined, 0),
-    { data: validation } = useApi("/api/validation", undefined, 0);
+    { data: validation, error: validationError } = useApi(
+      "/api/validation",
+      undefined,
+      0,
+    );
   return (
     <main className="validation-view">
       <div className="page-intro">
@@ -19,6 +31,13 @@ export default function Validation({ t }) {
         </p>
       </div>
       {error && <p className="error-banner">{error}</p>}
+      {validationError && (
+        <p className="error-banner" role="alert">
+          {t("Validation report unavailable: ", "驗證報告未能載入：")}
+          {validationError}
+        </p>
+      )}
+      <EvidenceMap t={t} />
       <RadiationEvidence check={meta?.irradiance_checks?.[2025]} t={t} />
       <div className="validation-grid">
         <section className="card">
@@ -32,31 +51,80 @@ export default function Validation({ t }) {
               "以下是軟件及物理關係檢查，不代表全年發電量已經實地驗證。",
             )}
           </p>
-          {validation ? (
-            validation.checks.map((c, i) => (
-              <div className="check-row" key={i}>
-                <Check size={16} />
-                <div>
-                  <strong>{t(c.name_en, c.name_zh)}</strong>
-                  <p>{t(c.description_en, c.description_zh)}</p>
-                  <code>{c.observed}</code>
-                  {c.source_url && (
-                    <a
-                      className="check-source"
-                      href={c.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {t("Reference source", "參考來源")}{" "}
-                      <ExternalLink size={11} />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p>{t("Loading validation report…", "正在載入檢查報告…")}</p>
+          {validation && (
+            <div className="validation-provenance">
+              <p>
+                {t("Report model", "報告模型")}{" "}
+                {validation.model_version || "—"} · {t("Generated", "生成時間")}{" "}
+                {validation.generated_at
+                  ? new Date(validation.generated_at).toLocaleString()
+                  : t("not recorded", "未記錄")}
+              </p>
+              <p
+                data-report-status={
+                  validation.freshness?.status || "unverified"
+                }
+              >
+                {validation.freshness?.status === "current"
+                  ? t(
+                      "Report fingerprints match the current model and bundled input files.",
+                      "報告指紋與目前模型及內附輸入檔案一致。",
+                    )
+                  : t(
+                      "Saved report is stale or its provenance is unverified. These results do not establish that the current model passes; regenerate the checks.",
+                      "已儲存報告過期或來源尚未核實。以下結果不能證明目前模型通過，需重新執行檢查。",
+                    )}
+              </p>
+            </div>
           )}
+          {validation
+            ? validation.checks.map((c, i) => (
+                <div
+                  className="check-row"
+                  key={i}
+                  data-check-status={
+                    c.passed === true
+                      ? "passed"
+                      : c.passed === false
+                        ? "failed"
+                        : "unknown"
+                  }
+                >
+                  {c.passed === true ? (
+                    <Check size={16} aria-hidden="true" />
+                  ) : c.passed === false ? (
+                    <X size={16} aria-hidden="true" />
+                  ) : (
+                    <CircleHelp size={16} aria-hidden="true" />
+                  )}
+                  <div>
+                    <span className="check-status">
+                      {c.passed === true
+                        ? t("PASS", "通過")
+                        : c.passed === false
+                          ? t("FAIL", "未通過")
+                          : t("UNVERIFIED", "未核實")}
+                    </span>
+                    <strong>{t(c.name_en, c.name_zh)}</strong>
+                    <p>{t(c.description_en, c.description_zh)}</p>
+                    <code>{c.observed}</code>
+                    {c.source_url && (
+                      <a
+                        className="check-source"
+                        href={c.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {t("Reference source", "參考來源")}{" "}
+                        <ExternalLink size={11} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))
+            : !validationError && (
+                <p>{t("Loading validation report…", "正在載入檢查報告…")}</p>
+              )}
         </section>
         <section className="card">
           <div className="card-title">

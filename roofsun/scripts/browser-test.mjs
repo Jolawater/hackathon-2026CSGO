@@ -1,15 +1,18 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+const artifacts=join(tmpdir(),"roofsun-browser-checks");
 import { mkdir, readFile } from "node:fs/promises";
 const base = process.env.ROOFSUN_TEST_URL || "http://127.0.0.1:5173";
-const browser = await chromium.launch();
+const browser = await chromium.launch({channel:process.env.ROOFSUN_BROWSER_CHANNEL || undefined});
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
 });
 const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
-await mkdir("/tmp/roofsun-browser-checks", { recursive: true });
+await mkdir(artifacts, { recursive: true });
 const ready = () =>
   page.waitForFunction(
     () => {
@@ -77,7 +80,7 @@ try {
       .isVisible(),
   );
   await page.screenshot({
-    path: "/tmp/roofsun-browser-checks/desktop.png",
+    path: `${artifacts}/desktop.png`,
     fullPage: true,
   });
   await page
@@ -93,9 +96,9 @@ try {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
   const download = await downloadPromise;
-  await download.saveAs("/tmp/roofsun-browser-checks/plans.json");
+  await download.saveAs(`${artifacts}/plans.json`);
   const archive = JSON.parse(
-    await readFile("/tmp/roofsun-browser-checks/plans.json", "utf8"),
+    await readFile(`${artifacts}/plans.json`, "utf8"),
   );
   assert.equal(archive.schema, "roofsun-hk/v2");
   assert.equal(archive.model_version, "2.1.0");
@@ -126,10 +129,10 @@ try {
     .getByRole("button", { name: "Download report", exact: true })
     .click();
   const report = await reportPromise;
-  await report.saveAs("/tmp/roofsun-browser-checks/report.html");
+  await report.saveAs(`${artifacts}/report.html`);
   assert(
     (
-      await readFile("/tmp/roofsun-browser-checks/report.html", "utf8")
+      await readFile(`${artifacts}/report.html`, "utf8")
     ).includes("csv_sha256"),
   );
   await page.getByLabel("Import design file", { exact: true }).setInputFiles({
@@ -238,10 +241,10 @@ try {
   const evidenceExport = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
   const ed = await evidenceExport;
-  await ed.saveAs("/tmp/roofsun-browser-checks/evidence.json");
+  await ed.saveAs(`${artifacts}/evidence.json`);
   assert(
     JSON.parse(
-      await readFile("/tmp/roofsun-browser-checks/evidence.json", "utf8"),
+      await readFile(`${artifacts}/evidence.json`, "utf8"),
     ).evidence.reference.reference_kwh > 0,
   );
   await page.getByLabel("Installation per kW", { exact: true }).fill("18000");
@@ -250,9 +253,9 @@ try {
   const staleExport = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
   const sd = await staleExport;
-  await sd.saveAs("/tmp/roofsun-browser-checks/stale.json");
+  await sd.saveAs(`${artifacts}/stale.json`);
   assert.equal(
-    JSON.parse(await readFile("/tmp/roofsun-browser-checks/stale.json", "utf8"))
+    JSON.parse(await readFile(`${artifacts}/stale.json`, "utf8"))
       .evidence,
     null,
   );
@@ -388,9 +391,9 @@ try {
   const meterExport = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
   const meterFile = await meterExport;
-  await meterFile.saveAs("/tmp/roofsun-browser-checks/meter.json");
+  await meterFile.saveAs(`${artifacts}/meter.json`);
   const meterArchive = JSON.parse(
-    await readFile("/tmp/roofsun-browser-checks/meter.json", "utf8"),
+    await readFile(`${artifacts}/meter.json`, "utf8"),
   );
   assert.equal(meterArchive.measured_reference.difference_pct, 0);
   assert.equal(
@@ -408,16 +411,16 @@ try {
   const changedMeter = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON", exact: true }).click();
   const changedFile = await changedMeter;
-  await changedFile.saveAs("/tmp/roofsun-browser-checks/meter-stale.json");
+  await changedFile.saveAs(`${artifacts}/meter-stale.json`);
   assert.equal(
     JSON.parse(
-      await readFile("/tmp/roofsun-browser-checks/meter-stale.json", "utf8"),
+      await readFile(`${artifacts}/meter-stale.json`, "utf8"),
     ).measured_reference,
     null,
   );
   await reset();
   await page.screenshot({
-    path: "/tmp/roofsun-browser-checks/screening-desktop.png",
+    path: `${artifacts}/screening-desktop.png`,
     fullPage: false,
   });
   await page
@@ -439,7 +442,7 @@ try {
     .first()
     .waitFor();
   await page.screenshot({
-    path: "/tmp/roofsun-browser-checks/validation-zh.png",
+    path: `${artifacts}/validation-zh.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "設計工作台", exact: true }).click();
@@ -450,7 +453,7 @@ try {
     { timeout: 10000 },
   );
   await page.screenshot({
-    path: "/tmp/roofsun-browser-checks/mobile-zh.png",
+    path: `${artifacts}/mobile-zh.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "EN", exact: true }).click();
@@ -479,7 +482,7 @@ try {
   );
 } catch (error) {
   await page.screenshot({
-    path: "/tmp/roofsun-browser-checks/failure.png",
+    path: `${artifacts}/failure.png`,
     fullPage: true,
   });
   console.error(await page.locator("body").innerText());

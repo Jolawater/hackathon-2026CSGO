@@ -57,6 +57,7 @@ import { fmt, money } from "./lib/format.js";
 import { NumberField, Slider, Pill } from "./components/Controls.jsx";
 import RoofScene from "./components/RoofScene.jsx";
 import Horizon from "./components/Horizon.jsx";
+import OwnerGuide from "./components/OwnerGuide.jsx";
 import {
   DecisionControls,
   DecisionBanner,
@@ -438,6 +439,9 @@ function App() {
               )}
             </span>
           </div>
+          <OwnerGuide inputs={inputs} result={ready ? result : null} t={t}
+            onEvidence={() => {setTab("validation"); window.scrollTo(0,0);}}
+            onCompare={() => document.getElementById("choices")?.scrollIntoView({behavior:"smooth"})} />
           <DecisionBanner
             sample={preset !== "custom"}
             result={ready ? result : null}

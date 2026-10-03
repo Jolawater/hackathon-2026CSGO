@@ -69,7 +69,11 @@ def api_sun(request:SunRequest):
 def validation():
     path=ROOT/'data/validation.json'
     if not path.exists():raise HTTPException(503,'Validation report has not been generated; run scripts/validate.py')
-    return json.loads(path.read_text())
+    from .validation_status import report_status
+    from .model import MODEL_VERSION
+    report = json.loads(path.read_text(encoding='utf-8'))
+    report['freshness'] = report_status(report, ROOT, MODEL_VERSION)
+    return report
 
 # Production build and API share one origin; no Node process or external API needed at runtime.
 if (ROOT/'dist').exists():app.mount('/',StaticFiles(directory=ROOT/'dist',html=True),name='website')

@@ -70,6 +70,9 @@ record('Boundary and rotated packing regressions','邊界及旋轉排板回歸',
 report.update(model_version='2.1.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,irradiance_check=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'
-temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2))
+from datetime import datetime, timezone
+from backend.validation_status import fingerprints
+report.update(generated_at=datetime.now(timezone.utc).isoformat(), input_sha256=fingerprints(ROOT))
+temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2), encoding='utf-8')
 temporary.replace(ROOT/'data/validation.json')
 print(f"PASS: {len(checks)} checks, {len(references)} annual reference cases, three weather years.")

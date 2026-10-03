@@ -1,7 +1,7 @@
 name: RoofSun checks
 on:
   push:
-    branches: ["Jim's-RoofSun-HK"]
+    branches: ["Jim's-RoofSun-HK", "JESON-ROOFTOPJIM"]
     paths: ['roofsun/**', '.github/workflows/roofsun-checks.yml']
   workflow_dispatch:
 jobs:
@@ -32,3 +32,4 @@ jobs:
           python -m uvicorn backend.app:app --port 8000 > /tmp/roofsun-api.log 2>&1 &
           npm run dev > /tmp/roofsun-vite.log 2>&1 &
           npm run test:browser
+          node scripts/owner-browser-test.mjs

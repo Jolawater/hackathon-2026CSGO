@@ -1,5 +1,16 @@
 # RoofSun HK · 安裝之前，先探索
 
+## JESON-ROOFTOPJIM · final-direction additions
+
+This branch starts from Jim's RoofSun 2.1.0 (427b206). It adds an owner-facing explanation of payback, panel trade-offs and the generation stress case; a linked evidence-sufficiency register; truthful pass/fail/unknown display and validation-report fingerprints. It preserves Jim's model and professional installation scope. No completed interviews, actual installer quotations or measured rooftop output are claimed.
+
+- [比赛定位、criteria 对照、三分钟脚本和提交自查](docs/COMPETITION.md)
+- [数据/论文来源、模型解释与证据是否充分](docs/EVIDENCE.md)
+- [同步 Jim 分支与本地运行](docs/BRANCH_AND_PREVIEW.md)
+
+After the standard checks below, run `node scripts/owner-browser-test.mjs` against the running server. Both browser scripts support `ROOFSUN_BROWSER_CHANNEL=msedge` for an installed Microsoft Edge. `GET /api/validation` compares saved report fingerprints with current model/input files. Re-run `python scripts/validate.py` after changing those files; a stale report is not evidence that the current implementation passed.
+
+
 A bilingual engineering decision workbench for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.1.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
 
 香港村屋太陽能安裝前的雙語工程決策工作台。可調整排布、比較物理取捨，並按預算、持續回本及收益目標選擇方案或暫緩安裝。**結果為模擬，未聲稱實測準確率，也不能判定結構安全。**
