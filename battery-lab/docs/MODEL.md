@@ -26,9 +26,11 @@ The winter sensitivity model separates three independent quantities:
 2. `fcold`: temporarily usable fraction in the entered cold scenario.
 3. `heating_w`: additional consumption during active tasks.
 
-Example, explicitly assumed: nominal 60 kWh, SOH 100%, `fcold=0.9`. The simplified full-charge available energy is 54 kWh, even though the UI's SOC reads 100%. A 1 kW heater over two active hours requires another 2 kWh. Warming back up does not change the permanent SOH parameter. Each run uses constant conditions; this model does not predict the transient return of inaccessible energy while temperature changes mid-trip.
+Reference mode transfers digitized Molicel P28A discharge energy curves: 23°C charge, 2.8 A discharge to 2.5 V, linear interpolation between temperature points. At 5°C this produces about 94.1% of the 23°C energy, replacing the arbitrary winter 90% preset. At 60 kWh nominal energy and SOH 100%, this gives about 56.5 kWh in the simplified reference-transfer scenario. It is not a measured EV pack coefficient. A user-entered 1 kW heater over two active hours consumes another 2 kWh.
 
-These numbers are sensitivity assumptions, not a universal measured cold-weather loss curve. Ambient temperature is recorded but is not converted into cell temperature. The reference aging experiment requires an independently entered cell temperature. At 0°C, its 10–45°C cycling envelope is exceeded, so it returns no numerical aging forecast.
+Comparison runs use constant conditions and assume the reference cell has equilibrated to ambient. Manual mode retains user-entered measurements or sensitivity assumptions. The 3D phone workbench has a separate illustrative thermal model and stores inaccessible cold energy without destroying it. Full source conditions, curve integration, equations and transient limitations are in [WORKSHOP.md](WORKSHOP.md). Neither cold model changes permanent SOH.
+
+The reference aging experiment requires an independently entered constant cell temperature. At 0°C, its 10–45°C cycling envelope is exceeded, so it returns no numerical aging forecast. The game thermal estimates are not used to calibrate that reference model.
 
 [US Department of Energy: Winterizing your electric vehicle](https://www.energy.gov/articles/winterizing-your-electric-vehicle) supports the relevance of cold conditions, preconditioning and cabin heating; it does not calibrate our example coefficients.
 
@@ -75,3 +77,7 @@ Passing these checks means only that the request is inside the selected envelope
 4. **Independent target-device validation:** not completed. No invented brand-specific accuracy, personal lifetime forecast or measured curve is shown.
 
 Future device calibration requires time-aligned charging current/voltage, battery temperature, load, and periodic capacity checks under a reference protocol. Validation should hold out cells or conditions, not adjacent points from the same trajectory. Short-term energy measurements cannot establish years of aging accuracy.
+
+### Frequency and lifespan graph
+
+Generated experiments support 1–12 charge/discharge sequences per day, provided their duration fits in 24 hours. Imported profiles determine their own frequency. The life chart and tooltip use EFC, not plug-in sessions. The 100/300/500/800/1000 EFC table interpolates the simulated curve; it does not extrapolate beyond the run. Calendar aging remains present, so the same cycle count at a different frequency need not give the same capacity.

@@ -22,7 +22,7 @@ export function renderChart(series, xLabel, yLabel, maxX, options = {}) {
   const x = v => L + v / end * (W - L - R);
   const y = v => H - B - (v - yMin) / (100 - yMin) * (H - T - B);
   const timeLabel = v => {
-    if (health) return `${v.toFixed(v % 1 ? 1 : 0)} ${zh ? '天' : 'days'}`;
+    if (health) return `${v.toFixed(v % 1 ? 1 : 0)} ${/EFC|cycle/i.test(xLabel)?'EFC':zh ? '天' : 'days'}`;
     const minutes = Math.round(v * 60), day = Math.floor(minutes / 1440);
     const clock = `${String(Math.floor(minutes % 1440 / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
     return day ? `${zh ? '第' : 'Day '}${day + 1}${zh ? '天 ' : ' · '}${clock}` : clock;
@@ -38,6 +38,7 @@ export function renderChart(series, xLabel, yLabel, maxX, options = {}) {
     const tick = health ? `${Number(at.toFixed(1))}` : end <= 24 ? (at===24?'24:00':timeLabel(at)) : `${Number((at/24).toFixed(1))}${zh ? '天' : 'd'}`;
     svg += `<line x1="${x(at)}" x2="${x(at)}" y1="${T}" y2="${H-B}" stroke="#edf1ec"/><text x="${x(at)}" y="${H-B+25}" text-anchor="${i===0?'start':i===4?'end':'middle'}">${escape(tick)}</text>`;
   }
+  svg += `<text x="${(L+W-R)/2}" y="${H-5}" text-anchor="middle">${escape(xLabel)}</text>`;
   const reference = health ? 80 : options.reserve;
   if (reference != null && reference >= yMin) {
     if (!health) svg += `<rect x="${L}" y="${y(reference)}" width="${W-L-R}" height="${H-B-y(reference)}" fill="#f7dfca" opacity=".3"/>`;

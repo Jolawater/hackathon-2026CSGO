@@ -4,6 +4,7 @@ export function enhanceControls(root, device = 'phone') {
   const capacityMax = {phone: 40, scooter: 5000, car: 120000}[device];
   const powerMax = {phone: 100, scooter: 2000, car: 22000}[device];
   const rules = {
+    cycles_per_day: [1,12,1],
     capacity_wh: [1, capacityMax, 1], charge_w: [0, powerMax, device === 'phone' ? 1 : 50],
     soh: [1, 100, 1], initial_soc: [0, 100, 1], reserve: [0, 99, 1],
     trigger: [0, 99, 1], target: [1, 100, 1], efficiency: [1, 100, 1],

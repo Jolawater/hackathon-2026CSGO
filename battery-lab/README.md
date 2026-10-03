@@ -1,10 +1,10 @@
 # Battery Choices / 电池选择实验室
 
-Two local tools share one deterministic energy model:
+Two local tools provide task planning and an interactive physical demonstration:
 
 1. **方案权衡 / Compare** — task constraints, charging strategies, A/B curves, feasible candidates and a Pareto frontier.
-2. **使用沙盒 / Sandbox** — repeated daily use, seeded variation, playback, task failures, and a separate evidence-gated cell-aging experiment.
-3. **模型与证据 / Evidence** — sources, limitations and executable checks.
+2. **使用沙盒 / Sandbox** — a 3D phone workbench with plug dragging, scheduled charging, a seekable 24-hour timeline, weather and illustrative thermal viewing. A separate evidence-gated cell-aging experiment sits below it.
+3. **Principles · 原理与依据** — sources, limitations and executable checks, linked in the footer rather than the top navigation.
 
 ### Chart and input controls
 
@@ -32,10 +32,10 @@ Open <http://127.0.0.1:8765>. Keep the terminal open. Stop with Ctrl+C. Use `sta
 
 1. Select the phone preset, keep default settings and run Compare. A is the entered strategy; B is a distinct feasible strategy where available. The B selector allows any candidate, including infeasible ones, to be inspected. Recommendation remains separately marked by a star.
 2. Increase the target from 90% to 100%. Observe higher departure reserve and extra charging time; do not claim all objectives improve.
-3. Select the car, click the winter example and run. The example assumes 90% usable capacity and 1000 W heating, not measured universal weather coefficients. The result explicitly compares full-charge Wh under warm and entered conditions.
+3. Select the car, click the winter example and run. The example transfers Molicel P28A temperature curves (about 94.1% at 5°C) and assumes 1000 W heating. It is not a measured vehicle calibration. The result explicitly compares full-charge Wh under warm and entered conditions.
 4. Switch to Sandbox, set `days=30`, run and replay. Change to 365 for a year. Daily power fluctuation is optional and seeded.
 5. Run the independent 25°C B1 reference-cell experiment. Set cell temperature to 0°C or SOC limits to 20–80%: the evidence gate withholds degradation numbers.
-6. Open Evidence to run the mathematical and software checks.
+6. Open the footer Principles link to run the mathematical and software checks.
 
 日程和充电窗口每天重复；首日从午夜开始。起止时间相等表示没有充电窗口。午夜跨越任务需拆成两段。固定时段策略表示“充电窗口内即充”。出发策略依据可用充电窗口及分段功率估算最迟启动时间，是启发式策略；若期间持续高负载，实际结果仍可能不满足目标，必须查看约束判断。
 
@@ -95,3 +95,11 @@ Each device offers two editable, assumed scenarios: student/travel for phones, c
 电单车指使用锂电池的两轮电动车；电车指纯电动汽车。场景卡解释适用人群、遇到的问题和应关注的输出；它们是待用户调研验证的演示假设。车辆预设的任务功率与每日距离、Wh/km 和辅助用电一致，冬季取暖另行计入。
 
 `GET /api/catalog` now includes `scenarios` with stable IDs, bilingual title/audience/problem/focus and full parameters, while preserving the original `presets`. Scenario metadata is descriptive and does not change the physical model. Run `python tests/scenarios_check.py` with the local server running to check all six scenarios, state clearing, customization, saved-state restoration, bilingual switching and legacy import.
+
+## 3D workbench and cycle-based life chart
+
+See [WORKSHOP.md](docs/WORKSHOP.md) for controls, the thermal equations, digitized manufacturer cold curves, model boundaries and the final trade-offs. The sandbox is a generic phone prototype; electric two-wheeler and car scenarios remain in Compare. The independent life chart plots EFC versus capacity, supports daily cycle frequency, and reports milestone estimates only within the simulated duration.
+
+Browser checks: `python tests/browser_check.py`, `python tests/scenarios_check.py`, `python tests/workshop_check.py`. Deterministic game-model checks: `node tests/workshop_model.mjs`. WebGL is required for 3D rendering; calculation and timeline controls remain usable if rendering is unavailable.
+
+比赛主 trade-off 可导入 `examples/charge-limit-A.json`，运行后将 B 选为“窗口内即充 / 100%”。相同条件下 A 充电约 60 分钟，B 约 100 分钟，B 多留 3 Wh。完整适题核对见 [COMPETITION.md](docs/COMPETITION.md)。

@@ -33,10 +33,14 @@ Screenshots and JSON reports are saved under ignored `artifacts/`. A versioned n
 
 - No independent iPhone, two-wheeler or EV-pack long-term measurement dataset has been obtained or fitted.
 - The cited B1 research underpins the reused published model. Raw experimental trajectories and a new measured-vs-predicted error assessment are not included.
-- Winter examples use user-adjustable assumptions, not a calibrated temperature response curve.
+- Winter reference mode integrates manufacturer P28A curves and interpolates temperature; transfer to devices and the game thermal parameters remain uncalibrated. Manual assumptions remain available.
 - The mathematical/reference checks satisfy a model-check demonstration; they must not be presented as proof of personal lifespan prediction accuracy.
 - User interviews have not been conducted by this implementation. The interview template remains pending.
 
 ## Reproduction
 
 Save the scenario JSON, model version, dependency lock and random seed. Run through the local API or reimport the JSON in the browser. For aging, preserve the returned `input`, including any copied SOC profile; the result also identifies the reference model and rejection reasons.
+
+## Workshop update checks
+
+`tests/workshop_model.mjs` checks deterministic event replay, restored minute states, cold limits and energy balance. `tests/workshop_check.py` checks real 3D plug dragging, thermal mode, time scrubbing, environment restoration, mobile/bilingual layouts and profile transfer with the evidence gate. The Python suite also covers daily cycling frequency and empirical-reference interpolation. These are implementation checks, not target-device experimental validation.

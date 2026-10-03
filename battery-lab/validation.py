@@ -36,6 +36,13 @@ def run_validation():
     check("与原始 BLAST-Lite 调用一致", "Matches original BLAST-Lite calls", err<1e-12, f"SOH absolute error {err:.3e}; software parity only")
     winter=simulate(base.model_copy(update={"cold_capacity_factor":.9}))['metrics']
     check("冬季可用能量与 SOH 分开", "Winter usable energy separate from SOH", abs(winter['delivered_wh']-90)<1e-6 and base.soh==1, f"{winter['delivered_wh']:.2f} Wh; SOH remains 100%")
+    from cold import cold_factor
+    check("P28A 低温参考插值", "P28A cold-reference interpolation", abs(cold_factor(0)-.925)<.001 and cold_factor(23)==1, f"0 C / 23 C = {cold_factor(0):.4f}; manufacturer curve integration, not device validation")
+    trade=Scenario(capacity_wh=15,initial_soc=.2,target=.8,charge_w=10,efficiency=.9,
+                   window_start=0,window_end=4,departure=4,departure_min=.7,reserve=.1,
+                   tasks=[Task(start=8,end=18,power_w=1)])
+    low=simulate(trade)['metrics'];high=simulate(trade.model_copy(update={'target':1.}))['metrics']
+    check("更多备用电量需更长充电时间", "More reserve costs more charging time", low['feasible'] and high['feasible'] and abs(high['charge_hours']-low['charge_hours']-2/3)<1e-8 and high['final_soc']>low['final_soc'],f"80%: {low['charge_hours']*60:.1f} min; 100%: {high['charge_hours']*60:.1f} min; +3 Wh reserve")
     return {"checks":checks,"all_passed":all(c['passed'] for c in checks),"independent_validation":{
         "zh":"独立设备长期实测验证：尚未完成。模型对照只是软件复现；实验依据来自上游拟合研究，不能当成新设备预测精度。",
         "en":"Independent long-term device validation: not completed. Model parity verifies software reproduction; upstream fitted research does not establish prediction accuracy for a new device."}}

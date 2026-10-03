@@ -4,8 +4,9 @@ from random import Random
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+from cold import cold_factor, DATA as COLD_DATA
 
-VERSION = "energy-1.0.0"
+VERSION = "energy-1.1.0"
 
 
 class Task(BaseModel):
@@ -52,10 +53,13 @@ class Scenario(BaseModel):
     wh_km: float = Field(default=0, ge=0, le=1000)
     aux_w: float = Field(default=0, ge=0, le=10000)
     cold_capacity_factor: float = Field(default=1, gt=0, le=1)
+    cold_mode: Literal["manual", "reference_cell"] = "manual"
     heating_w: float = Field(default=0, ge=0, le=20000)
 
     @model_validator(mode="after")
     def validate_limits(self):
+        if self.cold_mode == "reference_cell":
+            self.cold_capacity_factor = cold_factor(self.ambient_c)
         if self.trigger >= self.target:
             raise ValueError("Charge trigger must be lower than target.")
         return self
@@ -190,8 +194,9 @@ def simulate(s: Scenario, step_minutes=1, include_trace=True):
                    remaining_km=max(0,energy-s.reserve*cap)*s.distance_km/daily_demand if s.distance_km and daily_demand else None)
     assert all(isfinite(v) for v in metrics.values() if isinstance(v, float))
     return {"model": VERSION, "input": s.model_dump(), "metrics": metrics, "trace": trace,
+            "cold_reference": {k:COLD_DATA[k] for k in ['source','model','version','source_sha256','conditions','method']} if s.cold_mode=='reference_cell' else None,
             "daily": daily, "failures": failures, "evidence": "assumed_parameters_energy_balance",
-            "limitations": ["Linear SOC-energy approximation", "SOH held at user input; no device degradation prediction", "Ambient temperature not converted to cell temperature", "Cold capacity factor and heating power are user assumptions, not a temperature calibration", "Charging taper is an assumption"]}
+            "limitations": ["Linear SOC-energy approximation", "SOH held at user input; no device degradation prediction", "Reference cold mode assumes cell equilibrated to ambient; no device-specific thermal calibration", "Cold fraction is manual or transferred P28A reference (23 C charge, 2.8 A discharge to 2.5 V); heating remains user input", "Charging taper is an assumption"]}
 
 
 def compare(s):

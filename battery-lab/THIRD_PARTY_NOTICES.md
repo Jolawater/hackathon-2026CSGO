@@ -18,3 +18,9 @@ The NMC-Gr B1 model identifies experimental research at https://doi.org/10.1016/
 Apple and US Department of Energy pages are cited as evidence; their logos, product images and article contents are not copied into the application. All browser charts and interface assets are local application code. Transitive dependency versions appear in `requirements-lock.txt`; their installed distributions retain their own licensing terms.
 
 AI assistance: Codex assisted with implementation, documentation and test execution. Team members remain responsible for explaining the model, sources, assumptions and validation status at the event.
+
+## Workshop assets and reference data
+
+Three.js **0.170.0**, MIT, is bundled as `static/vendor/three.module.min.js`; its complete license is preserved in `static/vendor/THREE-LICENSE.txt`. Source: https://github.com/mrdoob/three.js/tree/r170. Phone, furniture and cables are procedural geometry; no Steam game or Apple assets are copied.
+
+Molicel INR-18650-P28A v1.3 typical temperature-discharge curves are attributed in `static/data/p28a-temperature.json`, with source URL, PDF SHA-256, extraction method and test conditions. The PDF is not redistributed, and the derived numeric data are not represented as independently measured or endorsed by the manufacturer. See `docs/WORKSHOP.md` for quantitative scope.

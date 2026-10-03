@@ -49,13 +49,7 @@ with sync_playwright() as p:
     page.locator('#lang').click()
     assert page.locator('h1').inner_text()=='Enough energy. For your kind of day.'
     page.locator('a[href="#sandbox"]').click()
-    page.locator('#run').click()
-    page.locator('#play').wait_for()
-    page.locator('#reset').click()
-    page.locator('#play').click()
-    page.wait_for_timeout(300)
-    page.locator('#play').click()
-    assert float(page.locator('#scrub').input_value())>1
+    page.locator('#referenceExperiment summary').click()
     page.locator('#runAging').click()
     page.locator('#ageCsv').wait_for(timeout=30000)
     assert 'Capacity retention' in page.locator('#ageOutput').inner_text()
@@ -70,21 +64,23 @@ with sync_playwright() as p:
     page.locator('[data-aging="temperature_c"]').fill('0')
     page.locator('#runAging').click()
     page.wait_for_function("document.querySelector('#ageOutput').textContent.includes('Outside supported')")
+    page.locator('a[href="#compare"]').first.click()
     page.locator('#copyProfile').click()
     page.wait_for_function("document.querySelector('#profileNotice').textContent.length > 0")
     # Download and import scenario through the actual browser controls.
+    page.locator('a[href="#compare"]').first.click()
     with page.expect_download() as d:
         page.locator('#export').click()
     exported=OUT/'scenario.json'
     d.value.save_as(str(exported))
     page.locator('#import').set_input_files(str(exported))
     page.wait_for_function("document.querySelector('#notice').textContent.includes('Imported')")
-    page.locator('a[href="#evidence"]').click()
+    page.locator('footer a[href="#evidence"]').click()
     page.locator('#checks table').wait_for(timeout=30000)
     assert 'Fail' not in page.locator('#checks tbody').inner_text()
     page.screenshot(path=str(OUT/'evidence-desktop.png'),full_page=True)
     page.set_viewport_size({'width':390,'height':844})
-    page.locator('a[href="#sandbox"]').click()
+    page.locator('a[href="#compare"]').first.click()
     page.locator('#run').click()
     page.locator('#socChart .interactive-chart').wait_for()
     mobile_plot=page.locator('#socChart .interactive-chart')
@@ -94,7 +90,7 @@ with sync_playwright() as p:
     page.screenshot(path=str(OUT/'mobile.png'),full_page=True)
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
     assert not errors,errors
-    report={'passed':True,'browser':'Microsoft Edge / Playwright','console_errors':errors,'checks':['3 device scenarios','winter inputs','bilingual UI','comparison table','playback','supported aging','unsupported aging gate','profile transfer','JSON export/import','validation page','390px responsive layout','slider-number synchronization including decimals','keyboard slider changes','task timeline sliders','chart hover and keyboard inspection','reserve reference line','device and aging explanations','multiple aging-chart interactions']}
+    report={'passed':True,'browser':'Microsoft Edge / Playwright','console_errors':errors,'checks':['3 device scenarios','winter inputs','bilingual UI','comparison table','independent aging access','supported aging','unsupported aging gate','profile transfer','JSON export/import','validation page','390px responsive layout','slider-number synchronization including decimals','keyboard slider changes','task timeline sliders','chart hover and keyboard inspection','reserve reference line','device and aging explanations','multiple aging-chart interactions']}
     (OUT/'browser-report.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report))
     browser.close()

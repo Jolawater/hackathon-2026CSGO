@@ -16,6 +16,7 @@ class AgingInput(BaseModel):
     upper_soc: float = Field(default=.9, ge=0, le=1)
     charge_c: float = Field(default=.3, gt=0, le=10)
     discharge_c: float = Field(default=.3, gt=0, le=10)
+    cycles_per_day: int = Field(default=1, ge=1, le=12)
     constant_energy: bool = False
     profile: list[list[float]] | None = Field(default=None, max_length=3000)
 
@@ -49,10 +50,17 @@ def make_profile(s, soh=1.0):
     # C-rates refer to nominal capacity, not current degraded capacity.
     discharge_h = depth * soh / s.discharge_c
     charge_h = depth * soh / s.charge_c
-    if discharge_h + charge_h > 24:
+    period = 24 / s.cycles_per_day
+    if discharge_h + charge_h > period:
         return np.array([0., 86400.]), np.array([s.upper_soc, low])
-    knots = sorted(set([0., discharge_h, discharge_h + charge_h, 24.]))
-    vals = [s.upper_soc if x == 0 or x >= discharge_h + charge_h else low for x in knots]
+    pairs = {0.:s.upper_soc,24.:s.upper_soc}
+    for i in range(s.cycles_per_day):
+        offset=i*period
+        pairs[offset]=s.upper_soc
+        pairs[offset+discharge_h]=low
+        pairs[offset+discharge_h+charge_h]=s.upper_soc
+    knots=sorted(pairs)
+    vals=[pairs[x] for x in knots]
     times = np.unique(np.concatenate([np.linspace(0, 24, 289), np.array(knots)]))
     return times * 3600, np.interp(times, knots, vals)
 
@@ -81,7 +89,7 @@ def scope_reasons(s, t, soc, soh):
         reasons.append("cold_charge")
     if abs(soc[0] - soc[-1]) > 1e-6:
         reasons.append("open_cycle")
-    if s.profile is None and (s.upper_soc-s.lower_soc) / s.charge_c + (s.upper_soc-s.lower_soc) / s.discharge_c > 24:
+    if s.profile is None and ((s.upper_soc-s.lower_soc) / s.charge_c + (s.upper_soc-s.lower_soc) / s.discharge_c)*s.cycles_per_day > 24:
         reasons.append("cycle_exceeds_day")
     return reasons
 

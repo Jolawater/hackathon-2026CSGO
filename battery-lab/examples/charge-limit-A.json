@@ -1,0 +1,40 @@
+{
+  "scenario_id": null,
+  "scenario_customized": true,
+  "device": "phone",
+  "capacity_wh": 15.0,
+  "soh": 1.0,
+  "initial_soc": 0.2,
+  "reserve": 0.1,
+  "trigger": 0.2,
+  "target": 0.8,
+  "charge_w": 10.0,
+  "efficiency": 0.9,
+  "taper_soc": 0.8,
+  "taper_factor": 0.5,
+  "window_start": 0.0,
+  "window_end": 4.0,
+  "departure": 4.0,
+  "departure_min": 0.7,
+  "price": 1.2,
+  "days": 1,
+  "strategy": "fixed",
+  "priority": "interruptions",
+  "tasks": [
+    {
+      "start": 8.0,
+      "end": 18.0,
+      "power_w": 1.0,
+      "label": "Task"
+    }
+  ],
+  "ambient_c": 25.0,
+  "fluctuation": 0.0,
+  "seed": 42,
+  "distance_km": 0.0,
+  "wh_km": 0.0,
+  "aux_w": 0.0,
+  "cold_capacity_factor": 1.0,
+  "cold_mode": "manual",
+  "heating_w": 0.0
+}

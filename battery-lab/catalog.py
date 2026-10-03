@@ -1,7 +1,9 @@
+from cold import cold_factor
 from engine import Scenario, Task
 
 SOURCES = [
-    {"id": "winter", "kind": "winterEvidence", "title": "US Department of Energy · Winterizing your EV", "url": "https://www.energy.gov/articles/winterizing-your-electric-vehicle", "zh": "寒冷影响车辆表现，预热和车厢供暖影响续航。本网站 90% 冬季可用容量和 1000 W 汽车取暖仅为敏感性示例，不是此来源测得的通用系数。", "en": "Cold affects vehicle performance; preconditioning and cabin heating affect range. Our 90% winter usable capacity and 1000 W car heating are sensitivity examples, not universal coefficients measured by this source."},
+    {"id":"p28a","kind":"manufacturer","title":"Molicel INR-18650-P28A · temperature curves v1.3","url":"https://www.molicel.com/wp-content/uploads/INR18650P28A_1.3_Product-Data-Sheet-of-INR-18650-P28A-80093.pdf","zh":"23°C 充至 4.2 V；2.8 A 放电至 2.5 V。厂商矢量曲线积分，0°C 约为 23°C 能量的 92.5%，−20°C 约 84.4%。温度点间线性插值；超过 23°C 不增加额定能量。参考电芯迁移不是手机或整车实测，动态低温限制是简化假设。","en":"Charged at 23°C to 4.2 V; discharged at 2.8 A to 2.5 V. Integrated manufacturer vector curves: about 92.5% of 23°C energy at 0°C, 84.4% at −20°C. Linear interpolation; no rated-energy gain above 23°C. Reference-cell transfer is not phone or vehicle measurement; dynamic cold restriction is a simplifying assumption."},
+    {"id": "winter", "kind": "winterEvidence", "title": "US Department of Energy · Winterizing your EV", "url": "https://www.energy.gov/articles/winterizing-your-electric-vehicle", "zh": "寒冷影响车辆表现，预热和车厢供暖影响续航。取暖功率 1000 W 为可编辑假设；低温能量采用独立 P28A 参考曲线，不是此来源提供的整车系数。", "en": "Cold affects vehicle performance; preconditioning and cabin heating affect range. 1000 W heating is editable and assumed. Cold energy uses separate P28A reference curves, not a vehicle coefficient from this source."},
     {"id": "apple15", "kind": "manufacturer", "title": "Apple · iPhone 15 technical specifications", "url": "https://support.apple.com/en-euro/111831", "zh": "视频播放最长 20 小时；为厂商特定测试条件下的声明，不用于推导任意活动功耗。手机预设 15 Wh 是演示假设，不是此页面提供的电池规格。", "en": "Up to 20 hours video playback under Apple's test conditions. Not a mixed-use power calibration. The 15 Wh phone preset is an assumption, not a specification from this page."},
     {"id": "blast", "kind": "published_model", "title": "BLAST-Lite 1.1.0 · battery life model", "url": "https://github.com/NatLabRockies/BLAST-Lite", "zh": "公开实验拟合模型；长期外推、电池包差异及极端条件有局限。运行时使用固定发布版本。", "en": "Model fitted to published cell experiments. Long-term extrapolation, pack differences and extreme conditions have limits. Runtime uses a pinned release."},
     {"id": "b1", "kind": "experimental_reference", "title": "NMC-Gr B1 50Ah · experimental reference", "url": "https://doi.org/10.1016/j.est.2023.109042", "zh": "原模型引用的实验研究。这里复用已发表模型，没有重新获得独立设备实测验证；原始实验数据未捆绑。", "en": "Experimental study cited by the model. We reuse the published fit; this is not independent device validation. Raw experimental data are not bundled."},
@@ -15,7 +17,7 @@ def catalog():
     car = Scenario(device="car", capacity_wh=60000, charge_w=7000, initial_soc=.6, trigger=.3, target=.8, departure_min=.6, window_start=22, window_end=7, distance_km=60, wh_km=160, aux_w=500, tasks=[Task(start=8, end=9, power_w=5300, label="Commute AM"), Task(start=18, end=19, power_w=5300, label="Commute PM")])
     travel = base.model_copy(update={"tasks": [Task(start=8,end=12,power_w=1.5),Task(start=13,end=18,power_w=1.8),Task(start=19,end=22,power_w=1)]})
     commute = scooter.model_copy(update={"distance_km":20,"tasks":[Task(start=8,end=9,power_w=210),Task(start=18,end=19,power_w=210)]})
-    winter = car.model_copy(update={"ambient_c":5,"cold_capacity_factor":.9,"heating_w":1000})
+    winter = car.model_copy(update={"ambient_c":5,"cold_capacity_factor":cold_factor(5),"cold_mode":"reference_cell","heating_w":1000})
     scenarios = []
     def add(id, config, title, audience, problem, focus):
         parameters = config.model_copy(update={"scenario_id":id}).model_dump()

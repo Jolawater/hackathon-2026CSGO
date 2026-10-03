@@ -41,6 +41,18 @@
       "en": "Winter usable energy separate from SOH",
       "passed": true,
       "detail": "90.00 Wh; SOH remains 100%"
+    },
+    {
+      "zh": "P28A 低温参考插值",
+      "en": "P28A cold-reference interpolation",
+      "passed": true,
+      "detail": "0 C / 23 C = 0.9247; manufacturer curve integration, not device validation"
+    },
+    {
+      "zh": "更多备用电量需更长充电时间",
+      "en": "More reserve costs more charging time",
+      "passed": true,
+      "detail": "80%: 60.0 min; 100%: 100.0 min; +3 Wh reserve"
     }
   ],
   "all_passed": true,
@@ -48,26 +60,8 @@
     "zh": "独立设备长期实测验证：尚未完成。模型对照只是软件复现；实验依据来自上游拟合研究，不能当成新设备预测精度。",
     "en": "Independent long-term device validation: not completed. Model parity verifies software reproduction; upstream fitted research does not establish prediction accuracy for a new device."
   },
-  "year_runs": {
-    "phone": {
-      "days": 365,
-      "seconds": 0.958,
-      "balance_error_wh": 5.19321474712342e-09,
-      "trace_points": 2202
-    },
-    "scooter": {
-      "days": 365,
-      "seconds": 0.943,
-      "balance_error_wh": 1.882202923297882e-06,
-      "trace_points": 2202
-    },
-    "car": {
-      "days": 365,
-      "seconds": 0.913,
-      "balance_error_wh": 2.60770320892334e-07,
-      "trace_points": 2202
-    }
-  },
+  "model_package_version": "1.1.0",
+  "model_source_sha256": "11ad96b6ae5dbc45f45c3a2f670144bc2956b61b8879a196f167bd3721e5d653",
   "browser": {
     "passed": true,
     "browser": "Microsoft Edge / Playwright",
@@ -77,7 +71,7 @@
       "winter inputs",
       "bilingual UI",
       "comparison table",
-      "playback",
+      "independent aging access",
       "supported aging",
       "unsupported aging gate",
       "profile transfer",
@@ -93,11 +87,16 @@
       "multiple aging-chart interactions"
     ]
   },
-  "model_package_version": "1.1.0",
-  "model_source_sha256": "11ad96b6ae5dbc45f45c3a2f670144bc2956b61b8879a196f167bd3721e5d653",
   "test_summary": {
-    "passed": 20,
+    "passed": 23,
     "failed": 0
   },
-  "ui_validation_date": "2026-10-03"
+  "ui_validation_date": "2026-10-03",
+  "additional_checks": {
+    "six_scenario_browser": "passed",
+    "workshop_browser": "passed: actual 3D drag, seek/replay, restored weather, thermal view, bilingual/mobile, profile evidence gate",
+    "workshop_node": "passed: deterministic replay, physical balance, cold bounds"
+  },
+  "cold_data_sha256": "2731baf0d059a2ed0920312a965c166b470d0bbd023f5287ddbb46f3132e4e1a",
+  "energy_model_version": "energy-1.1.0"
 }

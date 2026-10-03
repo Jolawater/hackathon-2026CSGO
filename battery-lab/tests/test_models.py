@@ -118,6 +118,31 @@ def test_supported_aging_decreases():
     assert a['curve'][-1]['cycle_loss']>0
 
 
+def test_repeated_daily_frequency():
+    a=aging(AgingInput(days=10,cycles_per_day=1))
+    b=aging(AgingInput(days=10,cycles_per_day=2))
+    assert a['status']==b['status']=='supported'
+    assert b['curve'][-1]['efc'] == pytest.approx(a['curve'][-1]['efc']*2,rel=.01)
+    assert b['curve'][-1]['cycle_loss']>a['curve'][-1]['cycle_loss']
+    invalid=aging(AgingInput(days=1,cycles_per_day=12))
+    assert invalid['soh'] is None
+    assert 'cycle_exceeds_day' in invalid['reasons']
+
+
+def test_cold_reference_and_manual_compatibility():
+    from cold import cold_factor
+    assert cold_factor(0)==pytest.approx(.9247,abs=.001)
+    assert cold_factor(-20)==pytest.approx(.8444,abs=.001)
+    assert cold_factor(23)==1
+    assert cold_factor(60)==1
+    with pytest.raises(ValueError):cold_factor(-41)
+    reference=Scenario(cold_mode='reference_cell',ambient_c=5,cold_capacity_factor=.3)
+    assert reference.cold_capacity_factor==cold_factor(5)
+    assert Scenario(cold_capacity_factor=.9).cold_capacity_factor==.9
+    result=simulate(reference)
+    assert result['metrics']['full_usable_wh']==pytest.approx(reference.capacity_wh*cold_factor(5))
+
+
 def test_constant_energy_boundary():
     a=aging(AgingInput(days=365,lower_soc=0,upper_soc=1,constant_energy=True))
     assert a['status']=='stopped_at_boundary'
