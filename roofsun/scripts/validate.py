@@ -1,4 +1,5 @@
 """Generate reproducible model validation evidence, not measured rooftop accuracy."""
+from datetime import date
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -8,7 +9,7 @@ import time
 import numpy as np
 import pandas as pd
 import pvlib
-from backend.model import Inputs, Configuration, evaluate, layout, search, shading_fractions, weather, ROOT, PANEL, MODEL_VERSION
+from backend.model import Inputs, Configuration, evaluate, layout, search, shading_fractions, sun_preview, weather, ROOT, PANEL, MODEL_VERSION
 
 checks=[]
 def record(en,zh,en_description,zh_description,observed,condition,source=None):
@@ -99,6 +100,13 @@ record('Monthly seasonality versus HKO','月度季節形狀與天文台對比',
        'Pearson correlation: model PV generation versus independently observed monthly irradiance. Checks seasonal shape, not measured electrical accuracy.',
        '模型發電與獨立實測月度輻照的 Pearson 相關系數；核對季節形狀，並非實測發電準確率。',
        f"2025: r={monthly_comparison['pearson_r']:.6f}; 12 months", .95<monthly_comparison['pearson_r']<.98,radiation['source_url'])
+sun_path=owner_screen['sun_path']
+noon=sun_preview(Inputs(**owner_screen['mapped_inputs']),Configuration(**owner_screen['result']['config']),date(2025,12,21),12)
+record('Five-minute winter-solstice preview','五分鐘冬至日照預覽',
+       '145 pvlib samples from 06:00 to 18:00 HK time. Noon shade and beam visibility match the evaluation preview; highlights use the nearest sample, not shadow-map pixels.',
+       '香港時間 06:00 至 18:00 共 145 個 pvlib 樣本。正午遮擋及直射光可見性與評估預覽一致；高亮採用最近模型樣本，並非陰影貼圖像素。',
+       f"samples={len(sun_path)}; noon shaded={noon['shaded_panels']}/{owner_finance['panels_count']}",
+       len(sun_path)==145 and {k:v for k,v in sun_path[72].items() if k!='hour'}==noon)
 report.update(monthly_comparison=monthly_comparison,model_version=MODEL_VERSION,checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,calibration=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'

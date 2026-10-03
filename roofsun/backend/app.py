@@ -32,6 +32,7 @@ def meta(): return {**source_metadata(),'calibration':calibration(),'owner_defau
 @app.post('/api/evaluate')
 def api_evaluate(request:Evaluation):
     result=evaluate(request.inputs,request.config)
+    result['winter_solstice_noon']=sun_preview(request.inputs,request.config,date(2025,12,21),12)
     rows=request.config.rows
     counts=[rows-1,rows] if rows>1 else [1,2]
     result['row_comparison']=[evaluate(request.inputs,request.config.model_copy(update={'rows':n}),False) for n in counts]

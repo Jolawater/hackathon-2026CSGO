@@ -4,7 +4,9 @@ import { mkdir, readFile } from "node:fs/promises";
 const base = process.env.ROOFSUN_TEST_URL || "http://127.0.0.1:8000";
 const output = "/tmp/roofsun-browser-checks";
 await mkdir(output, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch({
+  args: ["--enable-unsafe-swiftshader"],
+});
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
 });
@@ -128,6 +130,26 @@ try {
       .then((s) => s.includes("kWh/kW")),
   );
   await page.mouse.move(0, 0);
+  await page.locator(".scene3d-canvas canvas").waitFor();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".scene3d-canvas canvas")?.dataset.shadedPanels !=
+      null,
+  );
+  assert.equal(
+    Number(
+      await page
+        .locator(".scene3d-canvas canvas")
+        .getAttribute("data-shaded-panels"),
+    ),
+    baseline.sun_path[72].shaded_panels,
+  );
+  assert(
+    (await page.getByTestId("shaded-panels").innerText()).includes(
+      `${baseline.sun_path[72].shaded_panels} / ${baseline.result.panels_count}`,
+    ),
+  );
+  assert.equal(await page.locator("details").count(), 2);
   await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
 
   await page.getByTestId("cashflow-chart").waitFor();
@@ -185,8 +207,7 @@ try {
   );
   assert.equal(r.mapped_inputs.house_area, 56);
   assert.deepEqual(r.mapped_inputs.exclusions, []);
-  // North must point along the roof's projected geographic axis; both needle
-  // and upright N label move, rather than keeping the label above the dial.
+  // 3D north follows both camera orbit and all eight roof bearings.
   const compassPositions = new Set();
   for (const [name, bearing] of [
     ["N", 0],
@@ -198,53 +219,27 @@ try {
     ["NW", 315],
     ["E", 90],
   ]) {
-    if (bearing !== r.mapped_inputs.roof_rotation) {
+    if (bearing !== r.mapped_inputs.roof_rotation)
       r = await change(() => button(`Door direction ${name}`).click());
-    }
+    await page.locator(".scene3d-canvas canvas").waitFor();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".scene3d-canvas canvas")?.dataset.cameraHeight,
+    );
+    const value = await page
+      .locator(".scene3d-canvas .scene-compass")
+      .evaluate((el) => ({
+        angle: parseFloat(el.style.getPropertyValue("--bearing")),
+        counter: parseFloat(el.style.getPropertyValue("--counter-bearing")),
+        north: el.querySelector(".compass-n").textContent,
+      }));
+    assert(Number.isFinite(value.angle));
+    assert.equal(value.angle, -value.counter);
+    assert.equal(value.north, "N");
+    compassPositions.add(value.angle.toFixed(2));
     assert.equal(r.mapped_inputs.roof_rotation, bearing);
-    const compass = await page.locator(".scene-compass").evaluate((el) => {
-      const label = el.querySelector(".compass-north-label");
-      const needle = el.querySelector(".compass-needle");
-      const center = new DOMPoint(0, 0).matrixTransform(el.getCTM());
-      const tip = new DOMPoint(0, -18).matrixTransform(needle.getCTM());
-      return {
-        x: Number(label.getAttribute("x")),
-        y: Number(label.getAttribute("y")),
-        tipX: tip.x - center.x,
-        tipY: tip.y - center.y,
-        text: label.textContent.trim(),
-      };
-    });
-    const angle = (bearing * Math.PI) / 180;
-    const expected = [
-      -Math.sin(angle) + 0.58 * Math.cos(angle),
-      -0.31 * Math.sin(angle) - 0.52 * Math.cos(angle),
-    ];
-    const length = Math.hypot(...expected);
-    assert.equal(compass.text, "N");
-    assert(Math.abs(compass.x / 36 - expected[0] / length) < 1e-6);
-    assert(Math.abs(compass.y / 36 - expected[1] / length) < 1e-6);
-    assert(
-      Math.abs(compass.x * compass.tipY - compass.y * compass.tipX) /
-        (36 * Math.hypot(compass.tipX, compass.tipY)) <
-        1e-6,
-      "N aligns with the arrow tip",
-    );
-    assert(
-      compass.x * compass.tipX + compass.y * compass.tipY > 0,
-      "N sits on the north end, not south",
-    );
-    compassPositions.add(`${compass.x.toFixed(3)},${compass.y.toFixed(3)}`);
-    if (bearing === 0 || bearing === 90 || bearing === 180)
-      await page.locator(".scene-card").screenshot({
-        path: `${output}/compass-door-${name.toLowerCase()}.png`,
-      });
   }
-  assert.equal(
-    compassPositions.size,
-    8,
-    "All eight roof directions move the N label",
-  );
+  assert.equal(compassPositions.size, 8);
   r = await change(
     async () => {
       await label("Floors above the roof").fill("2");
@@ -312,19 +307,78 @@ try {
   await page.waitForFunction(
     () =>
       document.querySelector('[data-testid="sun-time"]').textContent !==
-      "12:00",
+        "12:00" &&
+      document.querySelector('[data-testid="sun-time"]').textContent !==
+        "06:00",
   );
   await button("Stop").click();
   assert.equal(await page.getByTestId("sun-time").innerText(), "12:00");
   assert.equal(await page.getByTestId("annual-kwh").innerText(), initialAnnual);
   assert.equal(animationRequests, 0);
   page.off("request", listener);
+  const canvas = page.locator(".scene3d-canvas canvas");
+  const box = await canvas.boundingBox();
+  const oldBearing = parseFloat(
+    await page
+      .locator(".scene3d-canvas .scene-compass")
+      .evaluate((el) => el.style.getPropertyValue("--bearing")),
+  );
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.8, {
+    steps: 8,
+  });
+  await page.mouse.up();
+  await page.waitForFunction(
+    (old) =>
+      Math.abs(
+        parseFloat(
+          document
+            .querySelector(".scene3d-canvas .scene-compass")
+            ?.style.getPropertyValue("--bearing"),
+        ) - old,
+      ) > 1,
+    oldBearing,
+  );
+  await page.mouse.wheel(0, -4000);
+  await page.waitForFunction(() => {
+    const d = document.querySelector(".scene3d-canvas canvas")?.dataset;
+    return (
+      d &&
+      Number(d.cameraHeight) > 0 &&
+      Number(d.cameraDistance) >= Number(d.minCameraDistance) - 0.02
+    );
+  });
+  await button("Reset view").click();
+  await page.waitForFunction(() => {
+    const d = document.querySelector(".scene3d-canvas canvas")?.dataset;
+    return (
+      d &&
+      Math.abs(Number(d.cameraX) - 9.672) < 0.03 &&
+      Math.abs(Number(d.cameraZ) - 12.09) < 0.03
+    );
+  });
+
   r = await change(
     () => button("One more row").click(),
     (p) => p.selected_rows === 3,
   );
   assert.equal(r.result.actual_rows, 3);
   assert.equal(r.result.panels_count, 18);
+  await page.waitForFunction(
+    (expected) =>
+      Number(
+        document.querySelector(".scene3d-canvas canvas")?.dataset.shadedPanels,
+      ) === expected,
+    r.sun_path[72].shaded_panels,
+  );
+  assert(
+    r.sun_path[72].shaded_panels > 0,
+    "Three-row layout must show backend shade",
+  );
+  await page
+    .locator(".scene-card")
+    .screenshot({ path: `${output}/three-row-shade.png` });
   await page.waitForFunction(
     (expected) =>
       document
@@ -540,9 +594,102 @@ try {
   await page.reload();
   await ready();
   assert.equal(await label("Roof width").inputValue(), "8.06");
+  const fallbackContext = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    reducedMotion: "reduce",
+  });
+  await fallbackContext.addInitScript(() => {
+    localStorage.setItem("roofsun-language", "en");
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      return /webgl/i.test(type) ? null : original.call(this, type, ...args);
+    };
+  });
+  const fallbackPage = await fallbackContext.newPage();
+  await fallbackPage.goto(base);
+  await fallbackPage
+    .getByText("WebGL unavailable; showing the SVG preview.", { exact: true })
+    .waitFor({ timeout: 60000 });
+  assert.equal(
+    await fallbackPage.locator(".scene-wrapper svg.roof-scene").count(),
+    1,
+  );
+  assert.equal(await fallbackPage.locator(".scene3d-canvas canvas").count(), 0);
+  assert.equal(await fallbackPage.getByTestId("sun-time").innerText(), "12:00");
+  assert.equal(
+    await fallbackPage
+      .getByRole("button", { name: "Play a day", exact: true })
+      .getAttribute("aria-pressed"),
+    "false",
+  );
+  assert.equal(await fallbackPage.locator("details").count(), 2);
+  assert(
+    await fallbackPage.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  );
+  await fallbackPage.screenshot({
+    path: `${output}/webgl-fallback-mobile.png`,
+    fullPage: true,
+  });
+  const fallbackPositions = new Set();
+  for (const [name, bearing] of [
+    ["N", 0],
+    ["NE", 45],
+    ["E", 90],
+    ["SE", 135],
+    ["S", 180],
+    ["SW", 225],
+    ["W", 270],
+    ["NW", 315],
+  ]) {
+    if (bearing) {
+      const response = fallbackPage.waitForResponse(
+        (r) => r.url().includes("/api/screen") && r.status() === 200,
+        { timeout: 60000 },
+      );
+      await fallbackPage
+        .getByRole("button", { name: `Door direction ${name}`, exact: true })
+        .click();
+      await response;
+    }
+    await fallbackPage.locator("svg .scene-compass").waitFor();
+    const c = await fallbackPage
+      .locator("svg .scene-compass")
+      .evaluate((el) => {
+        const label = el.querySelector(".compass-north-label"),
+          needle = el.querySelector(".compass-needle");
+        const centre = new DOMPoint(0, 0).matrixTransform(el.getCTM()),
+          tip = new DOMPoint(0, -18).matrixTransform(needle.getCTM());
+        return {
+          x: Number(label.getAttribute("x")),
+          y: Number(label.getAttribute("y")),
+          tipX: tip.x - centre.x,
+          tipY: tip.y - centre.y,
+        };
+      });
+    const angle = (bearing * Math.PI) / 180,
+      expected = [
+        -Math.sin(angle) + 0.58 * Math.cos(angle),
+        -0.31 * Math.sin(angle) - 0.52 * Math.cos(angle),
+      ],
+      length = Math.hypot(...expected);
+    assert(Math.abs(c.x / 36 - expected[0] / length) < 1e-6);
+    assert(Math.abs(c.y / 36 - expected[1] / length) < 1e-6);
+    assert(c.x * c.tipX + c.y * c.tipY > 0);
+    fallbackPositions.add(`${c.x.toFixed(3)},${c.y.toFixed(3)}`);
+  }
+  assert.equal(fallbackPositions.size, 8);
+  await fallbackPage.getByRole("button", { name: "中文", exact: true }).click();
+  assert(
+    await fallbackPage
+      .getByText("WebGL 不可用，改用 SVG 示意。", { exact: true })
+      .isVisible(),
+  );
+  await fallbackContext.close();
   assert.deepEqual(errors, [], "No browser runtime exceptions");
   console.log(
-    "PASS: seven input groups and mappings, eight-direction compass alignment, persisted answers, real row trade-off, winter-noon/day animation, two read-only panels, nine sensitivity cases and stale-data handling, minimal exports, legacy/invalid imports, bilingual verbatim assumptions, 375px layout, no-space/no-payback, network retry, corrupt-storage recovery.",
+    "PASS: monthly generation and actual cash-flow charts, lazy Three.js canvas, backend shade agreement, constrained camera, WebGL fallback, reduced-motion default, seven input groups and mappings, eight-direction compass alignment, persisted answers, real row trade-off, winter-noon/day animation, two read-only panels, nine sensitivity cases and stale-data handling, minimal exports, legacy/invalid imports, bilingual verbatim assumptions, 375px layout, no-space/no-payback, network retry, corrupt-storage recovery.",
   );
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png`, fullPage: true });

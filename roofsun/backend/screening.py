@@ -150,7 +150,7 @@ def screen_cached(serialized):
                  'extra_cost':round(b['initial_cost']-a['initial_cost'],2),
                  'payback_months':(date.fromisoformat(b['payback_date']).year-date.fromisoformat(a['payback_date']).year)*12+date.fromisoformat(b['payback_date']).month-date.fromisoformat(a['payback_date']).month if a['payback_date'] and b['payback_date'] else None,
                  'angles_changed':a['config']['tilt']!=b['config']['tilt'] or a['config']['azimuth']!=b['config']['azimuth']}
-    sun_path=[{'hour':h/2,**sun_preview(inputs,config,date(2025,12,21),h/2)} for h in range(12,37)]
+    sun_path=[{'hour':minute/60,**sun_preview(inputs,config,date(2025,12,21),minute/60)} for minute in range(360,1081,5)]
     return {**base,'result':result,'recommended':recommended_result,'interval':interval,'verdict':interval['verdict'],
             'reason':'scenario_range','alternatives':{k:v['actual_rows'] for k,v in alternatives.items()},
             'monthly_comparison':compare_monthly(result['monthly_kwh'],inputs.weather_year,calibration()),

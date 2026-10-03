@@ -13,13 +13,7 @@ import {
 import { fmt, money } from "../lib/format.js";
 import { niceTicks } from "../lib/chartTicks.js";
 const timestamp = (date) => Date.parse(`${date}T00:00:00Z`);
-export default function CashflowChart({
-  result,
-  inputs,
-  settings,
-  selected,
-  t,
-}) {
+function CashflowChart({ result, inputs, settings, selected, t }) {
   const data = result.cashflow.map((p) => ({ ...p, time: timestamp(p.date) }));
   const ticks = niceTicks(data.flatMap((p) => [p.A, p.B])),
     s = selected ? "B" : "A",
@@ -240,3 +234,5 @@ export default function CashflowChart({
     </section>
   );
 }
+
+export default React.memo(CashflowChart);

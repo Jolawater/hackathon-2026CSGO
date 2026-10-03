@@ -52,7 +52,7 @@ The front door approximates roof rotation; it does not set panel azimuth. The ex
 
 Sustained payback means the first month after which all remaining modelled cash balances stay non-negative. The installation quote ceiling subtracts the separate setup allowance before dividing by kW; avoid double counting setup if the installer supplied an all-in quote. A positive current NPV does not guarantee a positive conservative scenario.
 
-The three points use the **same configuration**: combined HKO/NASA ratio with 8% discount; 2025 ratio with 4%; unscaled NASA with 0%. The range is **not a confidence interval, probability or exhaustive worst case**. The evidence panel always evaluates the system recommendation, even when the scene explores an adjacent row count.
+The three points use the **same configuration**: combined HKO/NASA ratio with 8% discount; 2025 ratio with 4%; unscaled NASA with 0%. The range is **not a confidence interval, probability or exhaustive worst case**. The three-point conclusion and sensitivity checks evaluate the system recommendation, even when the scene explores an adjacent row count. Monthly seasonal evidence follows the currently displayed layout.
 
 ## 天文台資料及復算 / HKO observations and reproduction
 
@@ -121,3 +121,26 @@ See [v3 implementation record](docs/SEVEN_INPUTS_V3_RESPONSE.md). Earlier [v2.2 
 The current layout has a 12-month generation chart, updated by row comparisons. `scripts/hko_check.py` aggregates the bundled original HKO daily readings and computes Pearson correlation against model monthly generation; the evidence panel lists the 12 pairs. The uniform annual calibration preserves NASA’s monthly shape. Seasonal correlation is not measured rooftop yield accuracy.
 
 The cumulative cash-flow chart requests the selected configuration from `/api/evaluate`, draws monthly undiscounted net cash over 25 years and labels actual installation, sustained-payback, FiT-end and B-only inverter-replacement milestones. The selected scenario is solid and the other dashed. NPV remains a separate discounted measure.
+
+
+### 3D winter-solstice preview / 冬至 3D 預覽
+
+Only `RoofScene3D.jsx` is adapted from `JESON-ROOFTOPJIM@51854cf`; that branch was **not merged**. Three.js **0.180.0** loads in a separate lazy chunk. WebGL creation/context loss or a failed lazy import falls back to the retained SVG. Playback never starts automatically, including reduced-motion systems.
+
+`/api/screen` returns **145 five-minute pvlib samples** over 06:00–18:00 HK time on 2025-12-21. A 12-second requestAnimationFrame playback interpolates unit sunlight directions; amber highlighting and the shaded-panel count use the **nearest backend sample**, with row-shade fractions and horizon beam visibility. `/api/evaluate.winter_solstice_noon` exposes that same instantaneous preview separately from annual `row_losses`. Nighttime has no directly shaded panels. The corner overlay shows time, elevation, azimuth and the shaded-module count; compass directions follow the camera and roof rotation.
+
+Default view is southeast. Orbit polar/zoom limits and building collision bounds keep the camera above/outside the roof; Reset view restores the initial southeast view. Directional light uses 2048 PCFSoftShadowMap, with a shadow frustum recomputed from the roof, module and neighbour bounds. No manual panel placement, rotation or building-height controls are present; the seven inputs and exactly two foldout panels are retained.
+
+Neighbour geometry is generated directly from southern-neighbour floors × 3 m, distance and the 120° facade sector. **Visual assumptions:** own building body 9 m; neighbour facade depth 3 m; facade width = 2 × entered distance × tan(60°); entered distance is from the roof edge. These are illustrations, not surveyed buildings. The energy model still uses its single horizon-sector approximation rather than rasterized/three-dimensional building shadows; amber highlights are authoritative model values. Visual ground/window details are not new shade or generation inputs. No physical energy equation changed in the 3D step.
+
+鄰屋直接按南面、層數 × 3 m、距離及 120° 扇形建圖。樓身 9 m、鄰屋進深 3 m 及扇形立面是畫面假設，不是實測建築。光影展示幾何，琥珀色高亮及被遮面板數目採用後端遮擋樣本；發電仍按已說明的天際線近似計算。拖動只改視角，不改計算配置。
+
+Reproduce all checks from `roofsun/`:
+
+```sh
+python -m pytest -q
+python scripts/hko_check.py
+python scripts/validate.py
+npm run build
+npm run test:browser
+```

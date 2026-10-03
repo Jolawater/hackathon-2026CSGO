@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
@@ -24,6 +32,9 @@ import OwnerInputs, {
   neighbourHorizon,
 } from "./components/Screening.jsx";
 import RoofScene from "./components/RoofScene.jsx";
+import SceneBoundary from "./components/SceneBoundary.jsx";
+import { sunFrame, sunTime } from "./lib/sunFrame.js";
+const RoofScene3D = lazy(() => import("./components/RoofScene3D.jsx"));
 import CashflowChart from "./components/CashflowChart.jsx";
 import MonthlyGeneration from "./components/MonthlyGeneration.jsx";
 import Assumptions from "./components/Assumptions.jsx";
@@ -46,12 +57,12 @@ function App() {
     () => localStorage.getItem("roofsun-language") || "zh",
   );
   const zh = lang === "zh",
-    t = (en, cn) => (zh ? cn : en);
+    t = useCallback((en, cn) => (zh ? cn : en), [zh]);
   const [inputs, setInputs] = useState(readOwner),
     [selectedRows, setSelectedRows] = useState(null),
     [retry, setRetry] = useState(0);
   const [playing, setPlaying] = useState(false),
-    [frame, setFrame] = useState(12);
+    [frame, setFrame] = useState(72);
   const [notice, setNotice] = useState(""),
     [fileError, setFileError] = useState(""),
     [importing, setImporting] = useState(false);
@@ -86,7 +97,7 @@ function App() {
     setSelectedRows(null);
     setNotice("");
     setPlaying(false);
-    setFrame(12);
+    setFrame(72);
   };
   useEffect(() => {
     localStorage.setItem("roofsun-language", lang);
@@ -112,34 +123,40 @@ function App() {
   }, [ownerKey]);
   useEffect(() => {
     setPlaying(false);
-    setFrame(12);
+    setFrame(72);
   }, [calculated.loading, selectedRows]);
   useEffect(() => {
     if (!playing) return;
-    const timer = setInterval(
-      () =>
-        setFrame((old) => {
-          if (old >= 24) {
-            setPlaying(false);
-            return 12;
-          }
-          return old + 1;
-        }),
-      450,
-    );
-    return () => clearInterval(timer);
+    let raf;
+    const start = performance.now();
+    const animate = (now) => {
+      const elapsed = (now - start) / 12000;
+      if (elapsed >= 1) {
+        setPlaying(false);
+        setFrame(72);
+        return;
+      }
+      setFrame(elapsed * 144);
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
   }, [playing]);
-  const sun = screen?.sun_path?.[frame];
-  const sceneInputs = {
-    width: inputs.roof.width,
-    depth: inputs.roof.depth,
-    roof_rotation: inputs.door_direction,
-    exclusions: [],
-    horizon: neighbourHorizon(
-      inputs.neighbour.floors,
-      inputs.neighbour.distance,
-    ),
-  };
+  const sun = sunFrame(screen?.sun_path, frame);
+  const sceneInputs = useMemo(
+    () => ({
+      width: inputs.roof.width,
+      depth: inputs.roof.depth,
+      roof_rotation: inputs.door_direction,
+      exclusions: [],
+      neighbour: inputs.neighbour,
+      horizon: neighbourHorizon(
+        inputs.neighbour.floors,
+        inputs.neighbour.distance,
+      ),
+    }),
+    [inputs],
+  );
   async function analyse() {
     analysisAbort.current?.abort();
     const controller = new AbortController();
@@ -430,7 +447,7 @@ function App() {
                     aria-pressed={playing}
                     onClick={() => {
                       setPlaying((v) => !v);
-                      setFrame(playing ? 12 : 0);
+                      setFrame(playing ? 72 : 0);
                     }}
                   >
                     {playing ? <Pause size={15} /> : <Play size={15} />}{" "}
@@ -439,14 +456,36 @@ function App() {
                 </div>
                 <div className="scene-wrapper">
                   {r && sun ? (
-                    <RoofScene
-                      inputs={sceneInputs}
-                      config={r.config}
-                      result={r}
-                      sun={sun}
-                      t={t}
-                      topView={false}
-                    />
+                    <SceneBoundary
+                      {...{
+                        inputs: sceneInputs,
+                        config: r.config,
+                        result: r,
+                        sun,
+                        t,
+                      }}
+                    >
+                      <Suspense
+                        fallback={
+                          <RoofScene
+                            inputs={sceneInputs}
+                            config={r.config}
+                            result={r}
+                            sun={sun}
+                            t={t}
+                            topView={false}
+                          />
+                        }
+                      >
+                        <RoofScene3D
+                          inputs={sceneInputs}
+                          config={r.config}
+                          result={r}
+                          sun={sun}
+                          t={t}
+                        />
+                      </Suspense>
+                    </SceneBoundary>
                   ) : (
                     <div className="scene-empty">
                       {calculated.loading
@@ -457,15 +496,16 @@ function App() {
                 </div>
                 <p className="scene-caption">
                   {t("Winter solstice · Hong Kong time", "冬至 · 香港時間")}{" "}
-                  <strong data-testid="sun-time">
-                    {sun
-                      ? `${String(Math.floor(sun.hour)).padStart(2, "0")}:${sun.hour % 1 ? "30" : "00"}`
-                      : "12:00"}
-                  </strong>{" "}
-                  ·{" "}
+                  <strong data-testid="sun-time">{sunTime(sun)}</strong> ·{" "}
                   {t(
                     "Preview 06:00–18:00; annual generation uses the full year.",
                     "播放 06:00–18:00；全年發電按全年計算。",
+                  )}
+                </p>
+                <p className="scene-model-note">
+                  {t(
+                    "Amber shading uses the nearest 5-minute model sample. The building body (9 m) and neighbour depth (3 m) are visual assumptions; distance is measured from the roof edge. Rendered shadows illustrate geometry; neighbour blocking uses the documented horizon approximation.",
+                    "琥珀色遮擋採用最近的 5 分鐘模型樣本。樓身 9 m 及鄰屋進深 3 m 為畫面假設，距離從天台邊緣量度。光影展示幾何；鄰屋遮擋按已說明的天際線近似計算。",
                   )}
                 </p>
                 {r && <MonthlyGeneration result={r} t={t} />}

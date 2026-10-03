@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { fmt } from "../lib/format.js";
 import { niceTicks } from "../lib/chartTicks.js";
-export default function MonthlyGeneration({ result, t }) {
+function MonthlyGeneration({ result, t }) {
   const data = result.monthly_kwh.map((kwh, i) => ({
     month: i + 1,
     kwh,
@@ -116,3 +116,5 @@ export default function MonthlyGeneration({ result, t }) {
     </div>
   );
 }
+
+export default React.memo(MonthlyGeneration);

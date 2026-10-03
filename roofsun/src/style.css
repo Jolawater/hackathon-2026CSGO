@@ -1190,3 +1190,150 @@ footer small {
     height: 270px;
   }
 }
+.scene3d {
+  width: 100%;
+  min-width: 0;
+}
+.scene3d-canvas {
+  height: 360px;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+.scene3d-canvas > canvas {
+  display: block;
+  max-width: 100%;
+}
+.scene3d-tools {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #687762;
+}
+.scene3d-tools button {
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.scene3d-help,
+.scene-model-note {
+  font-size: 11px;
+  color: #687762;
+  padding: 0 14px;
+  line-height: 1.7;
+}
+.scene-dimension-tooltip {
+  position: absolute;
+  max-width: calc(100% - 16px);
+  background: #fffef9;
+  border: 1px solid #dce4d6;
+  border-radius: 6px;
+  padding: 7px;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 4;
+}
+.scene-camera-limit {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  max-width: calc(100% - 20px);
+  padding: 6px 9px;
+  background: #fff4d7;
+  border-radius: 5px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.scene-readings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 9px 14px;
+  font-size: 11px;
+  background: #eaf0e6;
+}
+.scene3d-canvas .scene-compass {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 60px;
+  height: 60px;
+  pointer-events: none;
+}
+.compass-ring {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #b7c7b6;
+  border-radius: 50%;
+  background: #fffef9d9;
+  transform: rotate(var(--bearing, 0deg));
+  position: relative;
+}
+.compass-ring span {
+  position: absolute;
+  font-size: 10px;
+  color: #24422e;
+  transform: translate(-50%, -50%) rotate(var(--counter-bearing, 0deg));
+}
+.compass-n {
+  left: 50%;
+  top: 9%;
+  font-weight: 700;
+}
+.compass-e {
+  left: 91%;
+  top: 50%;
+}
+.compass-s {
+  left: 50%;
+  top: 91%;
+}
+.compass-w {
+  left: 9%;
+  top: 50%;
+}
+.compass-ring i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -60%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 19px solid #27553d;
+}
+@media (max-width: 760px) {
+  .scene3d-canvas {
+    height: 300px;
+  }
+  .scene-readings {
+    font-size: 10px;
+  }
+}
+
+.scene3d {
+  position: relative;
+}
+.scene-readings {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #fffef9e8;
+  border: 1px solid #dce4d6;
+  border-radius: 8px;
+  pointer-events: none;
+  font-size: 10px;
+}
+.scene-camera-limit {
+  top: auto;
+  bottom: 8px;
+  z-index: 3;
+}

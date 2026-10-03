@@ -411,7 +411,7 @@ def sun_preview(inputs,config,day,hour):
     pos=pvlib.solarposition.get_solarposition(t,SETTINGS['location']['lat'],SETTINGS['location']['lon'])
     alt=float(pos.apparent_elevation.iloc[0]);az=float(pos.azimuth.iloc[0])
     h=float(np.interp(az,np.arange(13)*30,inputs.horizon+[inputs.horizon[0]]))
-    _,rows,_,_=layout(inputs,config)
+    panels,rows,_,_=layout(inputs,config)
     fractions=(finite_shading(np.array([alt]),np.array([az]),config,rows) if inputs.finite_rows else shading_fractions([alt],[az],config.tilt,config.azimuth,rows))[:,0].tolist()
     return {'altitude':round(alt,2),'azimuth':round(az,2),'horizon':h,'beam_clear':alt>h,
-            'row_shade':fractions,'timestamp':t[0].isoformat()}
+            'row_shade':fractions,'shaded_panels':sum(1 for p in panels if alt>0 and (alt<=h or fractions[p['row']]>1e-6)),'timestamp':t[0].isoformat()}

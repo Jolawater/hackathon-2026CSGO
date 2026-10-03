@@ -52,7 +52,7 @@
       "name_zh": "配置搜索結果",
       "description_en": "Coarse search plus local refinement supplies physically feasible candidates; the owner interface selects highest current NPV, then tests three financial scenarios.",
       "description_zh": "粗搜尋加局部細化提供物理可行配置；業主介面選出當前淨現值最高方案，再測試三個財務情景。",
-      "observed": "feasible=100; frontier=7; measured runtime=1.90s",
+      "observed": "feasible=100; frontier=7; measured runtime=1.80s",
       "passed": true,
       "source_url": null
     },
@@ -136,6 +136,15 @@
       "observed": "2025: r=0.961149; 12 months",
       "passed": true,
       "source_url": "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv"
+    },
+    {
+      "name_en": "Five-minute winter-solstice preview",
+      "name_zh": "五分鐘冬至日照預覽",
+      "description_en": "145 pvlib samples from 06:00 to 18:00 HK time. Noon shade and beam visibility match the evaluation preview; highlights use the nearest sample, not shadow-map pixels.",
+      "description_zh": "香港時間 06:00 至 18:00 共 145 個 pvlib 樣本。正午遮擋及直射光可見性與評估預覽一致；高亮採用最近模型樣本，並非陰影貼圖像素。",
+      "observed": "samples=145; noon shaded=0/12",
+      "passed": true,
+      "source_url": null
     }
   ],
   "baseline": {

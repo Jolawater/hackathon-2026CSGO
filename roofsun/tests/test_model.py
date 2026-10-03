@@ -606,9 +606,9 @@ def test_owner_adjacent_rows_are_feasible_and_show_a_real_generation_tradeoff():
     assert b['payback_years']>a['payback_years'] and trade['payback_months']>0
     assert more['recommended_interval']==base['interval']
     assert not more['is_recommended']
-    assert len(base['sun_path'])==25 and base['sun_path'][12]['hour']==12
+    assert len(base['sun_path'])==145 and base['sun_path'][72]['hour']==12
     noon=sun_preview(Inputs(**base['mapped_inputs']),Configuration(**base['result']['config']),pd.Timestamp('2025-12-21').date(),12)
-    assert base['sun_path'][12]['altitude']==noon['altitude']
+    assert base['sun_path'][72]['altitude']==noon['altitude']
 
 
 def test_owner_sensitivity_has_nine_recalculated_cases_and_no_fabricated_field_record():
@@ -754,3 +754,21 @@ def test_evaluate_api_cashflow_matches_selected_screen_design_and_real_milestone
         assert curve[-1]['A']==result['net_A'] and curve[-1]['B']==result['net_B']
         cutoff=next(p for p in curve if p['date']=='2033-12-31')
         assert all(p['A']==cutoff['A'] for p in curve if p['date']>cutoff['date'])
+
+
+@pytest.mark.parametrize('rows,floors,distance',[(2,0,10),(3,0,10),(2,2,6)])
+def test_winter_five_minute_sun_path_matches_evaluation_preview_and_shaded_panel_count(rows,floors,distance):
+    from backend.screening import screen,ScreeningRequest,SevenInputs,SouthNeighbour
+    owner=SevenInputs(neighbour=SouthNeighbour(floors=floors,distance=distance))
+    screened=screen(ScreeningRequest(inputs=owner,selected_rows=rows))
+    path=screened['sun_path'];assert len(path)==145
+    assert path[0]['hour']==6 and path[-1]['hour']==18 and path[72]['hour']==12
+    assert np.diff([p['hour'] for p in path])==pytest.approx(np.full(144,5/60))
+    response=TestClient(app).post('/api/evaluate',json={'inputs':screened['mapped_inputs'],'config':screened['result']['config']})
+    assert response.status_code==200
+    evaluation=response.json();noon=evaluation['winter_solstice_noon']
+    assert {k:v for k,v in path[72].items() if k!='hour'}==noon
+    count=sum(1 for p in evaluation['panels'] if noon['altitude']>0 and (not noon['beam_clear'] or noon['row_shade'][p['row']]>1e-6))
+    assert noon['shaded_panels']==count
+    assert all(0<=sample['shaded_panels']<=evaluation['panels_count'] for sample in path)
+    assert all(isinstance(sample['beam_clear'],bool) and len(sample['row_shade'])==evaluation['actual_rows'] for sample in path)
