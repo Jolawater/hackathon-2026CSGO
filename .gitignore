@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+demo_out.txt
+dom.txt
+data.json
+checks.json
