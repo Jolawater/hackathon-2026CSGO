@@ -1,4 +1,5 @@
 import React from "react";
+import { useReducedMotion } from "../lib/motion.js";
 import {
   BarChart,
   Bar,
@@ -12,6 +13,7 @@ import {
 import { fmt } from "../lib/format.js";
 import { niceTicks } from "../lib/chartTicks.js";
 function MonthlyGeneration({ result, t }) {
+  const reduced = useReducedMotion();
   const data = result.monthly_kwh.map((kwh, i) => ({
     month: i + 1,
     kwh,
@@ -85,7 +87,8 @@ function MonthlyGeneration({ result, t }) {
               dataKey="kwh"
               fill="#527b60"
               radius={[3, 3, 0, 0]}
-              isAnimationActive={false}
+              isAnimationActive={!reduced}
+              animationDuration={600}
             >
               <LabelList
                 content={({ x, y, width, index, value }) =>

@@ -52,7 +52,7 @@
       "name_zh": "配置搜索結果",
       "description_en": "Coarse search plus local refinement supplies physically feasible candidates; the owner interface selects highest current NPV, then tests three financial scenarios.",
       "description_zh": "粗搜尋加局部細化提供物理可行配置；業主介面選出當前淨現值最高方案，再測試三個財務情景。",
-      "observed": "feasible=100; frontier=7; measured runtime=1.80s",
+      "observed": "feasible=100; frontier=7; measured runtime=3.22s",
       "passed": true,
       "source_url": null
     },
@@ -156,7 +156,7 @@
   "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
   "monthly_comparison": {
     "year": 2025,
-    "pearson_r": 0.9611488171425586,
+    "pearson_r": 0.9611488171425588,
     "months": [
       {
         "month": 1,
