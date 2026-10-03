@@ -96,7 +96,7 @@ export default function OwnerInputs({ inputs, onChange, t }) {
             label={t("Roof length", "天台長度")}
             value={inputs.roof.depth}
             min={1}
-            max={30}
+            max={10}
             step={0.1}
             unit="m"
             onChange={(v) => set("roof", { ...inputs.roof, depth: v })}
@@ -105,7 +105,7 @@ export default function OwnerInputs({ inputs, onChange, t }) {
             label={t("Roof width", "天台闊度")}
             value={inputs.roof.width}
             min={1}
-            max={30}
+            max={10}
             step={0.1}
             unit="m"
             onChange={(v) => set("roof", { ...inputs.roof, width: v })}
@@ -113,8 +113,8 @@ export default function OwnerInputs({ inputs, onChange, t }) {
         </div>
         <p className="help">
           {t(
-            "Measure one clear rectangle, excluding the stairhood and water tank.",
-            "量度已扣除樓梯屋及水箱的一塊長方形空間。",
+            "Measure one clear rectangle, excluding the stairhood and water tank. Village-house roofs are at most about 65 m² (around 8 m × 8 m); each side is limited to 10 m.",
+            "量度已扣除樓梯屋及水箱的一塊長方形空間。村屋天台一般不超過約 65 m²（約 8 × 8 m），每邊上限 10 m。",
           )}
         </p>
       </Group>

@@ -25,8 +25,11 @@ class OwnerModel(BaseModel):
     model_config=ConfigDict(extra='forbid',allow_inf_nan=False)
 
 class RoofDimensions(OwnerModel):
-    width:float=Field(default=8.06,ge=1,le=30)
-    depth:float=Field(default=8.06,ge=1,le=30)
+    # Village-house roofs are at most 65.03 m² (about 8 m × 8 m). Above 10 m per
+    # side the layout search slows sharply (12 m ≈ 22 s, 30 m > 5 min) while the
+    # recommendation stays at the 9.9 kW cap, so the owner screen stops at 10 m.
+    width:float=Field(default=8.06,ge=1,le=10)
+    depth:float=Field(default=8.06,ge=1,le=10)
 
 class Neighbour(OwnerModel):
     direction:Literal[0,45,90,135,180,225,270,315]=180
@@ -186,18 +189,27 @@ def screen_cached(serialized):
             'is_recommended':config==Configuration(**recommended['config'])}
 
 
-from threading import RLock
-_screen_lock=RLock()
+from threading import Lock
+_inflight_guard=Lock()
+_inflight={}
 _example_screens={}
 def screen(request,*,pin_example=False):
-    # The warmup and live requests share the same cache and avoid duplicate cold work.
+    # Identical requests wait for one computation; different inputs run in parallel,
+    # so one slow request cannot hold every other visitor in a queue.
     key=request.model_dump_json()
     if key in _example_screens:return _example_screens[key]
-    with _screen_lock:
-        result=screen_cached(key)
-        # Only startup calls opt in. Keep the three demo cases even after LRU eviction.
-        if pin_example and len(_example_screens)<3:_example_screens[key]=result
-        return result
+    with _inflight_guard:
+        entry=_inflight.setdefault(key,[Lock(),0]);entry[1]+=1
+    try:
+        with entry[0]:
+            result=screen_cached(key)
+            # Only startup calls opt in. Keep the three demo cases even after LRU eviction.
+            if pin_example and len(_example_screens)<3:_example_screens[key]=result
+            return result
+    finally:
+        with _inflight_guard:
+            entry[1]-=1
+            if entry[1]==0:_inflight.pop(key,None)
 
 
 @lru_cache(maxsize=12)

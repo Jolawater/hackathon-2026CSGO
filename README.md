@@ -48,7 +48,7 @@ RoofSun HK 只問 **7 條屋主憑常識就答得出的問題**：
 | Requirement | RoofSun HK |
 |---|---|
 | **One small system** | One flat village-house rooftop PV system (≈ 2–10 kW) |
-| **≥ 2 adjustable inputs** | 7 owner inputs: roof length/width, front-door direction, neighbour floors/distance, quote per kW, other-cost band, completion month, post-2033 self-use |
+| **≥ 2 adjustable inputs** | 7 owner inputs: roof length/width (≤ 10 m per side), front-door direction, up to 3 taller neighbours (compass direction, floors above the roof, distance), quote per kW, other-cost band, completion month, post-2033 self-use |
 | **≥ 1 practical constraint** | EMSD rule: panels (including gaps) may cover **at most half** of the roof. Also a 150 kg/m² average load check, a ≥ 2 kW minimum system and the 65.03 m² village-house scope warning |
 | **Trade-off between two outcomes** | **“One more row”**: more kWh, but higher cost and more row-to-row shading, so payback and NPV can get better *or* worse. The card shows Δ generation, Δ cost, Δ payback (months), shading loss and kWh per kW |
 | **Evidence** | HKO measured irradiance calibration, NREL SPA reference check, row-shadow comparisons, pvlib ModelChain cross-checks, three-point NPV range and nine one-at-a-time sensitivity cases (see below) |
@@ -79,7 +79,8 @@ RoofSun HK 只問 **7 條屋主憑常識就答得出的問題**：
 
 3. **Shading.**
    - Adjacent rows use a finite-row overlap model with Martinez bypass-diode loss (3 blocks per module).
-   - Neighbouring buildings become a 12-sector horizon (3 m per floor). The horizon blocks direct sunlight and reduces sky-diffuse light through a sky-view factor.
+   - Each taller neighbour (up to 3, any of 8 compass directions) becomes a constant-height facade spanning 60° either side of its direction, at 3 m per floor. The 12-sector horizon takes the highest angle in each sector. It blocks direct sunlight and reduces sky-diffuse light through a sky-view factor.
+   - Hong Kong (22.3°N) is south of the Tropic of Cancer, so the summer sun also passes to the north. For one neighbour 2 floors higher and 6 m away, the simulated annual loss is 13.5% to the south, 11.4% to the east, 11.8% to the west and 7.5% to the north (default roof, fixed 2-row layout).
 
 4. **Money.**
    - Monthly cash flow over 25 years, using EMSD FiT tiers (≤ 10 kW: HK$4/kWh; 10–200 kW: HK$3/kWh) until **2033-12-31**.
@@ -144,6 +145,7 @@ GitHub Actions runs the same checks (`.github/workflows/roofsun-checks.yml`).
 .
 ├── README.md                  ← you are here
 ├── .github/workflows/         CI: pytest, validation, build, browser tests
+├── render.yaml                Render blueprint (Docker web service)
 └── roofsun/
     ├── README.md              detailed model documentation (bilingual)
     ├── backend/               FastAPI app and model
@@ -157,6 +159,7 @@ GitHub Actions runs the same checks (`.github/workflows/roofsun-checks.yml`).
     ├── data/                  bundled weather, HKO observations, assumptions, presets
     ├── scripts/               hko_check.py, validate.py, download_weather.py, browser tests
     ├── tests/                 pytest suite
+    ├── Dockerfile             production image: builds the frontend, serves it with the API
     └── docs/                  development records for earlier versions
 ```
 
@@ -183,8 +186,8 @@ Every fixed value is listed, with its source, in the in-app **假設與來源 / 
 - future tariff changes;
 - tax and financing.
 
-<!-- TODO: update this line when multi-direction neighbours land -->
-- The current version models only the **southern** neighbour.
+- Neighbours are simplified as constant-height facades (at most 3). The sky-view factor treats diffuse-light blocking the same in every direction, so northern losses may be overstated.
+- Each roof side is limited to 10 m. Village houses are at most 65.03 m², and larger roofs make the layout search slow without changing the 9.9 kW recommendation.
 
 **No field measurement yet.** No real rooftop meter readings have been compared with the model. The HKO comparison checks irradiance, not rooftop generation accuracy.
 
@@ -228,7 +231,9 @@ Every fixed value is listed, with its source, in the in-app **假設與來源 / 
 
 All code was written during HacKU 2026 (2–4 October 2026). The commit history is kept unedited.
 
-- **Main history:** branch `Jim's-RoofSun-HK`, fast-forwarded into `main` for submission.
+- **Main history:** branch `Jim's-RoofSun-HK` (model, backend, frontend and tests).
+- **Neighbours in every direction, landing screen, performance and layout overhaul, Docker/Render deployment:** developed on branch [`JESON`](https://github.com/Jolawater/hackathon-2026CSGO/tree/JESON), then cherry-picked onto this history with original authors and dates kept.
+- **Final integration:** branch `Ricky` (roof-size cap and per-input calculation locks), merged into `main` for submission.
 - **3D rooftop scene:** prototyped on branch [`JESON-ROOFTOPJIM`](https://github.com/Jolawater/hackathon-2026CSGO/tree/JESON-ROOFTOPJIM) (up to `51854cf`), then ported into `roofsun/src/components/RoofScene3D.jsx` in commit `a05e5ad`.
 
 **Other branches.** The team changed direction twice before settling on RoofSun HK. The other branches (`Andy`, `Jim's-codex/water-heater-model`, `JESON`, `nitroclock`, `Ricky`, `Jim`) are earlier explorations and are **not part of this submission**.

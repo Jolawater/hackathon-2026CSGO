@@ -27,3 +27,42 @@ def test_fixed_east_case_and_sensitivity():
     assert loss==pytest.approx(.1135752789,abs=1e-6)
     assert [n.floors for n in higher_neighbours([Neighbour(),Neighbour(direction=90)])]==[1,0]
     assert [n.floors for n in higher_neighbours([Neighbour(floors=2),Neighbour(direction=90,floors=3)])]==[3,4]
+
+def test_roof_sides_capped_for_response_time():
+    from backend.screening import ScreeningRequest
+    SevenInputs(roof={'width':10,'depth':10})
+    for side in (10.01,30):
+        with pytest.raises(ValueError):SevenInputs(roof={'width':side,'depth':8})
+        with pytest.raises(ValueError):SevenInputs(roof={'width':8,'depth':side})
+
+def test_slow_request_does_not_block_different_inputs(monkeypatch):
+    import threading,time
+    from backend import screening
+    started=threading.Event();release=threading.Event();calls=[]
+    def fake(key):
+        calls.append(key)
+        if '"width":9.0' in key:started.set();release.wait(5)
+        return {'key':key}
+    monkeypatch.setattr(screening,'screen_cached',fake)
+    slow=screening.ScreeningRequest(inputs=SevenInputs(roof={'width':9,'depth':9}))
+    fast=screening.ScreeningRequest(inputs=SevenInputs(roof={'width':7,'depth':7}))
+    worker=threading.Thread(target=screening.screen,args=(slow,));worker.start()
+    assert started.wait(5)
+    t=time.perf_counter();screening.screen(fast);elapsed=time.perf_counter()-t
+    release.set();worker.join(5)
+    assert elapsed<1 and len(calls)==2 and not screening._inflight
+
+def test_identical_requests_share_one_computation(monkeypatch):
+    import threading
+    from backend import screening
+    gate=threading.Event();calls=[]
+    def fake(key):
+        calls.append(key);gate.wait(5);return {'key':key}
+    monkeypatch.setattr(screening,'screen_cached',fake)
+    req=screening.ScreeningRequest(inputs=SevenInputs(roof={'width':6.5,'depth':6.5}))
+    threads=[threading.Thread(target=screening.screen,args=(req,)) for _ in range(3)]
+    for th in threads:th.start()
+    threading.Event().wait(.3);gate.set()
+    for th in threads:th.join(5)
+    # Waiters re-enter after the first finishes; the real lru_cache then serves them.
+    assert calls[0]==req.model_dump_json() and not screening._inflight

@@ -15,8 +15,8 @@ export function readOwner() {
       Array.isArray(i?.neighbours) &&
       i.neighbours.length >= 1 &&
       i.neighbours.length <= 3 &&
-      within(i.roof.width, 1, 30) &&
-      within(i.roof.depth, 1, 30) &&
+      within(i.roof.width, 1, 10) &&
+      within(i.roof.depth, 1, 10) &&
       i.neighbours.every(
         (n) =>
           n &&
