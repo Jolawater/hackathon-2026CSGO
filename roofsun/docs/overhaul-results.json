@@ -1,0 +1,76 @@
+{
+  "checks": [
+    "Startup prewarm completed",
+    "Cached screen responds below 1 second 180",
+    "Cached evaluate responds below 1 second",
+    "Cached screen responds below 1 second 180",
+    "Cached evaluate responds below 1 second",
+    "Cached screen responds below 1 second 90,270",
+    "Cached evaluate responds below 1 second",
+    "No canvas on initial screen",
+    "1440x900 hero fits and next section peeks",
+    "Inline hero SVG below 8KB",
+    "Start focuses roof length",
+    "How it works opens assumptions",
+    "Example visible below 1 second: Tall southern neighbour",
+    "Example visible below 1 second: Neighbours on both sides",
+    "Example visible below 1 second: Open rooftop",
+    "Only one neighbour cannot be removed",
+    "Fourth neighbour disabled",
+    "New directions use unused priority",
+    "Direction contains relative front-door hints",
+    "3D contains east and west buildings",
+    "Right cards gap below 200px",
+    "Offscreen has zero rendering frames",
+    "Hidden document pauses rendering",
+    "Legacy browser data migrated intact",
+    "Legacy JSON migrated intact",
+    "Wait feedback shows real elapsed seconds",
+    "Rapid edits coalesce with at most one request",
+    "Reduced motion disables CSS movement",
+    "375px no horizontal overflow",
+    "Mobile navigation simplified",
+    "Mobile result bar hides at results",
+    "Chinese mobile fits",
+    "No JavaScript page errors"
+  ],
+  "metrics": {
+    "startupExampleSeconds": [
+      3.146,
+      2.13,
+      5.079
+    ],
+    "cachedApiMilliseconds": [
+      12,
+      9,
+      8
+    ],
+    "hero": {
+      "title": 376.5625,
+      "actions": 538.75,
+      "trust": 580.140625,
+      "next": 832.59375,
+      "svgBytes": 2324
+    },
+    "exampleClickMilliseconds": [
+      {
+        "name": "Tall southern neighbour",
+        "ms": 511
+      },
+      {
+        "name": "Neighbours on both sides",
+        "ms": 502
+      },
+      {
+        "name": "Open rooftop",
+        "ms": 488
+      }
+    ],
+    "rightColumnGapPx": 18,
+    "offscreenFramesIn700ms": 0,
+    "coalescedRequests": [
+      21000,
+      23000
+    ]
+  }
+}

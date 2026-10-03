@@ -17,15 +17,18 @@ from threading import Thread
 import logging,time
 
 WARMUP={'status':'pending','examples':[]}
+_example_evaluations={}
 def warm_examples():
     WARMUP.update(status='running',examples=[])
     try:
         examples=[SevenInputs(),SevenInputs(neighbours=[{'direction':180,'floors':3,'distance':3}]),SevenInputs(neighbours=[{'direction':90,'floors':2,'distance':4},{'direction':270,'floors':2,'distance':4}])]
         for owner in examples:
             started=time.perf_counter()
-            result=screen(ScreeningRequest(inputs=owner,selected_rows=None))
+            result=screen(ScreeningRequest(inputs=owner,selected_rows=None),pin_example=True)
             if result['result']:
-                api_evaluate(Evaluation(inputs=result['mapped_inputs'],config=result['result']['config']))
+                evaluation=Evaluation(inputs=result['mapped_inputs'],config=result['result']['config'])
+                value=api_evaluate(evaluation)
+                if len(_example_evaluations)<3:_example_evaluations[evaluation.model_dump_json()]=value
             WARMUP['examples'].append({'inputs':owner.model_dump(),'seconds':round(time.perf_counter()-started,3)})
         WARMUP['status']='ready'
     except Exception:
@@ -55,7 +58,9 @@ def meta(): return {**source_metadata(),'calibration':calibration(),'owner_defau
 
 @app.post('/api/evaluate')
 def api_evaluate(request:Evaluation):
-    return evaluate_cached(request.model_dump_json())
+    key=request.model_dump_json()
+    if key in _example_evaluations:return _example_evaluations[key]
+    return evaluate_cached(key)
 
 @lru_cache(maxsize=48)
 def evaluate_cached(serialized):

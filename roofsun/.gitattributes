@@ -1,0 +1,4 @@
+# Keep bundled source checksums reproducible on Windows as well as Linux.
+data/weather_*.csv text eol=lf
+# The supplied HKO file has mixed line endings: preserve its exact source bytes.
+data/hko_kp_daily_gsr.csv -text

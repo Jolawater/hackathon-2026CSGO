@@ -39,9 +39,11 @@ def migrate_neighbours(value):
     if not isinstance(value,dict):return value
     value=dict(value)
     old=value.pop("neighbour",None)
-    if old is not None and "neighbours" not in value:
+    if old is not None:
         old=old.model_dump() if isinstance(old,BaseModel) else old
-        value["neighbours"]=[{"direction":180,**old}]
+        if not isinstance(old,dict):raise ValueError('neighbour must be an object')
+        migrated=Neighbour.model_validate({"direction":180,**old}).model_dump()
+        if "neighbours" not in value:value["neighbours"]=[migrated]
     return value
 
 class SevenInputs(OwnerModel):
@@ -186,9 +188,16 @@ def screen_cached(serialized):
 
 from threading import RLock
 _screen_lock=RLock()
-def screen(request):
+_example_screens={}
+def screen(request,*,pin_example=False):
     # The warmup and live requests share the same cache and avoid duplicate cold work.
-    with _screen_lock:return screen_cached(request.model_dump_json())
+    key=request.model_dump_json()
+    if key in _example_screens:return _example_screens[key]
+    with _screen_lock:
+        result=screen_cached(key)
+        # Only startup calls opt in. Keep the three demo cases even after LRU eviction.
+        if pin_example and len(_example_screens)<3:_example_screens[key]=result
+        return result
 
 
 @lru_cache(maxsize=12)

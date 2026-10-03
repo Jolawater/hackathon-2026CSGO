@@ -4,7 +4,9 @@
 
 香港村屋太陽能的雙語篩選網站，為 HacKU 2026 Deep Tech Problem 3「Test the Change Before You Make It」製作。只有一個介面、七組業主輸入，沒有專業模式。結果屬模擬，並非工程設計或財務建議；不代表已通過結構或法規審批。
 
-A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. Only `roofsun/` on `Jim's-RoofSun-HK` is changed. The physical, packing and shade equations remain intact. v3.1 follows the chart specification: conservative scenario A shuts down after FiT; self-use scenario B retains its previous cash-flow calculation.
+A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. This JESON edition starts from `Jim's-RoofSun-HK` commit `a05e5ad`; it is delivered on **JESON only**, preserving the other projects already on JESON. Jim's branch is not modified. The physical, packing and financial equations remain intact; the existing neighbour facade projection now accepts up to three compass directions. Conservative scenario A shuts down after FiT; self-use scenario B retains its previous cash-flow calculation.
+
+本版新增「裝板之前，先試一次」介紹首屏、三個可計算示例、四周鄰屋輸入，以及結果／排布／回本／證據的章節導航。3D 接近畫面才載入、離屏暫停；伺服器啟動時預熱示例。完整驗收、限制及回滾說明見 [JESON 改版紀錄](docs/JESON_NEIGHBOURS_INTRO_REVIEW.md)。
 
 ## 本機啟動 / Run locally
 
@@ -24,13 +26,15 @@ Open **http://127.0.0.1:8000/**. Production serves the website and API from one 
 
 完成安裝及建置後可離線使用。終端機的伺服器程序需要保持運行。
 
+Windows PowerShell 請先設 `$env:PYTHONUTF8='1'`，再執行 Python 指令，或使用 `python -X utf8 -m uvicorn backend.app:app --host 127.0.0.1 --port 8000`，避免系統預設編碼誤讀中文證據資料。
+
 ## 七項輸入 / Seven owner inputs
 
 | # | 問題 / Question | 換算 / Mapping |
 |---|---|---|
 | 1 | 可放板長方形的長、闊 / Clear rectangle length and width | `roof` → `depth`, `width`; `house_area = width × depth`; `exclusions = []` |
 | 2 | 正門朝向 / Front-door direction | Eight compass buttons → `roof_rotation` = 0, 45, …, 315° |
-| 3 | 南面鄰屋高出幾層、相距幾米 / Southern neighbour floors and distance | `neighbour` → 12-value horizon; assumed 3 m/floor, centred south, 120° sector |
+| 3 | 四周鄰屋方向、高出幾層、相距幾米 / Surrounding neighbours: direction, floors and distance | `neighbours` (1–3) → maximum of 12-sector horizons; assumed 3 m/floor and ±60° around each chosen direction; 0 floors means no obstruction |
 | 4 | 每千瓦安裝報價 / Installation quote per kW | `price_per_kw`; HK$20k/25k/30k buttons are **assumed reference prices**, not market quotations |
 | 5 | 其他費用低、中、高 / Other-cost allowance | `cost_band` → setup, annual maintenance and year-10 inverter replacement; see assumptions below |
 | 6 | 完工年月 / Completion month | `commissioning_month` → first day of that month (**assumption**) |
@@ -78,7 +82,7 @@ To explicitly replace the source from the public URL, use `python scripts/hko_ch
 
 **證據與敏感性 / Evidence & sensitivity:** Part A shows three HKO/NASA years, the NREL SPA published example, 25 row-shadow comparisons and three unshaded ModelChain/PVWatts cases. Cross-model comparison uses common weather and components; differing temperature, losses and inverter assumptions explain the reported differences. It is not measured rooftop validation. **The real village-house reference case remains “待補充 / Pending data”; no sample meter readings or field accuracy are invented.**
 
-Part B shows the three-point NPV range and nine one-at-a-time cases: installation quote ±20%; completion +6/+12 months; neighbour +1 floor; high other costs; linear rather than Martinez shade loss; weather 2023/2024 with each year's computed HKO ratio. NPV and verdict keep the current recommended configuration fixed. A separate search answers whether the preferred configuration changes. Changing any owner answer clears stale analysis immediately. Sensitivity is calculated on demand.
+Part B shows the three-point NPV range and nine one-at-a-time cases: installation quote ±20%; completion +6/+12 months; all neighbours +1 floor (only the first if all are zero); high other costs; linear rather than Martinez shade loss; weather 2023/2024 with each year's computed HKO ratio. NPV and verdict keep the current recommended configuration fixed. A separate search answers whether the preferred configuration changes. Changing any owner answer clears stale analysis immediately. Sensitivity is calculated on demand.
 
 ## 模型範圍 / Model scope
 
@@ -129,11 +133,11 @@ Only `RoofScene3D.jsx` is adapted from `JESON-ROOFTOPJIM@51854cf`; that branch w
 
 `/api/screen` returns **145 five-minute pvlib samples** over 06:00–18:00 HK time on 2025-12-21. A 12-second requestAnimationFrame playback interpolates unit sunlight directions; amber highlighting and the shaded-panel count use the **nearest backend sample**, with row-shade fractions and horizon beam visibility. `/api/evaluate.winter_solstice_noon` exposes that same instantaneous preview separately from annual `row_losses`. Nighttime has no directly shaded panels. The corner overlay shows time, elevation, azimuth and the shaded-module count; compass directions follow the camera and roof rotation.
 
-Default view is southeast. Orbit polar/zoom limits and building collision bounds keep the camera above/outside the roof; Reset view restores the initial southeast view. Directional light uses 2048 PCFSoftShadowMap, with a shadow frustum recomputed from the roof, module and neighbour bounds. No manual panel placement, rotation or building-height controls are present; the seven inputs and exactly two foldout panels are retained.
+Default view is southeast. Orbit polar/zoom limits and building collision bounds keep the camera above/outside the roof; Reset view restores the initial southeast view. Directional light uses 2048 PCFSoftShadowMap, with a shadow frustum recomputed from the roof, module and neighbour bounds. No manual panel placement, rotation or building-height controls are present; the seven input groups and two evidence foldouts are retained, with the scene explanation in its own smaller foldout.
 
-Neighbour geometry is generated directly from southern-neighbour floors × 3 m, distance and the 120° facade sector. **Visual assumptions:** own building body 9 m; neighbour facade depth 3 m; facade width = 2 × entered distance × tan(60°); entered distance is from the roof edge. These are illustrations, not surveyed buildings. The energy model still uses its single horizon-sector approximation rather than rasterized/three-dimensional building shadows; amber highlights are authoritative model values. Visual ground/window details are not new shade or generation inputs. No physical energy equation changed in the 3D step.
+Neighbour geometry is generated directly from each selected compass direction, floors × 3 m, distance and the 120° facade sector (up to three neighbours). **Visual assumptions:** own building body 9 m; neighbour facade depth 3 m; facade width = 2 × entered distance × tan(60°); entered distance is from the roof edge. These are illustrations, not surveyed buildings. The energy model still uses the elementwise maximum of the neighbours’ 12-sector horizons rather than rasterized/three-dimensional building shadows; amber highlights are authoritative model values. Visual ground/window details are not new shade or generation inputs. No physical energy equation changed in the 3D step.
 
-鄰屋直接按南面、層數 × 3 m、距離及 120° 扇形建圖。樓身 9 m、鄰屋進深 3 m 及扇形立面是畫面假設，不是實測建築。光影展示幾何，琥珀色高亮及被遮面板數目採用後端遮擋樣本；發電仍按已說明的天際線近似計算。拖動只改視角，不改計算配置。
+每棟鄰屋按所選方向、層數 × 3 m、距離及 120° 扇形建圖，最多三棟。樓身 9 m、鄰屋進深 3 m 及扇形立面是畫面假設，不是實測建築。光影展示幾何，琥珀色高亮及被遮面板數目採用後端遮擋樣本；發電仍按已說明的天際線近似計算。拖動只改視角，不改計算配置。
 
 Reproduce all checks from `roofsun/`:
 

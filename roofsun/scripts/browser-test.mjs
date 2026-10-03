@@ -2,10 +2,11 @@ import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 const base = process.env.ROOFSUN_TEST_URL || "http://127.0.0.1:8000";
-const output = "/tmp/roofsun-browser-checks";
+const output = process.env.ROOFSUN_TEST_OUTPUT || "/tmp/roofsun-browser-checks";
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   args: ["--enable-unsafe-swiftshader"],
+  channel: process.env.ROOFSUN_BROWSER_CHANNEL || undefined,
 });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
@@ -18,7 +19,9 @@ const ready = () =>
   page.waitForFunction(
     () =>
       document.querySelector(".results-column")?.getAttribute("aria-busy") ===
-        "false" && !document.querySelector('.results-column [role="alert"]'),
+        "false" &&
+      !document.querySelector('.results-column [role="alert"]') &&
+      !document.querySelector('[data-number-moving="true"]'),
     {},
     { timeout: 60000 },
   );
@@ -81,14 +84,14 @@ try {
   await ready();
   await button("EN").click();
   assert.equal(await page.locator("[data-input-group]").count(), 7);
-  assert.equal(await page.locator('input[type="range"],select').count(), 0);
+  assert.equal(await page.locator('input[type="range"]').count(), 0);
   assert.equal(
     await page
       .getByRole("button", { name: /advanced|professional|simple mode/i })
       .count(),
     0,
   );
-  assert.equal(await page.locator("details").count(), 2);
+  assert.equal(await page.locator(".detail-panels > details").count(), 2);
   assert.equal(await page.locator("details[open]").count(), 0);
   assert.equal(
     await page.getByTestId("annual-kwh").innerText(),
@@ -130,6 +133,7 @@ try {
       .then((s) => s.includes("kWh/kW")),
   );
   await page.mouse.move(0, 0);
+  await page.locator("#layout").scrollIntoViewIfNeeded();
   await page.locator(".scene3d-canvas canvas").waitFor();
   await page.waitForFunction(
     () =>
@@ -149,7 +153,7 @@ try {
       `${baseline.sun_path[72].shaded_panels} / ${baseline.result.panels_count}`,
     ),
   );
-  assert.equal(await page.locator("details").count(), 2);
+  assert.equal(await page.locator(".detail-panels > details").count(), 2);
   await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
 
   await page.getByTestId("cashflow-chart").waitFor();
@@ -221,6 +225,7 @@ try {
   ]) {
     if (bearing !== r.mapped_inputs.roof_rotation)
       r = await change(() => button(`Door direction ${name}`).click());
+    await page.locator("#layout").scrollIntoViewIfNeeded();
     await page.locator(".scene3d-canvas canvas").waitFor();
     await page.waitForFunction(
       () =>
@@ -245,7 +250,9 @@ try {
       await label("Floors above the roof 1").fill("2");
       await label("Distance to neighbour 1").fill("6");
     },
-    (r) => r.inputs.neighbours[0].floors === 2 && r.inputs.neighbours[0].distance === 6,
+    (r) =>
+      r.inputs.neighbours[0].floors === 2 &&
+      r.inputs.neighbours[0].distance === 6,
   );
   assert.deepEqual(
     r.mapped_inputs.horizon,
@@ -439,7 +446,9 @@ try {
   await button("Run sensitivity checks").click();
   const analysis = await (await analysisResponse).json();
   assert.equal(analysis.scenarios.length, 9);
-  await page.getByText("Neighbour one floor higher", { exact: true }).waitFor();
+  await page
+    .getByText("Every neighbour one floor higher", { exact: true })
+    .waitFor();
   assert.equal(
     await page
       .locator(".evidence-panel table")
@@ -462,7 +471,9 @@ try {
   assert.equal(archive.model_version, "3.1.0");
   r = await change(() => label("Installation quote per kW").fill("24000"));
   assert.equal(
-    await page.getByText("Neighbour one floor higher", { exact: true }).count(),
+    await page
+      .getByText("Every neighbour one floor higher", { exact: true })
+      .count(),
     0,
     "stale evidence disappears",
   );
@@ -528,7 +539,7 @@ try {
   await button("中文").click();
   assert(
     await page
-      .getByRole("heading", { name: "這片天台，值得裝太陽能嗎？", exact: true })
+      .getByRole("heading", { name: "裝板之前，先試一次。", exact: true })
       .isVisible(),
   );
   const assumptions = JSON.parse(
@@ -607,6 +618,7 @@ try {
   });
   const fallbackPage = await fallbackContext.newPage();
   await fallbackPage.goto(base);
+  await fallbackPage.locator("#layout").scrollIntoViewIfNeeded();
   await fallbackPage
     .getByText("WebGL unavailable; showing the SVG preview.", { exact: true })
     .waitFor({ timeout: 60000 });
@@ -622,7 +634,10 @@ try {
       .getAttribute("aria-pressed"),
     "false",
   );
-  assert.equal(await fallbackPage.locator("details").count(), 2);
+  assert.equal(
+    await fallbackPage.locator(".detail-panels > details").count(),
+    2,
+  );
   assert(
     await fallbackPage.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
@@ -653,6 +668,8 @@ try {
         .click();
       await response;
     }
+    await fallbackPage.waitForFunction(() => document.querySelector('.results-column')?.getAttribute('aria-busy') === 'false');
+    await fallbackPage.locator('#layout').scrollIntoViewIfNeeded();
     await fallbackPage.locator("svg .scene-compass").waitFor();
     const c = await fallbackPage
       .locator("svg .scene-compass")

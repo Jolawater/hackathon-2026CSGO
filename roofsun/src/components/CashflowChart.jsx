@@ -1,4 +1,5 @@
 import React from "react";
+import { useReducedMotion } from "../lib/motion.js";
 import {
   LineChart,
   Line,
@@ -14,6 +15,7 @@ import { fmt, money } from "../lib/format.js";
 import { niceTicks } from "../lib/chartTicks.js";
 const timestamp = (date) => Date.parse(`${date}T00:00:00Z`);
 function CashflowChart({ result, inputs, settings, selected, t }) {
+  const reduced = useReducedMotion();
   const data = result.cashflow.map((p) => ({ ...p, time: timestamp(p.date) }));
   const ticks = niceTicks(data.flatMap((p) => [p.A, p.B])),
     s = selected ? "B" : "A",
@@ -124,14 +126,16 @@ function CashflowChart({ result, inputs, settings, selected, t }) {
               strokeWidth={2}
               strokeDasharray="5 4"
               dot={false}
-              isAnimationActive={false}
+              isAnimationActive={!reduced}
+              animationDuration={600}
             />
             <Line
               dataKey={s}
               stroke="#3d7052"
               strokeWidth={2.5}
               dot={false}
-              isAnimationActive={false}
+              isAnimationActive={!reduced}
+              animationDuration={600}
             />
             <ReferenceDot
               x={first.time}
