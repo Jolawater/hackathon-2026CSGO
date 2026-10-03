@@ -24,6 +24,7 @@ import OwnerInputs, {
   neighbourHorizon,
 } from "./components/Screening.jsx";
 import RoofScene from "./components/RoofScene.jsx";
+import CashflowChart from "./components/CashflowChart.jsx";
 import MonthlyGeneration from "./components/MonthlyGeneration.jsx";
 import Assumptions from "./components/Assumptions.jsx";
 import Evidence, { verdictText } from "./components/Evidence.jsx";
@@ -70,6 +71,16 @@ function App() {
   const ready = calculated.data && !calculated.loading && !calculated.error;
   const screen = ready ? calculated.data : null,
     r = screen?.result;
+  const evaluationPayload = useMemo(
+    () => (r ? { inputs: screen.mapped_inputs, config: r.config } : undefined),
+    [screen],
+  );
+  const cashEvaluation = useApi(
+    `/api/evaluate?retry=${retry}`,
+    evaluationPayload,
+    0,
+    Boolean(r),
+  );
   const onChange = (value) => {
     setInputs(value);
     setSelectedRows(null);
@@ -563,6 +574,29 @@ function App() {
                 )}
               </section>
             </div>
+            {r &&
+              (cashEvaluation.loading ? (
+                <p className="help" role="status">
+                  {t("Loading monthly cash flow…", "正在載入逐月現金流…")}
+                </p>
+              ) : cashEvaluation.error ? (
+                <p className="error-notice" role="alert">
+                  {t("Cash-flow chart could not load.", "未能載入現金流圖。")}{" "}
+                  <button onClick={() => setRetry((v) => v + 1)}>
+                    {t("Retry", "重試")}
+                  </button>
+                </p>
+              ) : (
+                meta.data?.settings && (
+                  <CashflowChart
+                    result={cashEvaluation.data}
+                    inputs={screen.mapped_inputs}
+                    settings={meta.data.settings}
+                    selected={inputs.post_fit}
+                    t={t}
+                  />
+                )
+              ))}
             <div className="result-notes">
               {r && (
                 <p>

@@ -738,3 +738,19 @@ def test_monthly_hko_sums_and_seasonal_correlation_are_computed_from_observation
     more=screen(ScreeningRequest(selected_rows=3))
     assert more['monthly_comparison']['months'][0]['model_kwh']==more['result']['monthly_kwh'][0]
     assert more['monthly_comparison']['months']!=comparison['months']
+
+
+def test_evaluate_api_cashflow_matches_selected_screen_design_and_real_milestones():
+    from backend.screening import screen,ScreeningRequest
+    client=TestClient(app)
+    for rows in (2,3):
+        owner=screen(ScreeningRequest(selected_rows=rows))
+        response=client.post('/api/evaluate',json={'inputs':owner['mapped_inputs'],'config':owner['result']['config']})
+        assert response.status_code==200
+        result=response.json();curve=result['cashflow']
+        assert len(curve)==301 and curve[0]['date']=='2027-01-01' and curve[-1]['date']=='2051-12-31'
+        assert curve[0]['A']==curve[0]['B']==-owner['result']['initial_cost']
+        assert result['stable_payback_A']==owner['result']['payback_date']
+        assert curve[-1]['A']==result['net_A'] and curve[-1]['B']==result['net_B']
+        cutoff=next(p for p in curve if p['date']=='2033-12-31')
+        assert all(p['A']==cutoff['A'] for p in curve if p['date']>cutoff['date'])

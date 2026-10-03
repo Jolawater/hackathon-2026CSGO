@@ -119,3 +119,5 @@ See [v3 implementation record](docs/SEVEN_INPUTS_V3_RESPONSE.md). Earlier [v2.2 
 ### Monthly generation and seasonal evidence
 
 The current layout has a 12-month generation chart, updated by row comparisons. `scripts/hko_check.py` aggregates the bundled original HKO daily readings and computes Pearson correlation against model monthly generation; the evidence panel lists the 12 pairs. The uniform annual calibration preserves NASA’s monthly shape. Seasonal correlation is not measured rooftop yield accuracy.
+
+The cumulative cash-flow chart requests the selected configuration from `/api/evaluate`, draws monthly undiscounted net cash over 25 years and labels actual installation, sustained-payback, FiT-end and B-only inverter-replacement milestones. The selected scenario is solid and the other dashed. NPV remains a separate discounted measure.

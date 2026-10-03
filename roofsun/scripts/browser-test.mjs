@@ -130,6 +130,51 @@ try {
   await page.mouse.move(0, 0);
   await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
 
+  await page.getByTestId("cashflow-chart").waitFor();
+  const cashBaseline = await (
+    await context.request.post(`${base}/api/evaluate`, {
+      data: { inputs: baseline.mapped_inputs, config: baseline.result.config },
+    })
+  ).json();
+  assert.equal(
+    await page.getByTestId("cashflow-chart").getAttribute("data-points"),
+    "301",
+  );
+  assert.equal(
+    await page.getByTestId("cashflow-chart").getAttribute("data-selected"),
+    "A",
+  );
+  assert.equal(
+    Number(
+      await page.getByTestId("cashflow-chart").getAttribute("data-initial"),
+    ),
+    -baseline.result.initial_cost,
+  );
+  assert.equal(
+    Number(
+      await page.getByTestId("cashflow-chart").getAttribute("data-final-a"),
+    ),
+    cashBaseline.cashflow.at(-1).A,
+  );
+  assert.equal(
+    await page.getByTestId("cashflow-chart").getAttribute("data-payback"),
+    baseline.result.payback_date,
+  );
+  assert.equal(await page.locator(".cashflow-card .recharts-line").count(), 2);
+  assert.equal(
+    await page.locator(".cashflow-card .recharts-reference-line").count(),
+    2,
+  );
+  assert(
+    (await page.getByTestId("inverter-milestone").innerText()).includes(
+      "2037-01",
+    ),
+  );
+  assert(
+    (await page.locator(".cashflow-card .chart-caption").innerText()).includes(
+      "Undiscounted",
+    ),
+  );
   // All seven groups drive real API inputs, including both measurements in groups 1/3.
   let r = await change(
     async () => {
@@ -240,6 +285,11 @@ try {
     page.getByRole("switch", { name: "Self-use after 2033" }).check(),
   );
   assert.equal(r.mapped_inputs.post_fit, true);
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="cashflow-chart"]')?.dataset
+        .selected === "B",
+  );
   assert.equal(r.mapped_inputs.self_use_share, 0.5);
   assert.equal(r.mapped_inputs.self_use_rate, 1.4);
   await page.reload();
@@ -406,7 +456,7 @@ try {
   assert.deepEqual(r.mapped_inputs.horizon, Array(12).fill(0));
   assert.equal(r.result.annual_kwh, baseline.result.annual_kwh);
   assert(
-    (await page.locator('[role="status"]').innerText()).includes(
+    (await page.locator('.info-notice[role="status"]').innerText()).includes(
       "0 floors / 10 m",
     ),
   );

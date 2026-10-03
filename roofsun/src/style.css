@@ -1140,3 +1140,53 @@ footer small {
     height: 225px;
   }
 }
+.cashflow-card {
+  background: #fffef9;
+  border: 1px solid #dce4d6;
+  border-radius: 22px;
+  padding: 22px;
+  margin-top: 18px;
+  min-width: 0;
+}
+.cashflow-card h3 {
+  margin: 0 0 7px;
+}
+.cash-frame {
+  height: 300px;
+}
+.cash-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.solid-key::before,
+.dashed-key::before {
+  content: "";
+  display: inline-block;
+  width: 24px;
+  margin-right: 7px;
+  vertical-align: middle;
+  border-top: 3px solid #3d7052;
+}
+.dashed-key::before {
+  border-top: 2px dashed #a6a99b;
+}
+.cash-milestones {
+  padding-left: 18px;
+  color: #687762;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.cash-milestones li {
+  margin: 6px 0;
+}
+@media (max-width: 760px) {
+  .cashflow-card {
+    padding: 16px 10px;
+  }
+  .cash-frame {
+    height: 270px;
+  }
+}
