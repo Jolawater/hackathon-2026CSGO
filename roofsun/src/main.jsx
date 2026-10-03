@@ -37,7 +37,7 @@ import {
   downloadOwnerReport,
 } from "./lib/ownerArchive.js";
 import "./style.css";
-const VERSION = "3.0.0";
+const VERSION = "3.1.0";
 
 function App() {
   const [lang, setLang] = useState(

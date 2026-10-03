@@ -115,12 +115,7 @@
       "urls": []
     },
     {
-      "zh": [
-        "面板老化",
-        "每年 −0.5%",
-        "面板发电能力每年慢慢下降",
-        "假设"
-      ],
+      "zh": ["面板老化", "每年 −0.5%", "面板发电能力每年慢慢下降", "假设"],
       "en": [
         "Panel ageing",
         "−0.5% each year",
@@ -325,6 +320,21 @@
         "HK$1.4/kWh; half the generation used",
         "After feed-in payments end, using some electricity yourself can reduce your electricity bill.",
         "Assumption (informed by CLP’s 2026 average net tariff)"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "保守情景",
+        "2033 年底後停用系統，之後沒有收入，也沒有維護或更換費用。",
+        "上網電價結束後不再運作。自用情景仍計維護費及第 10 年更換逆變器；未計拆除費。",
+        "假設"
+      ],
+      "en": [
+        "Conservative scenario",
+        "Shut down after the end of 2033, with no further income, maintenance or replacement costs.",
+        "The system stops operating when FiT ends. The self-use case keeps maintenance and year-10 inverter replacement; removal costs are not modelled.",
+        "Assumption"
       ],
       "urls": []
     }

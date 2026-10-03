@@ -14,7 +14,7 @@ from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "3.0.0"
+MODEL_VERSION = "3.1.0"
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 

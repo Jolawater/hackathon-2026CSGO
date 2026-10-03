@@ -84,6 +84,15 @@ record('Village example dimensions and scope','村屋示例尺寸及適用範圍
        '示例尺寸在有來源的 65.03 m² 有蓋面積上限內；並非完整合法性或結構認證。',
        '; '.join(f"{p['id']}: {p['inputs']['house_area']} m²" for p in presets['presets']),
        all(p['inputs']['house_area']<=65.03 for p in presets['presets']),presets['source_url'])
+owner_screen=screen(ScreeningRequest())
+owner_finance=evaluate(Inputs(**owner_screen['mapped_inputs']),Configuration(**owner_screen['result']['config']))
+after_cutoff=[p['A'] for p in owner_finance['cashflow'] if p['date']>='2033-12-31']
+replacement_index=next(i for i,p in enumerate(owner_finance['cashflow']) if p['date']=='2037-01-31')
+record('Conservative shutdown after FiT','上網電價後停用的保守情景',
+       'A has no income, maintenance or inverter replacement after FiT. B continues self-use and operating costs. Values are simulated under the labelled default assumptions.',
+       'A 在上網電價結束後沒有收入、維護或逆變器更換；B 繼續自用及付運作費。數值按已標示的預設假設模擬。',
+       f"NPV A={owner_finance['npv_A']}; quote/kW={owner_finance['max_acceptable_per_kw_A']}; conclusion={owner_screen['verdict']}",
+       len(set(after_cutoff))==1 and owner_finance['cashflow'][replacement_index]['B']<owner_finance['cashflow'][replacement_index-1]['B'] and owner_screen['verdict']=='marginal')
 report.update(model_version=MODEL_VERSION,checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,calibration=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'

@@ -17,11 +17,13 @@ def schedule(commissioning, life_years, fit_end):
             max(0,(begin-start).days/365.2425),(stop-start).days/365.2425,
             max(0,(min(stop,cutoff)-begin).days)/(stop-begin).days,
             begin<=anniversary<stop,stop<=cutoff,
-            (stop-pd.Timedelta(days=1)).strftime('%Y-%m-%d')))
+            (stop-pd.Timedelta(days=1)).strftime('%Y-%m-%d'),
+            begin<=anniversary<stop and anniversary<cutoff))
     columns=list(zip(*records))
     return {'months':np.array(columns[0],int),'fractions':np.array(columns[1],float),'age':np.array(columns[2],float),
         'years':np.array(columns[3],float),'fit_fraction':np.array(columns[4],float),
         'replace':np.array(columns[5],bool),'before_cutoff':np.array(columns[6],bool),
+        'replace_before_cutoff':np.array(columns[8],bool),
         'dates':[start.strftime('%Y-%m-%d'),*columns[7]]}
 
 
@@ -31,15 +33,19 @@ def cashflows(inputs, capacity, monthly, settings):
     cost=inputs.price_per_kw*capacity+inputs.fixed_cost if capacity else 0
     periods=schedule(inputs.commissioning.isoformat(),settings['finance']['life_years'],policy['fit_end'])
     energy=np.asarray(monthly)[periods['months']]*(1-panel['degradation'])**periods['age']*periods['fractions']
-    spend=(inputs.annual_om/12*periods['fractions']*(1+inputs.cost_inflation)**periods['age']+
-           inputs.inverter_cost*(1+inputs.cost_inflation)**10*periods['replace']) if capacity else np.zeros_like(energy)
+    maintenance=inputs.annual_om/12*periods['fractions']*(1+inputs.cost_inflation)**periods['age'] if capacity else np.zeros_like(energy)
+    replacement=inputs.inverter_cost*(1+inputs.cost_inflation)**10 if capacity else 0
+    spend_A=maintenance*periods['fit_fraction']+replacement*periods['replace_before_cutoff']
+    spend_B=maintenance+replacement*periods['replace']
+    # Assumption: A shuts down after FiT; B keeps operating for self-use.
+    spends=[spend_A,spend_B]
     income=energy*fit*periods['fit_fraction']
     after=energy*(1-periods['fit_fraction'])*inputs.self_use_rate*inputs.self_use_share
-    increments=[income-spend,income+after-spend]
+    increments=[income-spend_A,income+after-spend_B]
     curves=[np.concatenate(([-cost],-cost+np.cumsum(flow))) for flow in increments]
     rounded=[np.round(c,2) for c in curves]
     flows=[{'date':stamp,'A':float(rounded[0][k]),'B':float(rounded[1][k])} for k,stamp in enumerate(periods['dates'])]
-    before=np.flatnonzero(periods['before_cutoff'])
+    before=np.flatnonzero(periods['fit_fraction']>0)
     net_fit=curves[0][before[-1]+1] if len(before) else -cost
     result={'initial_cost':round(cost,2),'fit_rate':fit,'net_to_fit_end':round(float(net_fit),2),'cashflow':flows}
     start=pd.Timestamp(inputs.commissioning)
@@ -52,7 +58,7 @@ def cashflows(inputs, capacity, monthly, settings):
         discounted_operating=float(np.sum(increments[j]/(1+inputs.discount_rate)**periods['years']))
         # Quote includes installation only; all modelled O&M/replacement costs
         # are already deducted. Raw ceiling may be negative: no positive quote works.
-        stress_flow=income*.85+(after*.85 if j else 0)-spend
+        stress_flow=income*.85+(after*.85 if j else 0)-spends[j]
         stress_ceiling=float(np.sum(stress_flow/(1+inputs.discount_rate)**periods['years']))
         result.update({f'max_acceptable_quote_{name}':round(discounted_operating,2) if capacity else None,
             f'max_acceptable_per_kw_{name}':round((discounted_operating-inputs.fixed_cost)/capacity,2) if capacity else None,

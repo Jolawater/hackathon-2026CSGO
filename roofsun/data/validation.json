@@ -70,7 +70,7 @@
       "name_zh": "決策可建議暫緩安裝",
       "description_en": "2032 commissioning: a physically feasible candidate remains visible, but all three NPV scenarios are non-positive.",
       "description_zh": "2032 年投產：保留物理可行的候選配置，但三個淨現值情景均不為正。",
-      "observed": "candidate=2.7 kW; NPV upper=-54181.83; verdict=not_recommended",
+      "observed": "candidate=2.7 kW; NPV upper=-45842.96; verdict=not_recommended",
       "passed": true,
       "source_url": null
     },
@@ -79,7 +79,7 @@
       "name_zh": "歷史氣象及敏感性覆蓋",
       "description_en": "Nine one-at-a-time scenarios for the recommended configuration, with separate searches for recommendation changes. The NPV range is three deterministic points, not a confidence bound.",
       "description_zh": "當前推薦配置的九個單項情景，另行搜尋配置是否改變。淨現值範圍來自三個確定情景，並非置信區間。",
-      "observed": "scenarios=9; NPV points=[{'id': 'conservative', 'weather_scale': 0.9473521078055045, 'discount_rate': 0.08, 'npv': -7373.26, 'annual_kwh': 6508.8}, {'id': 'current', 'weather_scale': 0.970833300727111, 'discount_rate': 0.04, 'npv': 11993.88, 'annual_kwh': 6659.9}, {'id': 'optimistic', 'weather_scale': 1.0, 'discount_rate': 0.0, 'npv': 35923.87, 'annual_kwh': 6846.8}]",
+      "observed": "scenarios=9; NPV points=[{'id': 'conservative', 'weather_scale': 0.9473521078055045, 'discount_rate': 0.08, 'npv': -3372.63, 'annual_kwh': 6508.8}, {'id': 'current', 'weather_scale': 0.970833300727111, 'discount_rate': 0.04, 'npv': 18298.97, 'annual_kwh': 6659.9}, {'id': 'optimistic', 'weather_scale': 1.0, 'discount_rate': 0.0, 'npv': 46323.87, 'annual_kwh': 6846.8}]",
       "passed": true,
       "source_url": null
     },
@@ -118,6 +118,15 @@
       "observed": "open: 65 m²; shaded: 65 m²; small: 32.4 m²",
       "passed": true,
       "source_url": "https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf"
+    },
+    {
+      "name_en": "Conservative shutdown after FiT",
+      "name_zh": "上網電價後停用的保守情景",
+      "description_en": "A has no income, maintenance or inverter replacement after FiT. B continues self-use and operating costs. Values are simulated under the labelled default assumptions.",
+      "description_zh": "A 在上網電價結束後沒有收入、維護或逆變器更換；B 繼續自用及付運作費。數值按已標示的預設假設模擬。",
+      "observed": "NPV A=18298.97; quote/kW=28388.7; conclusion=marginal",
+      "passed": true,
+      "source_url": null
     }
   ],
   "baseline": {
@@ -127,7 +136,7 @@
     "shading_loss_pct": 7.7
   },
   "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
-  "model_version": "3.0.0",
+  "model_version": "3.1.0",
   "references": [
     {
       "available": true,
@@ -485,7 +494,7 @@
   },
   "sensitivity": {
     "available": true,
-    "model_version": "3.0.0",
+    "model_version": "3.1.0",
     "configuration": {
       "tilt": 15.0,
       "azimuth": 180.0,
@@ -499,33 +508,33 @@
           "id": "conservative",
           "weather_scale": 0.9473521078055045,
           "discount_rate": 0.08,
-          "npv": -7373.26,
+          "npv": -3372.63,
           "annual_kwh": 6508.8
         },
         {
           "id": "current",
           "weather_scale": 0.970833300727111,
           "discount_rate": 0.04,
-          "npv": 11993.88,
+          "npv": 18298.97,
           "annual_kwh": 6659.9
         },
         {
           "id": "optimistic",
           "weather_scale": 1.0,
           "discount_rate": 0.0,
-          "npv": 35923.87,
+          "npv": 46323.87,
           "annual_kwh": 6846.8
         }
       ],
-      "min": -7373.26,
-      "max": 35923.87,
+      "min": -3372.63,
+      "max": 46323.87,
       "verdict": "marginal",
       "scope": "Three deterministic scenarios for the same configuration, not a confidence interval or probability."
     },
     "scenarios": [
       {
         "id": "quote_minus_20",
-        "npv": 38993.88,
+        "npv": 45298.97,
         "annual_kwh": 6659.9,
         "payback_years": 4.41,
         "verdict": "worthwhile",
@@ -541,7 +550,7 @@
       },
       {
         "id": "quote_plus_20",
-        "npv": -15006.12,
+        "npv": -8701.03,
         "annual_kwh": 6659.9,
         "payback_years": 6.49,
         "verdict": "marginal",
@@ -557,7 +566,7 @@
       },
       {
         "id": "delay_6_months",
-        "npv": 2291.24,
+        "npv": 8710.72,
         "annual_kwh": 6659.9,
         "payback_years": 5.42,
         "verdict": "marginal",
@@ -573,7 +582,7 @@
       },
       {
         "id": "delay_12_months",
-        "npv": -7966.38,
+        "npv": -1429.25,
         "annual_kwh": 6659.9,
         "payback_years": 5.41,
         "verdict": "marginal",
@@ -589,7 +598,7 @@
       },
       {
         "id": "neighbour_plus_floor",
-        "npv": 10231.14,
+        "npv": 16536.22,
         "annual_kwh": 6586.6,
         "payback_years": 5.49,
         "verdict": "marginal",
@@ -605,7 +614,7 @@
       },
       {
         "id": "high_other_costs",
-        "npv": -7507.63,
+        "npv": 9020.8,
         "annual_kwh": 6659.9,
         "payback_years": 5.75,
         "verdict": "marginal",
@@ -621,7 +630,7 @@
       },
       {
         "id": "linear_electrical",
-        "npv": 11999.16,
+        "npv": 18304.25,
         "annual_kwh": 6660.1,
         "payback_years": 5.41,
         "verdict": "marginal",
@@ -637,7 +646,7 @@
       },
       {
         "id": "weather_2023",
-        "npv": 2228.7,
+        "npv": 8533.79,
         "annual_kwh": 6254.8,
         "payback_years": 5.75,
         "verdict": "marginal",
@@ -653,7 +662,7 @@
       },
       {
         "id": "weather_2024",
-        "npv": -293.28,
+        "npv": 6011.81,
         "annual_kwh": 6154.7,
         "payback_years": 5.91,
         "verdict": "marginal",

@@ -1,10 +1,10 @@
 # RoofSun HK · 七項輸入，先算清楚
 
-**v3.0.0 · 聯絡安裝商前的初步篩選工具 / Preliminary screening before contacting an installer.**
+**v3.1.0 · 聯絡安裝商前的初步篩選工具 / Preliminary screening before contacting an installer.**
 
 香港村屋太陽能的雙語篩選網站，為 HacKU 2026 Deep Tech Problem 3「Test the Change Before You Make It」製作。只有一個介面、七組業主輸入，沒有專業模式。結果屬模擬，並非工程設計或財務建議；不代表已通過結構或法規審批。
 
-A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. Only `roofsun/` on `Jim's-RoofSun-HK` is changed. The v2.2 physical, packing, shade and cash-flow equations remain intact; v3 changes defaults, input adaptation and result presentation.
+A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. Only `roofsun/` on `Jim's-RoofSun-HK` is changed. The physical, packing and shade equations remain intact. v3.1 follows the chart specification: conservative scenario A shuts down after FiT; self-use scenario B retains its previous cash-flow calculation.
 
 ## 本機啟動 / Run locally
 
@@ -74,7 +74,7 @@ To explicitly replace the source from the public URL, use `python scripts/hko_ch
 
 ## 兩個只讀面板 / Two read-only panels
 
-**假設與來源 / Assumptions & sources:** `data/owner_assumptions.json` preserves all 21 Chinese rows of the supplied §4 table verbatim, and supplies plain-language English translations. The main UI uses Hong Kong Traditional Chinese; the supplied table retains its original Simplified Chinese wording, as requested. It includes explicit source/assumption tags and links. Additional notes clarify the exact original module dimensions (1.762 × 1.134 m), separately modelled NOCT temperature, and that 0.3 m is not a certified access width.
+**假設與來源 / Assumptions & sources:** `data/owner_assumptions.json` preserves the original 21 Chinese rows of the supplied §4 table verbatim, and supplies plain-language English translations, plus a labelled conservative-shutdown assumption. The main UI uses Hong Kong Traditional Chinese; the supplied table retains its original Simplified Chinese wording, as requested. It includes explicit source/assumption tags and links. Additional notes clarify the exact original module dimensions (1.762 × 1.134 m), separately modelled NOCT temperature, and that 0.3 m is not a certified access width.
 
 **證據與敏感性 / Evidence & sensitivity:** Part A shows three HKO/NASA years, the NREL SPA published example, 25 row-shadow comparisons and three unshaded ModelChain/PVWatts cases. Cross-model comparison uses common weather and components; differing temperature, losses and inverter assumptions explain the reported differences. It is not measured rooftop validation. **The real village-house reference case remains “待補充 / Pending data”; no sample meter readings or field accuracy are invented.**
 
@@ -82,7 +82,7 @@ Part B shows the three-point NPV range and nine one-at-a-time cases: installatio
 
 ## 模型範圍 / Model scope
 
-The existing equations remain unchanged: pvlib NREL SPA; Erbs decomposition; isotropic plane irradiance with assumed albedo 0.2; approximate horizon/sky-view blockage; NOCT temperature and assumed 0.85 system factor; finite adjacent-row overlap; Martinez bypass-block loss; convex-hull cover including row gaps; monthly cash flows with assumed 0.5%/year degradation, 25-year horizon and one year-10 inverter replacement. The generic reference module assumes 450 W, 22 kg and 8 kg rack; it is not a verified commercial specification.
+The physical equations remain unchanged: pvlib NREL SPA; Erbs decomposition; isotropic plane irradiance with assumed albedo 0.2; approximate horizon/sky-view blockage; NOCT temperature and assumed 0.85 system factor; finite adjacent-row overlap; Martinez bypass-block loss; convex-hull cover including row gaps; monthly cash flows with assumed 0.5%/year degradation and a 25-year horizon. A stops all income and costs after FiT; B continues maintenance and one year-10 inverter replacement. Shutdown/removal costs are not included (assumption). The generic reference module assumes 450 W, 22 kg and 8 kg rack; it is not a verified commercial specification.
 
 FiT source: [EMSD introduction](https://re.emsd.gov.hk/tc_chi/fit/int/fit_int.html) and [EMSD FAQ](https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf). Existing whole-system tiers are ≤10 kW HK$4/kWh; >10–200 kW HK$3; >200 kW HK$2.5, through 2033-12-31. Coverage includes gaps under the existing conservative interpretation. The 65.03 m² village-house scope warning uses [Lands Department guide, Part A printed page 3](https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf); it is a warning, not a legal or structural approval.
 

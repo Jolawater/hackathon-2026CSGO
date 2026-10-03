@@ -63,7 +63,7 @@ try {
   for (let i = 0; i < 40; i++) {
     try {
       const health = await fetch(`${base}/api/health`);
-      assert.equal((await health.json()).model_version, "3.0.0");
+      assert.equal((await health.json()).model_version, "3.1.0");
       break;
     } catch (error) {
       if (i === 39) throw error;
@@ -262,7 +262,7 @@ try {
 
   // Two read-only panels: verbatim bilingual assumptions, reproducible evidence, no fictitious meter data.
   await page.locator(".assumptions-panel summary").click();
-  assert.equal(await page.locator(".assumptions-panel tbody tr").count(), 21);
+  assert.equal(await page.locator(".assumptions-panel tbody tr").count(), 22);
   assert.equal(
     await page
       .locator(".assumptions-panel input,.assumptions-panel select")
@@ -309,12 +309,12 @@ try {
     report.includes("quote_date") &&
       report.includes("not verified") &&
       report.includes("source_sha256") &&
-      report.includes("3.0.0"),
+      report.includes("3.1.0"),
   );
   const archive = JSON.parse(await download("Export 7 inputs", "inputs.json"));
   assert.deepEqual(Object.keys(archive).sort(), ["inputs", "model_version"]);
   assert.deepEqual(Object.keys(archive.inputs).sort(), ownerKeys);
-  assert.equal(archive.model_version, "3.0.0");
+  assert.equal(archive.model_version, "3.1.0");
   r = await change(() => label("Installation quote per kW").fill("24000"));
   assert.equal(
     await page.getByText("Neighbour one floor higher", { exact: true }).count(),

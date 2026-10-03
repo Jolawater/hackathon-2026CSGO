@@ -78,10 +78,10 @@ def test_financial_cutoff_and_replacement():
     result=finance(inputs,1,[100]*12)
     # Only the December 2033 interval earns FiT. Replacement is a single cash-flow jump.
     assert result['cashflow'][1]['A']==pytest.approx(-9600)
-    assert result['net_A']==pytest.approx(-10100)
+    assert result['net_A']==pytest.approx(-9600)
     assert result['net_B']>result['net_A']
     assert result['payback_A'] is None
-    assert finance(inputs.model_copy(update={'self_use_share':0}),1,[100]*12)['net_B']==pytest.approx(result['net_A'])
+    assert finance(inputs.model_copy(update={'self_use_share':0}),1,[100]*12)['net_B']==pytest.approx(result['net_A']-inputs.inverter_cost)
 
 
 def test_frontier_really_is_non_dominated():
@@ -143,11 +143,12 @@ def test_npv_matches_single_known_cash_receipt():
 
 
 def test_first_payback_does_not_promise_persistent_payback():
-    inputs=Inputs(commissioning='2033-12-01',price_per_kw=2000,fixed_cost=0,annual_om=0,inverter_cost=5000)
+    inputs=Inputs(commissioning='2033-12-01',price_per_kw=2000,fixed_cost=0,annual_om=0,inverter_cost=5000,self_use_share=0)
     r=finance(inputs,1,[1000]*12)
     assert r['payback_A']=='2033-12-31'
-    assert r['stable_payback_A'] is None
-    assert r['net_A']==-3000
+    assert r['stable_payback_A']=='2033-12-31'
+    assert r['net_A']==2000
+    assert r['stable_payback_B'] is None and r['net_B']==-3000
 
 
 def test_tariff_cliff_can_make_more_generation_less_profitable():
@@ -675,3 +676,46 @@ def test_analyse_validates_owner_shape_before_legacy_fallback():
         response=client.post('/api/analyse',json={'inputs':{**SevenInputs().model_dump(),**change}})
         assert response.status_code==422
     assert client.post('/api/analyse',json={'inputs':SevenInputs().model_dump()}).json()['field_case']['available'] is False
+
+
+def test_conservative_shutdown_stops_all_costs_while_self_use_remains_unchanged():
+    from backend.finance import schedule
+    from backend.model import SETTINGS
+    inp=Inputs()
+    result=finance(inp,5.4,[500]*12)
+    periods=schedule(inp.commissioning.isoformat(),25,SETTINGS['policy']['fit_end'])
+    energy=np.array([500]*12)[periods['months']]*(1-SETTINGS['panel']['degradation'])**periods['age']*periods['fractions']
+    spend=inp.annual_om/12*periods['fractions']*(1+inp.cost_inflation)**periods['age']+inp.inverter_cost*(1+inp.cost_inflation)**10*periods['replace']
+    increments_B=energy*result['fit_rate']*periods['fit_fraction']+energy*(1-periods['fit_fraction'])*inp.self_use_rate*inp.self_use_share-spend
+    original_B=np.concatenate(([-result['initial_cost']],-result['initial_cost']+np.cumsum(increments_B)))
+    assert np.array([r['B'] for r in result['cashflow']])==pytest.approx(np.round(original_B,2),abs=.001)
+    after=[r['A'] for r in result['cashflow'] if r['date']>='2033-12-31']
+    assert len(set(after))==1
+    january=next(i for i,r in enumerate(result['cashflow']) if r['date']=='2037-01-31')
+    assert result['cashflow'][january]['A']==result['cashflow'][january-1]['A']
+    assert result['cashflow'][january]['B']<result['cashflow'][january-1]['B']-4000
+    assert result['net_A']==result['net_to_fit_end']
+
+
+def test_default_shutdown_npv_quote_and_three_point_verdict():
+    from backend.screening import screen,ScreeningRequest
+    result=screen(ScreeningRequest())
+    assert result['result']['npv_A']==pytest.approx(18299,abs=2)
+    assert result['result']['quote_ceiling_per_kw']==pytest.approx(28389,abs=2)
+    assert result['verdict']=='marginal'
+    assert result['interval']['points'][0]['npv']==pytest.approx(-3373,abs=2)
+
+
+def test_shutdown_prorates_maintenance_and_does_not_replace_after_partial_month_cutoff():
+    from copy import deepcopy
+    from backend.model import SETTINGS
+    from backend.finance import cashflows
+    settings=deepcopy(SETTINGS);settings['policy']['fit_end']='2033-12-15'
+    inp=Inputs(annual_om=372,inverter_cost=5000).model_copy(update={'commissioning':pd.Timestamp('2023-12-20').date()})
+    r=cashflows(inp,1,[100]*12,settings)
+    december=next(i for i,p in enumerate(r['cashflow']) if p['date']=='2033-12-31')
+    # Ten-year replacement is Dec 20, after shutdown on Dec 15.
+    assert r['cashflow'][december]['B']<r['cashflow'][december-1]['B']-4500
+    expected_income=100*(1-.005)**((pd.Timestamp('2033-12-01')-pd.Timestamp('2023-12-20')).days/365.2425)*4*15/31
+    assert r['cashflow'][december]['A']-r['cashflow'][december-1]['A']==pytest.approx(expected_income-15,abs=.02)
+    assert r['cashflow'][december+1]['A']==r['cashflow'][december]['A']
