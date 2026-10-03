@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .physics import LN2_T_C, LN2_LATENT_J_PER_L, DICE_T_C, DICE_LATENT_J_PER_KG
+from .physics import (LN2_T_C, LN2_LATENT_J_PER_L, DICE_T_C,
+                      DICE_LATENT_J_PER_KG, LHE_T_C, LHE_LATENT_J_PER_L)
 
 AMORTIZE_SESSIONS = 50.0     # 设备按 50 场摊销（假设）
 TARIFF = 1.4                 # HK$/kWh（占位）
@@ -36,6 +37,8 @@ TIERS = [
          "炮 HK$500；干冰 HK$12/kg（占位）"),
     Tier("液氮",       LN2_T_C,  0.05, 800.0, "ln2",  15.0, 5.0, 150.0, 3,
          "炮 HK$800；液氮 HK$15/L + 杜瓦租 HK$150/场（占位）"),
+    Tier("液氦",       LHE_T_C,  0.05, 1200.0, "lhe", 150.0, 10.0, 0.0, 4,
+         "4.2 K；HK$150/L（占位）。实际冲分先液氮预冷、短时运行，用量可降一个量级（待核实）"),
 ]
 
 
@@ -48,6 +51,10 @@ def tier_cost(tier: Tier, power_W: float, hours: float, T_amb: float) -> float:
     elif tier.refrigerant == "dice":
         kg = power_W * hours * 3600.0 / DICE_LATENT_J_PER_KG + tier.overhead_per_session
         cost += kg * tier.consumable_price
+    elif tier.refrigerant == "lhe":
+        # 液氦汽化热只有液氮的 ~1/60：同样的热负荷要用 60 倍的体积
+        litres = power_W * hours * 3600.0 / LHE_LATENT_J_PER_L + tier.overhead_per_session
+        cost += litres * tier.consumable_price
     if tier.name == "冷水机":
         cost += power_W / 1000.0 * hours * TARIFF
     return cost

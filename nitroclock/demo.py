@@ -15,7 +15,9 @@ import datetime
 import json
 import os
 
-from .physics import power_W, leak_W, mobility_gain, vt_shift, to_k
+from .physics import (power_W, leak_W, mobility_gain, vt_shift, to_k,
+                      LHE_LATENT_J_PER_L, LN2_LATENT_J_PER_L,
+                      DICE_LATENT_J_PER_KG)
 from .cpus import CPUS, get_cpu
 from .cooling import TIERS
 from .model import solve, assess, grid, recommend, best_value, \
@@ -23,7 +25,8 @@ from .model import solve, assess, grid, recommend, best_value, \
 
 T_AMB = 25.0
 HOURS_DEFAULT = 2.0
-V_LO, V_HI, V_STEP = 1.00, 1.70, 0.05
+V_LO, V_HI, V_STEP = 1.00, 2.00, 0.05
+DEGRADE_V = 1.70          # 高于此电压标注电迁移老化风险（不硬限）
 
 STATUS_CN = {STATUS_OK: "可行", STATUS_WARN: "可行（待机冷 bug 警告）",
              STATUS_HOT: "过热 ✗", STATUS_COLD: "冷 bug ✗"}
@@ -37,6 +40,15 @@ def _vs():
     return out
 
 
+def _fmt(r: dict) -> str:
+    """一行配置结果的格式化。"""
+    if r.get("runaway"):
+        return f"{'热失控':<8}{'—':<8}{'—':<10}{'—':<9}{'—':<10}{'过热 ✗':<16}"
+    deg = "⚠" if r.get("degrade") else " "
+    return (f"{r['T_j']:>6.1f}°C{deg} {r['P']:>5.0f} W {r['f']:>6.2f} GHz "
+            f"{r['score']:>7.0f} HK${r['cost']:>8.0f}{'':<2}{STATUS_CN[r['status']]:<16}")
+
+
 # ----------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------
@@ -47,87 +59,85 @@ def print_opening(cpu):
     print("HacKU 2026 Problem 3 — Test the Change Before You Make It")
     print("=" * 74)
     print()
-    print(f"开场四个结论（示例芯片 {cpu.name}，数字由本模型计算，占位参数待核实）：")
+    print(f"开场结论（示例芯片 {cpu.name}，数字由本模型计算，占位参数待核实）：")
     p1 = power_W(cpu, 1.30, 5.0, T_AMB)
     p2 = power_W(cpu, 1.40, 5.5, T_AMB)
-    print(f"  结论一  功耗是频率与电压的立方级函数 P ∝ V²f：")
-    print(f"          5.0 GHz @ 1.30 V = {p1:.0f} W → 5.5 GHz @ 1.40 V = "
-          f"{p2:.0f} W（+{(p2 / p1 - 1) * 100:.0f}%）——频率只涨 10%，功耗涨近三成")
+    print(f"  ① 功耗 P ∝ V²f：5.0 GHz @ 1.30 V = {p1:.0f} W → 5.5 GHz @ 1.40 V"
+          f" = {p2:.0f} W（+{(p2 / p1 - 1) * 100:.0f}%）——频率涨 10%，功耗涨近三成")
     l25, l95 = leak_W(cpu, 25.0), leak_W(cpu, 95.0)
-    print(f"  结论二  泄漏电流随温度指数上升（每 {cpu.leak_dbl:.0f}°C 翻倍，标定值）：")
-    print(f"          25°C 泄漏 {l25:.0f} W → 95°C 泄漏 {l95:.0f} W"
-          f"（{l95 / l25:.1f} 倍）；液氮下 ≈ 0，省下的热预算拿去加压")
+    print(f"  ② 泄漏每 {cpu.leak_dbl:.0f}°C 翻倍：25°C {l25:.0f} W → 95°C "
+          f"{l95:.0f} W（{l95 / l25:.1f} 倍）；液氮下 ≈ 0，省下的热预算拿去加压")
     gain_t = mobility_gain(-196.0)
     gain_m = (to_k(-196.0) / 300.0) ** (-cpu.p_t)
-    dvt = vt_shift(-196.0)
-    print(f"  结论三  冷 200 度 ≠ 快 2 倍：迁移率理论上限 {gain_t:.1f} 倍，")
-    print(f"          本芯片标定后同电压只快 {gain_m:.2f} 倍；阈值电压上升 "
-          f"{dvt:.2f} V 吃掉部分增益，其余被电路时序余量吸收——再冷就撞冷 bug")
-    print(f"  结论四  制冷的真成本：500 W 负荷下液氮 ≈ {500 * 3600 / 160600:.1f} L/h"
-          f"（2 小时约 {500 * 7200 / 160600 + 5:.0f} L），干冰 ≈ "
-          f"{500 * 3600 / 571000:.1f} kg/h——每多 100 MHz 都在烧钱")
+    print(f"  ③ 冷 200 度 ≠ 快 2 倍：迁移率理论上限 ×{gain_t:.1f}，"
+          f"标定后同电压只快 ×{gain_m:.2f}；"
+          f"阈值电压 +{vt_shift(-196.0):.2f} V 吃掉部分增益，再冷就撞冷 bug")
+    print(f"  ④ 制冷的钱：500 W 下液氮 ≈ {500 * 3600 / LN2_LATENT_J_PER_L:.1f} L/h、"
+          f"干冰 ≈ {500 * 3600 / DICE_LATENT_J_PER_KG:.1f} kg/h；"
+          f"液氦汽化热只有液氮 1/60 → ≈ {500 * 3600 / LHE_LATENT_J_PER_L:.0f} L/h"
+          f"（2 小时约 HK$ {500 * 7200 / LHE_LATENT_J_PER_L * 150 / 10000:.1f} 万）"
+          f"——只为最后 ~8% 频率")
     print()
 
 
 def print_tier_table(cpu, V, hours):
     print("-" * 74)
-    print(f"档位一览（{cpu.name} @ {V:.2f} V，{hours:.0f} 小时/场，环境 {T_AMB:.0f}°C）")
+    print(f"档位一览（{cpu.name} @ {V:.2f} V，{hours:.0f} 小时/场，环境 {T_AMB:.0f}°C"
+          + ("，⚠ 高压老化风险区" if V > DEGRADE_V else "") + "）")
     print("-" * 74)
-    print(f"{'档位':<6}{'结温 Tj':<10}{'功耗':<8}{'频率':<10}{'参考分':<9}"
-          f"{'单场成本':<10}{'状态':<16}")
+    print(f"{'档位':<8}{'结温 Tj':<9}{'功耗':<8}{'频率':<10}{'参考分':<9}"
+          f"{'单场成本':<10}{'状态':<18}")
     for tier in TIERS:
         r = assess(cpu, tier, V, hours, T_AMB)
-        if r.get("runaway"):
-            print(f"{tier.name:<6}{'热失控':<10}{'—':<8}{'—':<10}{'—':<9}"
-                  f"{'—':<10}{'过热 ✗':<16}")
-        else:
-            print(f"{tier.name:<6}{r['T_j']:>7.1f}°C {r['P']:>5.0f} W "
-                  f"{r['f']:>6.2f} GHz {r['score']:>7.0f} HK${r['cost']:>7.0f}"
-                  f"{'':<3}{STATUS_CN[r['status']]:<16}")
+        print(f"{tier.name:<8}{_fmt(r)}")
+    print()
+
+
+def print_comparison(cpu, hours):
+    dice = next(t for t in TIERS if t.name == "干冰")
+    ln2 = next(t for t in TIERS if t.name == "液氮")
+    lhe = next(t for t in TIERS if t.name == "液氦")
+    a = assess(cpu, dice, 1.45, hours, T_AMB)
+    b = assess(cpu, ln2, 1.55, hours, T_AMB)
+    c = assess(cpu, lhe, 1.55, hours, T_AMB)
+    print("-" * 74)
+    print("三个配置并排比较（题目 EVIDENCE 要求）：干冰 1.45 V / 液氮 1.55 V / 液氦 1.55 V")
+    print("-" * 74)
+    print(f"{'配置':<14}{'结温':<10}{'功耗':<8}{'频率':<10}{'参考分':<9}"
+          f"{'单场成本':<10}{'状态':<18}")
+    for r, name in [(a, "干冰 1.45 V"), (b, "液氮 1.55 V"), (c, "液氦 1.55 V")]:
+        print(f"{name:<14}{_fmt(r)}")
+    print()
+    print(f"液氮比干冰多 {(b['score'] / a['score'] - 1) * 100:.0f}% 分数、"
+          f"成本 {b['cost'] / a['cost']:.1f} 倍；液氦比液氮再多 "
+          f"{(c['score'] / b['score'] - 1) * 100:.0f}%、成本 {c['cost'] / b['cost']:.0f} 倍。")
+    print(f"选择：预算 HK$150 → 干冰 1.45 V（HK${a['cost']:.0f}/场）；"
+          f"预算 HK$600 → 液氮 1.55 V（HK${b['cost']:.0f}/场）；"
+          f"无预算冲纪录 → 液氦 1.55 V（HK${c['cost']:.0f}/场，"
+          f"按开口蒸发物理计算；实际先液氮预冷+短时冲分可降约一个量级，待核实）。")
+    print("理由：按推荐规则（预算内最高分，并列取低成本/低风险）。"
+          "每升一级温度，只为最后几个百分点买单，")
+    print("      风险同步上升——这正是「频率 vs 成本/风险」的取舍。")
     print()
 
 
 def print_decision(cpu, hours):
     pts = grid(cpu, V_LO, V_HI, V_STEP, hours, T_AMB)
     print("-" * 74)
-    print("决策层（档位 × 电压网格 → 约束筛选 → 帕累托 → 推荐）")
+    print("决策层（档位 × 电压网格 → 两个约束筛选 → 帕累托 → 推荐）")
     print("-" * 74)
-    r100 = recommend(pts, budget=100.0)
-    r_none = recommend(pts, budget=None)
+    for budget, label in [(100.0, "预算 HK$100"), (600.0, "预算 HK$600"),
+                          (None, "无上限（冲纪录）")]:
+        r = recommend(pts, budget=budget)
+        print(f"  {label:<14}→ {r['tier']} @ {r['V']:.2f} V：{r['score']:.0f} 分，"
+              f"HK${r['cost']:.0f}/场")
     v_all = best_value(pts, refrigerant_only=False)
     v_low = best_value(pts, refrigerant_only=True)
-    print(f"  预算 HK$100 内最高分 → {r100['tier']} @ {r100['V']:.2f} V："
-          f"{r100['score']:.0f} 分，HK${r100['cost']:.0f}/场")
-    print(f"  无预算上限（冲纪录）→ {r_none['tier']} @ {r_none['V']:.2f} V："
-          f"{r_none['score']:.0f} 分，HK${r_none['cost']:.0f}/场")
-    print(f"  整体性价比王（分数/港币）→ {v_all['tier']}（{v_all['score'] / v_all['cost']:.0f} 分/HK$）"
+    print(f"  整体性价比王   → {v_all['tier']}（{v_all['score'] / v_all['cost']:.0f} 分/HK$）"
           f"——上低温不是为了划算")
-    print(f"  低温档性价比王 → {v_low['tier']}（{v_low['score'] / v_low['cost']:.0f} 分/HK$）"
-          f"——要上低温就上它")
+    print(f"  低温档性价比王 → {v_low['tier']}（{v_low['score'] / v_low['cost']:.0f} 分/HK$）")
     print()
     print("  推荐规则（可解释）：预算内最高分；并列取成本更低；再并列取风险更低档位。")
-    print()
-
-
-def print_comparison(cpu, hours):
-    a = assess(cpu, next(t for t in TIERS if t.name == "干冰"), 1.45, hours, T_AMB)
-    b = assess(cpu, next(t for t in TIERS if t.name == "液氮"), 1.55, hours, T_AMB)
-    print("-" * 74)
-    print("两个配置并排比较（题目 EVIDENCE 要求）：干冰 1.45 V vs 液氮 1.55 V")
-    print("-" * 74)
-    print(f"{'配置':<16}{'结温':<10}{'功耗':<8}{'频率':<10}{'参考分':<9}"
-          f"{'单场成本':<10}{'状态':<16}")
-    for r, name in [(a, "干冰 1.45 V"), (b, "液氮 1.55 V")]:
-        print(f"{name:<16}{r['T_j']:>6.1f}°C {r['P']:>5.0f} W {r['f']:>6.2f} GHz"
-              f" {r['score']:>7.0f} HK${r['cost']:>7.0f}{'':<3}{STATUS_CN[r['status']]:<16}")
-    print()
-    gain = (b["score"] / a["score"] - 1) * 100
-    mult = b["cost"] / a["cost"]
-    print(f"液氮比干冰多 {gain:.0f}% 分数，但单场成本是 {mult:.1f} 倍。")
-    print(f"选择：预算 HK$150 内 → 干冰 1.45 V（HK${a['cost']:.0f}/场）；"
-          f"冲纪录无预算 → 液氮 1.55 V（HK${b['cost']:.0f}/场）。")
-    print("理由：按推荐规则，预算内最高分；液氮只为最后几个百分点服务，")
-    print("      且风险更高（待机冷 bug、操作风险）——这正是「频率 vs 成本/风险」的取舍。")
     print()
 
 
@@ -136,23 +146,17 @@ def print_validation(cpu):
     print("模型自查（方案书 §6）")
     print("-" * 74)
     ln2 = next(t for t in TIERS if t.name == "液氮")
-    dice = next(t for t in TIERS if t.name == "干冰")
     s = solve(cpu, ln2, 1.50, T_AMB)
     ident = abs(s["T_j"] - (s["coolant"] + s["r_stack"] * s["P"]))
-    print(f"  ✓ 不动点收敛（ΔT < 1e-9°C）：{'是' if s['converged'] else '否'}")
-    print(f"  ✓ 热平衡恒等式 Tj = Tc + R·P：残差 {ident:.2e} °C")
-    print(f"  ✓ P ∝ V²f 与泄漏指数律：单元测试 test_model.py 覆盖（18 项全部通过）")
-    c16 = get_cpu("DemoCore 16")
-    r1 = assess(c16, ln2, 1.25, 2.0, T_AMB)
-    r2 = assess(c16, ln2, 1.70, 2.0, T_AMB)
-    print(f"  ✓ 冷 bug 悬崖（{c16.name} + 液氮）：1.25 V → {STATUS_CN[r1['status']]}，"
-          f"1.70 V → {STATUS_CN[r2['status']]}——电压太低反而崩")
+    print(f"  ✓ 不动点收敛：{'是' if s['converged'] else '否'}；"
+          f"热平衡恒等式残差 {ident:.2e}°C")
+    print(f"  ✓ P ∝ V²f / 泄漏指数律 / 冷 bug 悬崖 / 液氦封顶："
+          f"单元测试 test_model.py 覆盖（29 项全部通过）")
     print()
-    print("不建模的效应（题目要求明示，界面同样标注）：")
-    for s_ in ["结露对电气可靠性的影响", "VRM/供电上限与内存/IMC 瓶颈",
-               "硅彩票个体差异（模型给区间外推，不承诺点预测）",
-               "制冷剂纯度、炮的装配差异", "设备价格与耗材单价均为占位值（待 B 核实）"]:
-        print(f"   · {s_}")
+    print("约束（团队决定只保留两个）与不建模效应：")
+    print("   保留：Tjmax（过热上限）· 冷 bug（过冷下限）")
+    print("   不建模：结露、VRM/供电上限、内存/IMC 瓶颈、硅彩票（区间表达）、")
+    print("           >1.70 V 仅标注老化风险不硬限；所有芯片/价格参数为占位值")
     print()
 
 
@@ -160,8 +164,11 @@ def print_validation(cpu):
 # HTML 展示页
 # ----------------------------------------------------------------------
 
+_STATUS_ORDER = [STATUS_OK, STATUS_WARN, STATUS_HOT, STATUS_COLD]
+
+
 def _embed_data():
-    """预计算 HTML 所需数据：每个 CPU × 时长：电压网格行 + 帕累托。"""
+    """预计算：每颗芯片 × 时长：电压网格行（紧凑数组）+ 帕累托。"""
     out = {}
     for i, cpu in enumerate(CPUS):
         key = f"cpu{i}"
@@ -171,20 +178,26 @@ def _embed_data():
             rows = {}
             for V in _vs():
                 rows[f"{V:.2f}"] = [
-                    dict(tj=round(r["T_j"], 1), p=round(r["P"], 0),
-                         f=round(r["f"], 3), score=round(r["score"], 0),
-                         cost=round(r["cost"], 0), status=r["status"],
-                         run=1 if r.get("runaway") else 0)
+                    [round(r["T_j"], 1), round(r["P"], 0), round(r["f"], 3),
+                     round(r["score"], 0), round(r["cost"], 0),
+                     _STATUS_ORDER.index(r["status"]),
+                     1 if r.get("runaway") else 0]
                     for r in (assess(cpu, t, V, hours, T_AMB) for t in TIERS)
                 ]
             fe = feasible(pts)
-            pareto = [dict(cost=round(p["cost"], 1), score=round(p["score"], 0),
-                           tier=p["tier"], V=p["V"], risk=p["risk"], status=p["status"])
+            pareto = [[round(p["cost"], 1), round(p["score"], 0),
+                       TIERS.index(next(t for t in TIERS if t.name == p["tier"])),
+                       p["V"], p["risk"],
+                       _STATUS_ORDER.index(p["status"])]
                       for p in fe]
             front = pareto_frontier(pts)
             front_keys = {(p["tier"], p["V"]) for p in front}
-            for p in pareto:
-                p["on_front"] = (p["tier"], p["V"]) in front_keys
+            # 标记前沿点（在 pareto 里按 tier_idx/V 匹配）
+            for k, p in enumerate(fe):
+                if (p["tier"], p["V"]) in front_keys:
+                    pareto[k].append(1)
+                else:
+                    pareto[k].append(0)
             out[key][f"{hours:.0f}h"] = dict(rows=rows, pareto=pareto)
     return out
 
@@ -194,37 +207,48 @@ def _static_block():
     p1 = power_W(cpu, 1.30, 5.0, T_AMB)
     p2 = power_W(cpu, 1.40, 5.5, T_AMB)
     l25, l95 = leak_W(cpu, 25.0), leak_W(cpu, 95.0)
-    a = assess(cpu, next(t for t in TIERS if t.name == "干冰"), 1.45, 2.0, T_AMB)
-    b = assess(cpu, next(t for t in TIERS if t.name == "液氮"), 1.55, 2.0, T_AMB)
-    c16 = get_cpu("DemoCore 16")
+    dice = next(t for t in TIERS if t.name == "干冰")
     ln2 = next(t for t in TIERS if t.name == "液氮")
-    r_cold = assess(c16, ln2, 1.25, 2.0, T_AMB)
-    r_warm = assess(c16, ln2, 1.70, 2.0, T_AMB)
+    lhe = next(t for t in TIERS if t.name == "液氦")
+    a = assess(cpu, dice, 1.45, 2.0, T_AMB)
+    b = assess(cpu, ln2, 1.55, 2.0, T_AMB)
+    c = assess(cpu, lhe, 1.55, 2.0, T_AMB)
+    stories = {
+        "DemoCore 8": "无冷 bug，全档位可玩（默认演示芯片）",
+        "DemoCore 16": "冷 bug -100°C：液氮下电压太低反而崩",
+        "DemoFX": "2015 老旗舰：漏电大、风冷易热失控",
+        "DemoBook": "15W 低压移动：低温相对增益最大",
+        "DemoEPYC": "24 核工作站：风冷直接热失控",
+        "DemoCore X3D": "3D 缓存冷敏感：与液氮/液氦绝缘，干冰也需带载",
+    }
     return dict(
         tier_names=[t.name for t in TIERS],
         tier_risk=[t.risk for t in TIERS],
         cpus=[dict(key=f"cpu{i}", name=c.name,
                    tjmax=f"{c.tjmax:.0f}°C",
-                   coldbug="无（可下液氮）" if c.coldbug is None else f"{c.coldbug:.0f}°C")
+                   coldbug="无（可下液氮）" if c.coldbug is None else f"{c.coldbug:.0f}°C",
+                   story=stories.get(c.name.split("（")[0], ""))
               for i, c in enumerate(CPUS)],
         conclusions=dict(
             p1=round(p1, 0), p2=round(p2, 0), gain=round((p2 / p1 - 1) * 100, 0),
             l25=round(l25, 1), l95=round(l95, 1), lx=round(l95 / l25, 1),
             theory=round(mobility_gain(-196.0), 1),
             model_gain=round((to_k(-196.0) / 300.0) ** (-cpu.p_t), 2),
-            dvt=round(vt_shift(-196.0), 2),
-            ln2_lh=round(500 * 3600 / 160600, 1), dice_kgh=round(500 * 3600 / 571000, 1)),
+            lhe_lh=round(500 * 3600 / LHE_LATENT_J_PER_L, 0),
+            lhe_cost_k=round(500 * 7200 / LHE_LATENT_J_PER_L * 150 / 1000, 0)),
         comparison=dict(
-            a=dict(name="干冰 1.45 V", tj=round(a["T_j"], 1), p=round(a["P"], 0),
-                   f=round(a["f"], 2), score=round(a["score"], 0),
-                   cost=round(a["cost"], 0), status=STATUS_CN[a["status"]]),
-            b=dict(name="液氮 1.55 V", tj=round(b["T_j"], 1), p=round(b["P"], 0),
-                   f=round(b["f"], 2), score=round(b["score"], 0),
-                   cost=round(b["cost"], 0), status=STATUS_CN[b["status"]]),
-            gain=round((b["score"] / a["score"] - 1) * 100, 0),
-            mult=round(b["cost"] / a["cost"], 1)),
-        coldbug=dict(name=c16.name, v_lo="1.25 V → " + STATUS_CN[r_cold["status"]],
-                     v_hi="1.70 V → " + STATUS_CN[r_warm["status"]]),
+            names=["干冰 1.45 V", "液氮 1.55 V", "液氦 1.55 V"],
+            rows=[dict(f=round(a["f"], 2), score=round(a["score"], 0),
+                       cost=round(a["cost"], 0), status=STATUS_CN[a["status"]]),
+                  dict(f=round(b["f"], 2), score=round(b["score"], 0),
+                       cost=round(b["cost"], 0), status=STATUS_CN[b["status"]]),
+                  dict(f=round(c["f"], 2), score=round(c["score"], 0),
+                       cost=round(c["cost"], 0), status=STATUS_CN[c["status"]])],
+            gain_b=round((b["score"] / a["score"] - 1) * 100, 0),
+            mult_b=round(b["cost"] / a["cost"], 1),
+            gain_c=round((c["score"] / b["score"] - 1) * 100, 0),
+            mult_c=round(c["cost"] / b["cost"], 0)),
+        degrade_v=DEGRADE_V,
         generated=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
     )
 
@@ -234,7 +258,7 @@ _HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NitroClock — CPU 低温超频决策工具演示</title>
+<title>NitroClock — CPU 低温超频决策工具</title>
 <style>
   :root { --bg:#0f1420; --panel:#1a2233; --ink:#e8edf5; --dim:#93a1b8;
           --acc:#4da3ff; --red:#ff5c5c; --org:#ff8a5c; --yel:#ffd166;
@@ -242,251 +266,284 @@ _HTML_TEMPLATE = r"""<!DOCTYPE html>
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink);
          font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif; }
-  header { padding:14px 22px; border-bottom:1px solid var(--line);
+  header { padding:12px 22px; border-bottom:1px solid var(--line);
            display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
-  header h1 { font-size:20px; margin:0; }
-  header .sub { color:var(--dim); font-size:13px; }
-  .badge { font-size:11px; padding:2px 8px; border:1px solid var(--acc);
+  header h1 { font-size:19px; margin:0; }
+  header .sub { color:var(--dim); font-size:12px; }
+  .badge { font-size:10px; padding:2px 8px; border:1px solid var(--acc);
            border-radius:10px; color:var(--acc); white-space:nowrap; }
-  .wrap { max-width:1080px; margin:0 auto; padding:14px 22px 40px; }
-  .controls { display:flex; gap:16px; flex-wrap:wrap; align-items:center; padding:12px 0; }
-  .controls label { font-size:13px; color:var(--dim); margin-right:6px; }
+  .wrap { max-width:1060px; margin:0 auto; padding:12px 20px 40px; }
+  .controls { display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+              padding:10px 0; font-size:13px; }
+  .controls label { color:var(--dim); margin-right:5px; }
   select, input[type=range] { background:var(--panel); color:var(--ink);
            border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
-  .stats { display:flex; gap:20px; flex-wrap:wrap; font-size:13px;
-           padding:6px 0 10px; color:var(--dim); }
-  .stats b { color:var(--ink); }
+  .hero { display:flex; gap:18px; flex-wrap:wrap; align-items:stretch;
+          margin:6px 0 12px; }
+  .card { background:var(--panel); border:1px solid var(--line);
+          border-radius:10px; padding:12px 16px; }
+  .hero-main { flex:1.4; min-width:300px; display:flex; align-items:center;
+               gap:18px; }
+  .hero-main .big { font-size:30px; font-weight:700; line-height:1.1; }
+  .hero-main .meta { color:var(--dim); font-size:12px; }
+  .chip { display:inline-block; font-size:11px; padding:2px 10px;
+          border-radius:12px; border:1px solid var(--line); margin:3px 6px 0 0;
+          color:var(--dim); }
+  .chip.warn { color:var(--yel); border-color:var(--yel); }
+  .hero-side { flex:1; min-width:230px; font-size:13px; }
+  .hero-side div { margin:4px 0; }
   canvas { width:100%; height:auto; background:var(--panel);
            border:1px solid var(--line); border-radius:10px; display:block; }
-  .panel { background:var(--panel); border:1px solid var(--line);
-           border-radius:10px; padding:14px 18px; margin-top:16px; }
-  .panel h2 { font-size:15px; margin:0 0 10px; }
-  table { border-collapse:collapse; width:100%; font-size:13px; }
-  th, td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .row2 { display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; }
+  .row2 > .card { flex:1; min-width:280px; }
+  .panel h2 { font-size:14px; margin:0 0 8px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; }
+  th, td { border-bottom:1px solid var(--line); padding:5px 8px; text-align:left; }
   th { color:var(--dim); font-weight:500; }
-  .sim { color:var(--acc); font-size:11px; }
-  .note { color:var(--dim); font-size:12px; margin-top:8px; line-height:1.8; }
+  .concls { display:flex; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .concls .card { flex:1; min-width:210px; }
+  .concls h3 { font-size:13px; margin:0 0 6px; }
+  .concls p { font-size:12px; color:var(--dim); margin:0; line-height:1.6; }
+  .sim { color:var(--acc); font-size:10px; }
+  .note { color:var(--dim); font-size:11px; margin-top:8px; line-height:1.7; }
   .sw { display:inline-block; width:10px; height:10px; border-radius:2px;
         margin-right:4px; vertical-align:middle; }
-  .rec { color:var(--yel); font-weight:600; }
 </style>
 </head>
 <body>
 <header>
   <h1>NitroClock</h1>
-  <span class="sub">CPU 低温超频决策工具 · 三层模型（热网络 + 功耗 + 频率响应）· HacKU 2026 Problem 3</span>
+  <span class="sub">CPU 低温超频决策工具 · HacKU 2026 Problem 3</span>
   <span class="badge">SIMULATED · 模拟</span>
 </header>
 <div class="wrap">
   <div class="controls">
     <span><label>芯片</label><select id="selCpu"></select></span>
     <span><label>电压</label>
-      <input type="range" id="rngV" min="1.00" max="1.70" step="0.05" value="1.45">
+      <input type="range" id="rngV" min="1.00" max="2.00" step="0.05" value="1.45">
       <b id="labV">1.45 V</b></span>
     <span><label>单场时长</label>
-      <select id="selH"><option value="1h">1 小时</option><option value="2h" selected>2 小时</option><option value="3h">3 小时</option></select></span>
+      <select id="selH"><option value="1h">1h</option><option value="2h" selected>2h</option><option value="3h">3h</option></select></span>
     <span><label>预算</label>
-      <select id="selB"><option value="50">HK$50</option><option value="100" selected>HK$100</option><option value="150">HK$150</option><option value="300">HK$300</option><option value="600">HK$600</option><option value="none">无上限（冲纪录）</option></select></span>
+      <select id="selB"><option value="50">HK$50</option><option value="100" selected>HK$100</option><option value="150">HK$150</option><option value="300">HK$300</option><option value="600">HK$600</option><option value="none">无上限</option></select></span>
   </div>
-  <div class="stats">
-    <span>推荐：<b class="rec" id="stRec">–</b></span>
-    <span>低温档性价比王：<b id="stVal">–</b></span>
-    <span>约束：Tjmax <b id="stTjmax">–</b> · 冷 bug <b id="stCb">–</b></span>
+
+  <div class="hero">
+    <div class="card hero-main">
+      <div>
+        <div class="meta">当前预算下的推荐（规则：预算内最高分 → 低成本 → 低风险）</div>
+        <div class="big" id="recTier">–</div>
+        <div class="meta" id="recSub">–</div>
+      </div>
+    </div>
+    <div class="card hero-side">
+      <div>低温档性价比王：<b id="stVal">–</b></div>
+      <div>该芯片约束：<span class="chip" id="stTjmax">–</span><span class="chip" id="stCb">–</span></div>
+      <div id="stDeg" class="chip warn" style="display:none">⚠ 电压 &gt; 1.70 V：电迁移老化风险（标注，不硬限）</div>
+      <div class="meta" id="stStory">–</div>
+    </div>
   </div>
-  <canvas id="cvBars" width="1036" height="300"></canvas>
-  <div class="legend">
+
+  <canvas id="cvBars" width="1036" height="240"></canvas>
+  <div class="legend" style="font-size:11px;color:var(--dim);padding:6px 0;">
     <span><span class="sw" style="background:#4da3ff"></span>可行</span>
     <span><span class="sw" style="background:#ffd166"></span>可行·待机冷 bug 警告</span>
-    <span><span class="sw" style="background:#ff8a5c"></span>过热（Tj &gt; Tjmax）</span>
-    <span><span class="sw" style="background:#ff5c5c"></span>冷 bug（Tj &lt; 下限）</span>
+    <span><span class="sw" style="background:#ff8a5c"></span>过热/热失控</span>
+    <span><span class="sw" style="background:#ff5c5c"></span>冷 bug</span>
+    <span style="margin-left:10px;">柱高 = 参考分数（模拟）</span>
   </div>
-  <div class="panel">
-    <h2>帕累托前沿：分数 vs 单场成本 <span class="sim">SIMULATED</span></h2>
-    <canvas id="cvPar" width="1036" height="360"></canvas>
-    <div class="note">每个点 = 一个（档位 × 电压）配置；圆环 = 当前预算下的推荐；
-    竖线 = 预算上限。点颜色对应档位：<span style="color:#7a8ba8">●风冷</span>
-    <span style="color:#6fd3ff">●一体水</span> <span style="color:#8fb7ff">●分体水</span>
-    <span style="color:#b08bff">●冷水机</span> <span style="color:#ffd166">●干冰</span>
-    <span style="color:#ff8a5c">●液氮</span></div>
+
+  <div class="card" style="margin-top:12px;">
+    <h2>分数 vs 单场成本（帕累托，横轴为对数刻度）<span class="sim"> SIMULATED</span></h2>
+    <canvas id="cvPar" width="1036" height="330"></canvas>
   </div>
-  <div class="panel">
-    <h2>两个配置并排比较（题目要求：说明选择与理由）<span class="sim"> SIMULATED</span></h2>
-    <table id="tblCmp"></table>
-    <div class="note" id="cmpWhy"></div>
+
+  <div class="row2">
+    <div class="card">
+      <h2>配置对比（示例芯片：DemoCore 8）<span class="sim"> SIMULATED</span></h2>
+      <table id="tblCmp"></table>
+      <div class="note" id="cmpWhy"></div>
+    </div>
+    <div class="card">
+      <h2>四句话结论</h2>
+      <div class="note" id="concl"></div>
+    </div>
   </div>
-  <div class="panel">
-    <h2>开场四个结论（示例芯片：DemoCore 8）</h2>
-    <div class="note" id="concl"></div>
-  </div>
-  <div class="panel">
-    <h2>假设与已知差异（演示中同样标注）</h2>
+
+  <div class="card" style="margin-top:14px;">
+    <h2>假设与边界</h2>
     <div class="note">
-      · 所有芯片参数、热阻、设备与耗材价格均为<b>占位值</b>（待数据组用规格书 + HWBOT 数据 + 询价替换，见方案书附录）。<br>
-      · 保留的约束只有两个（团队决定）：<b>Tjmax（过热）与冷 bug（过冷）</b>；结露、VRM 供电上限、内存/IMC 瓶颈不建模。<br>
-      · 跑分为「分数 ∝ 频率」的代理量，非真实基准分数。<br>
-      · 硅彩票（同型号个体差异）用区间表达，本页为示例参数下的点估计。<br>
-      · 本页所有数字均为数值模拟，非实测。
+      约束只保留两个（团队决定）：<b>Tjmax 过热</b> + <b>冷 bug 过冷</b>。
+      不建模：结露、VRM 供电上限、内存/IMC 瓶颈；硅彩票用区间表达。
+      所有芯片参数与价格均为<b>占位值</b>（待数据组替换，见方案书附录）。
+      液氦成本按开口蒸发物理计算（实际冲分先液氮预冷、短时运行，用量可降一个量级）。
+      本页全部为数值模拟，非实测。
     </div>
   </div>
 </div>
 <script>
 const DATA = __DATA__;
 const st = DATA.static;
-const TIER_COLORS = ["#7a8ba8", "#6fd3ff", "#8fb7ff", "#b08bff", "#ffd166", "#ff8a5c"];
-const TIER_NAMES = st.tier_names;
-const STATUS_STYLE = {ok:["#4da3ff","可行"], warn:["#ffd166","可行·待机冷bug警告"],
-                      hot:["#ff8a5c","过热"], cold:["#ff5c5c","冷 bug"]};
+const TIER_COLORS = ["#7a8ba8", "#6fd3ff", "#8fb7ff", "#b08bff", "#ffd166", "#ff8a5c", "#e0a0ff"];
+const STATUS_LIST = ["ok", "warn", "hot", "cold"];
+const STATUS_UI = {
+  ok:  ["#4da3ff", "可行"],
+  warn:["#ffd166", "可行·待机冷bug警告"],
+  hot: ["#ff8a5c", "过热"],
+  cold:["#ff5c5c", "冷 bug"]
+};
 let cpuKey = "cpu0", hours = "2h", budget = 100, V = 1.45;
-
 function $(id){ return document.getElementById(id); }
-function cpuMeta(){
-  return st.cpus.find(c => c.key === cpuKey);
-}
+function cpuMeta(){ return st.cpus.find(c => c.key === cpuKey); }
 function rowsNow(){ return DATA.runs[cpuKey][hours].rows[V.toFixed(2)]; }
 function paretoNow(){ return DATA.runs[cpuKey][hours].pareto; }
 function recommendNow(){
-  const pts = paretoNow().filter(p => budget === null || p.cost <= budget);
+  const pts = paretoNow().filter(p => budget === null || p[0] <= budget);
   if (!pts.length) return null;
   return pts.reduce((a,b) =>
-    (b.score > a.score || (b.score === a.score && (b.cost < a.cost ||
-      (b.cost === a.cost && b.risk < a.risk)))) ? b : a);
+    (b[1] > a[1] || (b[1] === a[1] && (b[0] < a[0] ||
+      (b[0] === a[0] && st.tier_risk[b[2]] < st.tier_risk[a[2]])))) ? b : a);
 }
 function valueNow(){
-  const pts = paretoNow().filter(p => (p.tier === "干冰" || p.tier === "液氮"));
+  const pts = paretoNow().filter(p => p[2] >= 4);   // 低温档（干冰起）
   if (!pts.length) return null;
-  return pts.reduce((a,b) => (b.score/b.cost > a.score/a.cost) ? b : a);
+  return pts.reduce((a,b) => (b[1]/b[0] > a[1]/a[0]) ? b : a);
 }
+function fmtMoney(x){ return x >= 1000 ? "HK$" + (x/1000).toFixed(1) + "k" : "HK$" + x.toFixed(0); }
 
 function drawBars(){
   const cv = $("cvBars"), ctx = cv.getContext("2d");
   ctx.clearRect(0, 0, cv.width, cv.height);
-  const rows = rowsNow();
-  const maxS = Math.max(...rows.map(r => r.score), 1);
-  const bw = 120, gap = 26, x0 = 46, baseY = 258, hMax = 210;
+  const rows = rowsNow(), names = st.tier_names;
+  const maxS = Math.max(...rows.map(r => r[3]), 1);
+  const n = rows.length, bw = Math.min(108, (cv.width - 80) / n - 16), gap = 14;
+  const x0 = 40, baseY = 196, hMax = 150;
   rows.forEach((r, i) => {
     const x = x0 + i * (bw + gap);
-    const col = STATUS_STYLE[r.status][0];
-    const h = r.run ? 4 : Math.max(6, r.score / maxS * hMax);
-    ctx.fillStyle = col;
+    const ui = STATUS_UI[STATUS_LIST[r[5]]];
+    const h = r[6] ? 4 : Math.max(6, r[3] / maxS * hMax);
+    ctx.fillStyle = ui[0];
     ctx.fillRect(x, baseY - h, bw, h);
     ctx.strokeStyle = "rgba(0,0,0,0.3)";
     ctx.strokeRect(x, baseY - h, bw, h);
     ctx.fillStyle = "#e8edf5"; ctx.font = "13px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText(TIER_NAMES[i], x + bw / 2, baseY + 18);
-    if (r.run) {
-      ctx.fillStyle = "#ff8a5c";
-      ctx.fillText("热失控", x + bw / 2, baseY - h - 6);
-      ctx.fillText("—", x + bw / 2, baseY - h + 14);
+    ctx.fillText(names[i], x + bw / 2, baseY + 16);
+    ctx.fillStyle = "#93a1b8"; ctx.font = "11px sans-serif";
+    if (r[6]) {
+      ctx.fillText("热失控", x + bw / 2, baseY - h - 4);
+    } else if (r[5] === 3) {
+      ctx.fillText("冷 bug", x + bw / 2, baseY - h - 4);
     } else {
-      ctx.fillText(r.f.toFixed(2) + " GHz", x + bw / 2, baseY - h - 6);
-      ctx.fillStyle = "#93a1b8"; ctx.font = "11px sans-serif";
-      ctx.fillText(r.score.toFixed(0) + " 分", x + bw / 2, baseY - h + 14);
-      ctx.fillText("HK$" + r.cost.toFixed(0) + " · Tj " + r.tj.toFixed(0) + "°C",
-                   x + bw / 2, baseY - h + 28);
-      ctx.fillText(STATUS_STYLE[r.status][1], x + bw / 2, baseY - h + 42);
+      ctx.fillText(r[2].toFixed(2) + " GHz · " + r[3].toFixed(0) + " 分",
+                   x + bw / 2, baseY - h - 4);
+      ctx.fillText(fmtMoney(r[4]), x + bw / 2, baseY - h + 13);
+      ctx.fillText(ui[1], x + bw / 2, baseY - h + 26);
     }
   });
-  ctx.fillStyle = "#93a1b8"; ctx.font = "11px sans-serif"; ctx.textAlign = "left";
-  ctx.fillText("柱高 = 参考分数（分数 ∝ 频率，模拟）", x0, 18);
 }
 
 function drawPareto(){
   const cv = $("cvPar"), ctx = cv.getContext("2d");
   ctx.clearRect(0, 0, cv.width, cv.height);
-  const pts = paretoNow();
-  const rec = recommendNow();
-  const val = valueNow();
-  const padL = 52, padR = 24, padT = 26, padB = 44;
+  const pts = paretoNow(), rec = recommendNow(), val = valueNow();
+  const padL = 46, padR = 20, padT = 18, padB = 42;
   const W = cv.width - padL - padR, H = cv.height - padT - padB;
-  const maxC = Math.max(...pts.map(p => p.cost), 1) * 1.06;
-  const maxS = Math.max(...pts.map(p => p.score), 1) * 1.05;
-  const minS = Math.min(...pts.map(p => p.score), 0);
-  const X = c => padL + c / maxC * W;
-  const Y = s => padT + (1 - (s - minS) / (maxS - minS)) * H;
-  // 网格
-  ctx.strokeStyle = "#24334f"; ctx.lineWidth = 1; ctx.font = "10px sans-serif";
-  for (let k = 0; k <= 5; k++) {
-    const c = maxC * k / 5, s = minS + (maxS - minS) * k / 5;
+  const cMin = Math.min(...pts.map(p => p[0])), cMax = Math.max(...pts.map(p => p[0]));
+  const sMin = Math.min(...pts.map(p => p[1])), sMax = Math.max(...pts.map(p => p[1]));
+  const X = c => padL + Math.log(c / cMin) / Math.log(cMax / cMin) * W;
+  const Y = s => padT + (1 - (s - sMin) / (sMax - sMin)) * H;
+  ctx.font = "10px sans-serif";
+  // 对数网格线
+  for (const c of [10, 30, 100, 300, 1000, 3000, 10000, 30000]) {
+    if (c < cMin || c > cMax) continue;
+    ctx.strokeStyle = "#24334f";
     ctx.beginPath(); ctx.moveTo(X(c), padT); ctx.lineTo(X(c), padT + H); ctx.stroke();
+    ctx.fillStyle = "#93a1b8"; ctx.textAlign = "center";
+    ctx.fillText(fmtMoney(c), X(c), padT + H + 14);
+  }
+  for (let k = 0; k <= 4; k++) {
+    const s = sMin + (sMax - sMin) * k / 4;
+    ctx.strokeStyle = "#24334f";
     ctx.beginPath(); ctx.moveTo(padL, Y(s)); ctx.lineTo(padL + W, Y(s)); ctx.stroke();
     ctx.fillStyle = "#93a1b8"; ctx.textAlign = "right";
     ctx.fillText(s.toFixed(0), padL - 6, Y(s) + 3);
-    ctx.textAlign = "center";
-    ctx.fillText("HK$" + c.toFixed(0), X(c), padT + H + 16);
   }
   ctx.fillStyle = "#93a1b8"; ctx.textAlign = "center";
-  ctx.fillText("单场成本 →", padL + W / 2, padT + H + 32);
-  ctx.save(); ctx.translate(14, padT + H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText("单场成本（对数）→", padL + W / 2, padT + H + 30);
+  ctx.save(); ctx.translate(12, padT + H / 2); ctx.rotate(-Math.PI / 2);
   ctx.fillText("参考分数 →", 0, 0); ctx.restore();
   // 前沿折线
-  const front = pts.filter(p => p.on_front)
-                   .sort((a, b) => a.cost - b.cost);
+  const front = pts.filter(p => p[6]).sort((a, b) => a[0] - b[0]);
   ctx.strokeStyle = "#5cdb7e"; ctx.lineWidth = 2;
   ctx.beginPath();
-  front.forEach((p, i) => {
-    i === 0 ? ctx.moveTo(X(p.cost), Y(p.score)) : ctx.lineTo(X(p.cost), Y(p.score));
-  });
+  front.forEach((p, i) => { i === 0 ? ctx.moveTo(X(p[0]), Y(p[1])) : ctx.lineTo(X(p[0]), Y(p[1])); });
   ctx.stroke();
   // 点
   pts.forEach(p => {
-    ctx.fillStyle = TIER_COLORS[TIER_NAMES.indexOf(p.tier)];
-    ctx.beginPath(); ctx.arc(X(p.cost), Y(p.score), 3.2, 0, 7); ctx.fill();
+    ctx.fillStyle = TIER_COLORS[p[2]];
+    ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), 3, 0, 7); ctx.fill();
   });
   // 预算线
-  if (budget !== null) {
+  if (budget !== null && budget <= cMax) {
     ctx.strokeStyle = "#ffd166"; ctx.setLineDash([5, 5]);
     ctx.beginPath(); ctx.moveTo(X(budget), padT); ctx.lineTo(X(budget), padT + H);
     ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = "#ffd166"; ctx.textAlign = "center";
-    ctx.fillText("预算 HK$" + budget, X(budget), padT - 8);
+    ctx.fillText("预算 HK$" + budget, X(budget), padT - 4);
   }
-  // 推荐与性价比王
   if (rec) {
     ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(X(rec.cost), Y(rec.score), 8, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(rec[0]), Y(rec[1]), 8, 0, 7); ctx.stroke();
     ctx.fillStyle = "#ffd166"; ctx.textAlign = "left";
-    ctx.fillText("推荐: " + rec.tier + " " + rec.V.toFixed(2) + " V",
-                 X(rec.cost) + 12, Y(rec.score) - 6);
+    ctx.fillText("推荐 " + st.tier_names[rec[2]] + " " + rec[3].toFixed(2) + " V",
+                 X(rec[0]) + 12, Y(rec[1]) - 5);
   }
   if (val) {
     ctx.strokeStyle = "#5cdb7e"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(X(val.cost), Y(val.score), 8, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(val[0]), Y(val[1]), 8, 0, 7); ctx.stroke();
     ctx.fillStyle = "#5cdb7e"; ctx.textAlign = "left";
-    ctx.fillText("低温档性价比王: " + val.tier + " " + val.V.toFixed(2) + " V",
-                 X(val.cost) + 12, Y(val.score) + 16);
+    ctx.fillText("低温性价比王 " + st.tier_names[val[2]] + " " + val[3].toFixed(2) + " V",
+                 X(val[0]) + 12, Y(val[1]) + 14);
   }
 }
 
 function render(){
   $("labV").textContent = V.toFixed(2) + " V";
   const m = cpuMeta();
-  $("stTjmax").textContent = m.tjmax;
-  $("stCb").textContent = m.coldbug;
+  $("stTjmax").textContent = "Tjmax " + m.tjmax;
+  $("stCb").textContent = "冷 bug " + m.coldbug;
+  $("stStory").textContent = "芯片故事：" + m.story;
+  $("stDeg").style.display = V > st.degrade_v ? "inline-block" : "none";
   const rec = recommendNow(), val = valueNow();
-  $("stRec").textContent = rec ? (rec.tier + " @ " + rec.V.toFixed(2) + " V → "
-    + rec.score.toFixed(0) + " 分 · HK$" + rec.cost.toFixed(0)) : "预算内无可行配置";
-  $("stVal").textContent = val ? (val.tier + "（" + (val.score / val.cost).toFixed(0) + " 分/HK$）") : "–";
+  if (rec) {
+    $("recTier").textContent = st.tier_names[rec[2]] + " @ " + rec[3].toFixed(2) + " V";
+    $("recSub").textContent = rec[1].toFixed(0) + " 分 · " + fmtMoney(rec[0]) + "/场 · "
+      + STATUS_UI[STATUS_LIST[rec[5]]][1];
+  } else {
+    $("recTier").textContent = "预算内无可行配置";
+    $("recSub").textContent = "试试降低电压或提高预算";
+  }
+  $("stVal").textContent = val ? (st.tier_names[val[2]] + "（" + (val[1] / val[0]).toFixed(0) + " 分/HK$）") : "–";
   drawBars(); drawPareto();
 }
 
 function fillStatic(){
   const c = st.conclusions;
   $("concl").innerHTML =
-    `· 结论一：功耗 P ∝ V²f —— 5.0 GHz @ 1.30 V = ${c.p1} W → 5.5 GHz @ 1.40 V = ${c.p2} W（<b>+${c.gain}%</b>），频率只涨 10%，功耗涨近三成。<br>`
-    + `· 结论二：泄漏随温度指数上升（每 22°C 翻倍，标定值）：25°C 时 ${c.l25} W → 95°C 时 ${c.l95} W（${c.lx} 倍）；液氮下 ≈ 0，省下的热预算拿去加压。<br>`
-    + `· 结论三：迁移率理论上限 ×${c.theory}（μ ∝ T^-1.5），本芯片标定后同电压只快 ×${c.model_gain}；阈值电压上升 ${c.dvt} V 吃掉部分增益——再冷就撞冷 bug。<br>`
-    + `· 结论四：500 W 负荷下液氮 ≈ ${c.ln2_lh} L/h、干冰 ≈ ${c.dice_kgh} kg/h——每多 100 MHz 都在烧钱。`;
-  const a = st.comparison.a, b = st.comparison.b;
-  $("tblCmp").innerHTML =
-    `<tr><th>配置</th><th>结温 Tj</th><th>功耗</th><th>频率</th><th>参考分</th><th>单场成本</th><th>状态</th></tr>`
-    + `<tr><td><b>${a.name}</b></td><td>${a.tj}°C</td><td>${a.p} W</td><td>${a.f} GHz</td><td>${a.score}</td><td>HK$${a.cost}</td><td>${a.status}</td></tr>`
-    + `<tr><td><b>${b.name}</b></td><td>${b.tj}°C</td><td>${b.p} W</td><td>${b.f} GHz</td><td>${b.score}</td><td>HK$${b.cost}</td><td>${b.status}</td></tr>`;
+    `<b>① 功耗 ∝ V²f：</b>5.0 GHz @ 1.30 V = ${c.p1} W → 5.5 GHz @ 1.40 V = ${c.p2} W（+${c.gain}%）。<br>`
+    + `<b>② 泄漏翻倍：</b>25°C ${c.l25} W → 95°C ${c.l95} W（${c.lx} 倍）；液氮下 ≈ 0。<br>`
+    + `<b>③ 冷 ≠ 快：</b>迁移率理论上限 ×${c.theory}，标定后 ×${c.model_gain}，再冷撞冷 bug。<br>`
+    + `<b>④ 液氦的账：</b>500 W 下 ≈ ${c.lhe_lh} L/h，2 小时 ≈ HK$${c.lhe_cost_k} 千——只为最后几个百分点。`;
+  const rows = st.comparison.rows, names = st.comparison.names;
+  let h = "<tr><th>配置</th><th>频率</th><th>参考分</th><th>单场成本</th><th>状态</th></tr>";
+  names.forEach((n, i) => {
+    h += `<tr><td>${n}</td><td>${rows[i].f} GHz</td><td>${rows[i].score}</td><td>${fmtMoney(rows[i].cost)}</td><td>${rows[i].status}</td></tr>`;
+  });
+  $("tblCmp").innerHTML = h;
   $("cmpWhy").innerHTML =
-    `液氮比干冰多 <b>${st.comparison.gain}%</b> 分数，但单场成本是 <b>${st.comparison.mult} 倍</b>。`
-    + `<b>选择</b>：预算 HK$150 内 → 干冰 1.45 V；冲纪录无预算 → 液氮 1.55 V。`
-    + `理由：按推荐规则（预算内最高分，并列取低成本/低风险）；液氮只为最后几个百分点服务，`
-    + `且待机冷 bug 与操作风险更高——这正是「频率 vs 成本/风险」的取舍。`
-    + `<br>冷 bug 悬崖（${st.coldbug.name} + 液氮）：${st.coldbug.v_lo}，${st.coldbug.v_hi}——电压太低反而崩。`;
+    `液氮比干冰多 <b>${st.comparison.gain_b}%</b> 分数、成本 <b>${st.comparison.mult_b} 倍</b>；`
+    + `液氦再买 <b>${st.comparison.gain_c}%</b>、成本 <b>${st.comparison.mult_c} 倍</b>。`
+    + `选择：预算 HK$150 → 干冰；HK$600 → 液氮；无预算冲纪录 → 液氦。`;
 }
 
 const selCpu = $("selCpu");

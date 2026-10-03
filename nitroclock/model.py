@@ -60,7 +60,11 @@ def _idle_tj(cpu, tier: Tier, T_amb: float) -> float:
 
 def assess(cpu, tier: Tier, V: float, hours: float = 2.0,
            T_amb: float = 25.0) -> dict:
-    """判定一个配置的可行性、状态与单场成本。"""
+    """判定一个配置的可行性、状态与单场成本。
+
+    只保留两个硬约束（Tjmax / 冷 bug）；V > 1.70 V 仅标注电迁移
+    老化风险（degrade=True），不硬限。
+    """
     s = solve(cpu, tier, V, T_amb)
     if s["f"] == 0.0:
         status = STATUS_COLD
@@ -75,7 +79,7 @@ def assess(cpu, tier: Tier, V: float, hours: float = 2.0,
     score = cpu.score_ref * s["f"] / cpu.f0 if s["f"] > 0 else 0.0
     cost = tier_cost(tier, s["P"], hours, T_amb)
     return dict(**s, tier=tier.name, status=status, score=score, cost=cost,
-                risk=tier.risk)
+                risk=tier.risk, degrade=V > 1.70)
 
 
 def grid(cpu, V_lo=1.00, V_hi=1.70, step=0.05, hours=2.0, T_amb=25.0):
@@ -106,12 +110,12 @@ def recommend(points, budget: float | None = None):
 def best_value(points, refrigerant_only: bool = True):
     """性价比王：每港币最高分。
 
-    refrigerant_only=True 时只在低温档（干冰/液氮）里选——整体口径下
+    refrigerant_only=True 时只在低温档（干冰/液氮/液氦）里选——整体口径下
     风冷（近零单场成本）必然胜出，那本身也是结论：「上低温不是为了划算」。
     """
     cands = feasible(points)
     if refrigerant_only:
-        cands = [p for p in cands if p["tier"] in ("干冰", "液氮")]
+        cands = [p for p in cands if p["tier"] in ("干冰", "液氮", "液氦")]
     else:
         cands = [p for p in cands if p["cost"] > 0]
     if not cands:

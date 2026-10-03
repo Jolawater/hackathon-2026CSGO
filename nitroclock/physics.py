@@ -15,6 +15,8 @@ LN2_T_C = -196.0
 LN2_LATENT_J_PER_L = 160_600.0   # ≈199 kJ/kg × 0.807 kg/L
 DICE_T_C = -78.5
 DICE_LATENT_J_PER_KG = 571_000.0
+LHE_T_C = -268.9                  # 4.2 K
+LHE_LATENT_J_PER_L = 2_600.0      # ≈20.7 kJ/kg × 0.125 kg/L（只有液氮的 ~1/60）
 
 
 def to_k(T_c: float) -> float:
@@ -53,12 +55,14 @@ def power_W(cpu, V: float, f: float, T_c: float) -> float:
 
 
 def f_max(cpu, V: float, T_c: float) -> float:
-    """频率响应 f(V, T) = f0·(V/V0)^p_v·(T/300)^(-p_t)。
+    """频率响应 f(V, T) = f0·(V/V0)^p_v·(T_eff/300)^(-p_t)。
 
+    T_eff = max(T, T_floor)：低于 T_floor 后继续降温不再带来频率增益
+    （迁移率增益被载流子冻析/阈值漂移抵消），默认 T_floor = -196°C，
+    即液氦（4.2 K）相对液氮（77 K）不额外提速。
     冷 bug：结温低于 T_coldbug 直接不开机（返回 0）。
-    说明：p_t=1.5 是纯迁移率上界，真实芯片远小于此（电路时序余量、
-    Vt 上升被标定指数吸收），故 p_t 是每芯片标定参数（示例 0.10–0.12）。
     """
     if cpu.coldbug is not None and T_c < cpu.coldbug:
         return 0.0
-    return cpu.f0 * (V / cpu.V0) ** cpu.p_v * (to_k(T_c) / T_0) ** (-cpu.p_t)
+    t_eff = max(to_k(T_c), to_k(cpu.t_floor))
+    return cpu.f0 * (V / cpu.V0) ** cpu.p_v * (t_eff / T_0) ** (-cpu.p_t)
