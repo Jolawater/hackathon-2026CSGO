@@ -1,5 +1,9 @@
 # Battery Choices / 电池选择实验室
 
+## 数据与购买定位审查 / Evidence and purchase framing
+
+[数据出处、充分性判断、真实品牌算例与购买前决策](docs/EVIDENCE_AND_PURCHASE.md)说明当前哪些结论有依据、哪些仍需目标设备实测。现有 UI 比较充电策略；跨品牌购买比较尚未实现。
+
 Two local tools provide task planning and an interactive physical demonstration:
 
 1. **方案权衡 / Compare** — task constraints, charging strategies, A/B curves, feasible candidates and a Pareto frontier.
