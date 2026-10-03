@@ -1338,4 +1338,136 @@ footer small {
   z-index: 3;
 }
 
-.neighbour-row{padding:12px 0;border-bottom:1px solid #dce5db}.neighbour-row label{display:block;font-size:14px}.neighbour-row select{width:100%;padding:10px;margin:6px 0 12px;border:1px solid #cedacb;border-radius:8px;background:var(--paper)}.add-neighbour{margin-top:12px;padding:10px;border:1px solid #c8d8c8;border-radius:8px}.add-neighbour:disabled{opacity:.45}
+.neighbour-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #dce5db;
+}
+.neighbour-row label {
+  display: block;
+  font-size: 14px;
+}
+.neighbour-row select {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0 12px;
+  border: 1px solid #cedacb;
+  border-radius: 8px;
+  background: var(--paper);
+}
+.add-neighbour {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #c8d8c8;
+  border-radius: 8px;
+}
+.add-neighbour:disabled {
+  opacity: 0.45;
+}
+
+:root {
+  --sun: #e0a43a;
+}
+#intro,
+#inputs,
+#results,
+#layout,
+#cashflow,
+#trust {
+  scroll-margin-top: 100px;
+}
+.intro-section {
+  height: min(86vh, 760px);
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  align-items: center;
+  gap: 28px;
+  padding: 36px 0 52px;
+}
+.intro-copy h1 {
+  font-size: clamp(38px, 4vw, 56px);
+  line-height: 1.17;
+  margin: 22px 0;
+}
+.intro-description {
+  font-size: 18px;
+  line-height: 1.85;
+  max-width: 650px;
+}
+.intro-actions,
+.example-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0 18px;
+}
+.intro-actions button {
+  padding: 13px 17px;
+  font-size: 16px;
+}
+.intro-trust {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 640px;
+}
+.intro-down {
+  font-size: 14px;
+  text-decoration: none;
+}
+.intro-art {
+  width: 100%;
+  max-height: 480px;
+}
+.how-it-works {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+.how-it-works article {
+  position: relative;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--paper);
+}
+.how-it-works article > span {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  font-size: 24px;
+  color: #a0b499;
+}
+.how-it-works h3 {
+  margin-top: 20px;
+}
+.how-it-works p {
+  line-height: 1.8;
+}
+.intro-disclaimer {
+  margin: 22px 0 70px;
+  color: var(--muted);
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  .intro-section {
+    height: auto;
+    min-height: 620px;
+    grid-template-columns: 1fr;
+    padding: 34px 0;
+  }
+  .intro-art {
+    display: none;
+  }
+  .intro-copy h1 {
+    font-size: 38px;
+  }
+  .intro-description {
+    font-size: 17px;
+  }
+  .how-it-works {
+    grid-template-columns: 1fr;
+  }
+  .intro-actions {
+    gap: 8px;
+  }
+}
