@@ -12,9 +12,9 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto('http://127.0.0.1:8765')
     page.locator('[data-scenario="phone-student"]').wait_for()
-    for device,ids in [('phone',['phone-student','phone-travel']),('scooter',['scooter-commute','scooter-delivery']),('car',['car-commute','car-winter'])]:
+    for device,ids in [('phone',['phone-student','phone-travel','phone-heavy','phone-short-window']),('scooter',['scooter-commute','scooter-delivery','scooter-night','scooter-short-window']),('car',['car-commute','car-winter','car-long-trip','car-public-charge'])]:
         page.locator(f'[data-device="{device}"]').click()
-        assert page.locator('.scenario-card').count()==2
+        assert page.locator('.scenario-card').count()==4
         assert page.locator('.scenario-card.selected').get_attribute('data-scenario')==ids[0]
         for id in ids:
             page.locator(f'[data-scenario="{id}"]').click()
@@ -23,6 +23,8 @@ with sync_playwright() as p:
             page.wait_for_function("!document.querySelector('#run').disabled")
             assert page.locator('#output .metric').count()>0
             assert page.locator('#notice').inner_text()==''
+    page.locator('[data-scenario="car-winter"]').click()
+    assert page.locator('.need-summary').is_visible()
     page.locator('[data-key="target"]').fill('85')
     assert '已自定义' in page.locator('#scenarioCards').inner_text()
     page.locator('#save').click()
@@ -52,5 +54,5 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
     page.locator('#scenarioCards').screenshot(path=str(out/'scenarios-mobile.png'))
     assert not errors,errors
-    print('PASS: six presets, stale-result clearing, customization, save/reload, language, JSON roundtrip, legacy imports, mobile layout')
+    print('PASS: twelve need presets, stale-result clearing, customization, save/reload, language, JSON roundtrip, legacy imports, mobile layout')
     browser.close()

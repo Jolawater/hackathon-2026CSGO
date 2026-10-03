@@ -90,11 +90,11 @@ The browser check saves screenshots and its report in ignored `artifacts/`. The 
 
 ## Everyday scenario presets / 生活场景
 
-Each device offers two editable, assumed scenarios: student/travel for phones, commute/delivery for electric two-wheelers, and commute/winter for electric cars. Selecting a card replaces device inputs and clears previous device results. Changes are labeled Customized. Saved and exported JSON retains `scenario_id` and `scenario_customized`; older files import as custom configurations. The cell-aging experiment remains independent.
+Each device offers four editable need presets. Phones: student, travel, heavy use, or a 30-minute charging window. Electric two-wheelers: commute, delivery, night work, or a one-hour charging window. Electric cars: commute, winter, a 250 km trip, or seven-day commuting with public AC charging only. Each preset explains its decision priority and trade-off; starting settings are not universal optima or brand-calibrated recommendations. Selecting a card replaces device inputs and clears previous device results. Changes are labeled Customized. Saved and exported JSON retains `scenario_id` and `scenario_customized`; older files import as custom configurations. The cell-aging experiment remains independent.
 
 电单车指使用锂电池的两轮电动车；电车指纯电动汽车。场景卡解释适用人群、遇到的问题和应关注的输出；它们是待用户调研验证的演示假设。车辆预设的任务功率与每日距离、Wh/km 和辅助用电一致，冬季取暖另行计入。
 
-`GET /api/catalog` now includes `scenarios` with stable IDs, bilingual title/audience/problem/focus and full parameters, while preserving the original `presets`. Scenario metadata is descriptive and does not change the physical model. Run `python tests/scenarios_check.py` with the local server running to check all six scenarios, state clearing, customization, saved-state restoration, bilingual switching and legacy import.
+`GET /api/catalog` now includes `scenarios` with stable IDs, bilingual title/audience/problem/focus/guidance and full parameters, while preserving the original `presets`. Scenario metadata is descriptive and does not change the physical model. Run `python tests/scenarios_check.py` with the local server running to check all twelve scenarios, state clearing, customization, saved-state restoration, bilingual switching and legacy import.
 
 ## 3D workbench and cycle-based life chart
 

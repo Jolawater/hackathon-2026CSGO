@@ -39,3 +39,4 @@ input,select{background:#f5f8ee;border-color:#cbd8c7}.quiet,.file-button{backgro
 footer{border-color:#c6d4c4}#referenceExperiment>summary{background:#e8efe0;border-color:#c8d6c2}
 
 html,body{background-color:#edf2e9}
+.need-summary{background:#e8eee3;border:1px solid #ccd9c5;border-radius:14px;padding:18px;margin-top:16px}.need-summary h4{margin:0 0 8px}.need-summary p{line-height:1.7}.need-inputs{display:flex;flex-wrap:wrap;gap:10px}.need-inputs span{background:#f4f7ef;border-radius:8px;padding:8px 12px;font-size:12px}.need-inputs b{display:block;font-size:16px;margin-top:4px}

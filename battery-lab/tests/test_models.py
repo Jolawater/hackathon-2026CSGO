@@ -15,7 +15,7 @@ def test_validation():
 
 def test_lifestyle_scenarios():
     scenarios=catalog()['scenarios']
-    assert len(scenarios)==6 and len({s['id'] for s in scenarios})==6
+    assert len(scenarios)==12 and len({s['id'] for s in scenarios})==12
     for item in scenarios:
         s=Scenario(**item['parameters'])
         assert s.scenario_id==item['id']

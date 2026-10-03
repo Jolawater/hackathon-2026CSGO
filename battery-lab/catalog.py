@@ -30,4 +30,34 @@ def catalog():
     add("scooter-delivery",scooter,["外卖配送","Delivery shift"],["长时间骑行的配送人员","Delivery riders working long shifts"],["少充几次电，会不会影响后半天配送？","Would fewer charging stops disrupt later deliveries?"],["任务缺电、充电次数、备用余量","Task failures, charge sessions and reserve"])
     add("car-commute",car,["日常通勤","Daily driving"],["有夜间充电窗口的车主","Drivers with overnight charging access"],["充到多少能满足第二天往返？","What charge target covers tomorrow's return trip?"],["出发电量、充电时间、费用","Departure SOC, charging time and cost"])
     add("car-winter",winter,["冬季出行","Winter driving"],["寒冷天气需要车内取暖的车主","Drivers needing cabin heating in cold weather"],["可用容量减少、取暖增加后，原方案还可行吗？","Does the plan work with less usable capacity and added heating?"],["满电可用能量、取暖需求、是否够用","Usable full-charge energy, heating demand and feasibility"])
+    # Needs change actual demand and opportunities, not just a display label.
+    heavy = base.model_copy(update={"target":1., "reserve":.15, "priority":"reserve", "tasks":[Task(start=8,end=12,power_w=1),Task(start=13,end=18,power_w=1.5),Task(start=19,end=22,power_w=3)]})
+    short = base.model_copy(update={"window_start":7, "window_end":7.5, "target":.8, "departure_min":.6, "initial_soc":.3})
+    night = scooter.model_copy(update={"distance_km":40, "window_start":10,"window_end":16,"departure":18,"departure_min":.8,"tasks":[Task(start=18,end=22,power_w=210)]})
+    limited = commute.model_copy(update={"initial_soc":.3,"window_start":6,"window_end":7,"target":.8,"departure_min":.6})
+    long_trip = car.model_copy(update={"distance_km":250,"target":1.,"reserve":.15,"priority":"reserve","departure_min":.9,"tasks":[Task(start=8,end=10,power_w=10500),Task(start=17,end=19,power_w=10500)]})
+    public = car.model_copy(update={"initial_soc":.3,"window_start":19,"window_end":20,"departure_min":.25,"target":.8,"priority":"interruptions"})
+    add("phone-heavy",heavy,["重度使用，优先够用","Heavy use · energy first"],["游戏、视频与工作并用的人","People mixing gaming, video and work"],["即使充满，晚间高负载是否还会缺电？","Can evening heavy use exhaust even a full charge?"],["任务缺电、备用电量、需要增加的补电","Unserved demand, reserve and extra charging"])
+    add("phone-short-window",short,["出门前只有半小时","Only 30 minutes before leaving"],["忘记夜间充电的人","People who missed overnight charging"],["07:00–07:30 补电，能否撑过一天？","Can a 07:00–07:30 top-up cover the day?"],["出发电量、充电功率与可用时间","Departure SOC, charging power and time"])
+    add("scooter-night",night,["夜班工作，白天充电","Night work · daytime charging"],["晚间配送或夜班工作者","Evening delivery and night-shift workers"],["白天补电后，能否完成晚间 40 km 工作？","Can daytime charging cover a 40 km evening shift?"],["18:00 出发电量、任务完成、备用里程","18:00 departure SOC, completion and reserve range"])
+    add("scooter-short-window",limited,["低电出门，补电机会少","Low start · limited charging"],["每天仅一小时可以充电的通勤者","Commuters with a one-hour charging window"],["06:00–07:00 补电够不够往返 20 km？","Can a 06:00–07:00 charge cover a 20 km return trip?"],["时间约束、最低余量、是否需要改变安排","Time limits, minimum reserve and schedule changes"])
+    add("car-long-trip",long_trip,["长途探亲，保留余量","Long trip · keep a reserve"],["计划一天往返 250 km 的车主","Drivers planning a 250 km return day trip"],["夜间充满后，能否往返并留下 15%？","Can overnight charging cover the trip with 15% left?"],["任务完成、充电时间、备用续航","Completion, charging time and remaining range"])
+    add("car-public-charge",public,["无家充，固定一小时补电","No home charger · one-hour top-up"],["每天只能使用公共慢充的通勤者","Commuters relying on public AC charging"],["每天 19:00–20:00 补电，能持续满足通勤吗？","Can a daily 19:00–20:00 charge sustain commuting?"],["连续七天缺电、补电时间与次数","Seven-day shortages, charging time and sessions"])
+    scenarios[-1]["parameters"]["days"] = 7
+    guidance = {
+        "phone-student": ("先保证晚间联系，再减少白天补电。提高上限会增加充电时间。", "Keep evening contact available, then reduce daytime top-ups. Higher targets add charging time."),
+        "phone-travel": ("优先全天够用；仅提高上限可能仍不够，需要降低负载或增加补电。", "Prioritize a full day out. A higher target alone may not suffice; reduce demand or add charging."),
+        "phone-heavy": ("先看任务能否完成；100% 是测试起点，不保证重度使用够用。", "Check task completion first. A 100% target is a starting test, not a guarantee."),
+        "phone-short-window": ("先检验半小时的硬限制；更高充电上限不能弥补充电时间不足。", "Test the 30-minute limit first. A higher target cannot make up for too little charging time."),
+        "scooter-commute": ("以往返任务和备用里程为先，再减少充电时间。", "Cover the return journey and reserve before reducing charging time."),
+        "scooter-delivery": ("优先完成配送；少补电与更大的工作余量可能冲突。", "Finish deliveries first; fewer stops may conflict with working reserve."),
+        "scooter-night": ("充电窗口随工作班次改变；不能套用夜间充电的通勤预设。", "Fit charging around the shift; overnight commuter charging does not fit this schedule."),
+        "scooter-short-window": ("先检查低起始电量与短窗口；可能需要更早补电。", "Check the low initial charge and short window; earlier charging may be needed."),
+        "car-commute": ("满足次日往返后比较充电时间和余量，不默认每天充满。", "After covering tomorrow's commute, compare charging time and reserve without assuming a full charge."),
+        "car-winter": ("分别计入参考低温影响与取暖；结果不能当成该品牌冬季实测。", "Account for reference cold effects and heating separately; this is not a branded winter test."),
+        "car-long-trip": ("以完成长途和 15% 备用为先，接受更长的夜间充电。", "Prioritize the long trip and 15% reserve, accepting longer overnight charging."),
+        "car-public-charge": ("连续七天检验补入能量是否赶得上用电；第一天够用不代表长期可行。", "Test seven days of energy replenishment; a successful first day does not prove sustainability."),
+    }
+    for item in scenarios:
+        item["guidance"] = dict(zip(["zh","en"], guidance[item["id"]]))
     return {"presets": {"phone": base.model_dump(), "scooter": scooter.model_dump(), "car": car.model_dump()}, "scenarios":scenarios, "sources": SOURCES, "preset_status": "assumed", "currency": "HKD", "aging_model": "BLAST-Lite 1.1.0 NMC-Gr B1 50Ah"}
