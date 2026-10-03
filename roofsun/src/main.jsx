@@ -149,11 +149,8 @@ function App() {
       depth: inputs.roof.depth,
       roof_rotation: inputs.door_direction,
       exclusions: [],
-      neighbour: inputs.neighbour,
-      horizon: neighbourHorizon(
-        inputs.neighbour.floors,
-        inputs.neighbour.distance,
-      ),
+      neighbours: inputs.neighbours,
+      horizon: neighbourHorizon(inputs.neighbours),
     }),
     [inputs],
   );

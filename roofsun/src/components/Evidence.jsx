@@ -5,7 +5,7 @@ const titles = {
   quote_plus_20: ["Quote +20%", "報價 +20%"],
   delay_6_months: ["Complete 6 months later", "遲 6 個月投產"],
   delay_12_months: ["Complete 12 months later", "遲 12 個月投產"],
-  neighbour_plus_floor: ["Neighbour one floor higher", "鄰屋高一層"],
+  neighbour_plus_floor: ["Every neighbour one floor higher", "鄰屋都高一層"],
   high_other_costs: ["High other costs", "其他費用高檔"],
   linear_electrical: ["Linear shading calculation", "線性電氣遮擋"],
   weather_2023: ["2023 weather", "2023 年天氣"],
@@ -353,8 +353,8 @@ export default function Evidence({
       <h4>{t("What is outside the model?", "模型沒有考慮甚麼？")}</h4>
       <p>
         {t(
-          "Typhoon wind loads and ballast; pollution other than the generic dust allowance; neighbours to the east, west and north; non-rectangular roofs; grouped installations; stairhood installations; inverter clipping; changes to electricity tariffs.",
-          "颱風風荷載及壓重；一般灰塵假設以外的污染；東、西、北三面的鄰屋；非長方形天台；群組式安裝；樓梯屋頂安裝；逆變器削峰；電價調整。",
+          "Typhoon wind loads and ballast; pollution other than the generic dust allowance; neighbour shapes (approximated as constant-height facades); non-rectangular roofs; grouped installations; stairhood installations; inverter clipping; changes to electricity tariffs.",
+          "颱風風荷載及壓重；一般灰塵假設以外的污染；鄰屋形狀（按等高立面近似）；非長方形天台；群組式安裝；樓梯屋頂安裝；逆變器削峰；電價調整。",
         )}
       </p>
     </div>

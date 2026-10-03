@@ -72,14 +72,14 @@
     {
       "zh": [
         "邻屋高度",
-        "每层 3 m，影响范围为正南左右各 60°",
-        "用“几层、多远”算出邻屋挡住多高的天空。香港的太阳主要从南面照过来",
+        "每层 3 m，影响范围为所选方向左右各 60°",
+        "每栋邻屋按所选方向左右各 60°、每层 3 m 估算。香港在北回归线以南，夏天太阳会走到北边，所以东、西、北的邻屋也会挡光。",
         "假设"
       ],
       "en": [
         "Neighbour height",
-        "3 m per floor; 60° either side of south",
-        "We use floors and distance to estimate how much sky is blocked. Sunlight in Hong Kong mainly comes from the south.",
+        "3 m per floor; 60° either side of each selected direction",
+        "Each neighbour is estimated as 3 m per floor across 60° either side of its selected direction. Hong Kong is south of the Tropic of Cancer: summer sun also passes to the north, so eastern, western and northern neighbours can block light.",
         "Assumption"
       ],
       "urls": []

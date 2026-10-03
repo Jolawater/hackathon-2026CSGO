@@ -1337,3 +1337,5 @@ footer small {
   bottom: 8px;
   z-index: 3;
 }
+
+.neighbour-row{padding:12px 0;border-bottom:1px solid #dce5db}.neighbour-row label{display:block;font-size:14px}.neighbour-row select{width:100%;padding:10px;margin:6px 0 12px;border:1px solid #cedacb;border-radius:8px;background:var(--paper)}.add-neighbour{margin-top:12px;padding:10px;border:1px solid #c8d8c8;border-radius:8px}.add-neighbour:disabled{opacity:.45}

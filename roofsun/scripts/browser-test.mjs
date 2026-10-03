@@ -55,7 +55,7 @@ async function download(name, file) {
 const ownerKeys = [
   "roof",
   "door_direction",
-  "neighbour",
+  "neighbours",
   "price_per_kw",
   "cost_band",
   "commissioning_month",
@@ -242,10 +242,10 @@ try {
   assert.equal(compassPositions.size, 8);
   r = await change(
     async () => {
-      await label("Floors above the roof").fill("2");
-      await label("Distance to neighbour").fill("6");
+      await label("Floors above the roof 1").fill("2");
+      await label("Distance to neighbour 1").fill("6");
     },
-    (r) => r.inputs.neighbour.floors === 2 && r.inputs.neighbour.distance === 6,
+    (r) => r.inputs.neighbours[0].floors === 2 && r.inputs.neighbours[0].distance === 6,
   );
   assert.deepEqual(
     r.mapped_inputs.horizon,

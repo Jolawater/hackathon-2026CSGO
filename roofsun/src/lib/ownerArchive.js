@@ -4,15 +4,26 @@ export function readOwner() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY));
     const i = data?.inputs;
+    if (i?.neighbour && !i.neighbours) {
+      i.neighbours = [{ direction: 180, ...i.neighbour }];
+      delete i.neighbour;
+    }
     const within = (n, low, high) =>
       Number.isFinite(n) && n >= low && n <= high;
     if (
       i?.roof &&
-      i?.neighbour &&
+      Array.isArray(i?.neighbours) &&
+      i.neighbours.length >= 1 &&
+      i.neighbours.length <= 3 &&
       within(i.roof.width, 1, 30) &&
       within(i.roof.depth, 1, 30) &&
-      within(i.neighbour.floors, 0, 15) &&
-      within(i.neighbour.distance, 0.5, 200) &&
+      i.neighbours.every(
+        (n) =>
+          n &&
+          [0, 45, 90, 135, 180, 225, 270, 315].includes(n.direction) &&
+          within(n.floors, 0, 15) &&
+          within(n.distance, 0.5, 200),
+      ) &&
       [0, 45, 90, 135, 180, 225, 270, 315].includes(i.door_direction) &&
       within(i.price_per_kw, 1, 100000) &&
       ["low", "medium", "high"].includes(i.cost_band) &&
