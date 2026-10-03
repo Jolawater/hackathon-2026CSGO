@@ -90,3 +90,7 @@ Record task completion, misunderstandings, preferred wording and concrete design
 - Pitch content outline is provided; team assembles its final deck and delivery.
 - Credit AI assistance and BLAST-Lite; teammates should be able to explain architecture and limitations.
 - Keep commits within event rules and preserve teammate branches.
+
+## 展示补充：从生活问题进入模拟
+
+先选择一张场景卡，用它说明谁遇到什么问题、需要看哪些结果。建议先演示“学生上课与通勤”，再切换“旅行与长时间外出”，展示相同容量在更高负载下可能不够用；再演示“电单车日常上下班 / 外卖配送”或“电车日常通勤 / 冬季出行”。切换后需重新运行。所有人群描述仍是假设，不能把场景数量当成用户访谈数量。

@@ -13,6 +13,20 @@ def test_validation():
     assert report['all_passed'], report
 
 
+def test_lifestyle_scenarios():
+    scenarios=catalog()['scenarios']
+    assert len(scenarios)==6 and len({s['id'] for s in scenarios})==6
+    for item in scenarios:
+        s=Scenario(**item['parameters'])
+        assert s.scenario_id==item['id']
+        result=simulate(s)
+        assert abs(result['metrics']['balance_error_wh'])<1e-6
+        if s.device!='phone':
+            hours=sum(t.end-t.start for t in s.tasks)
+            assert sum((t.end-t.start)*t.power_w for t in s.tasks)==pytest.approx(s.distance_km*s.wh_km+s.aux_w*hours)
+    assert not simulate(Scenario(**scenarios[1]['parameters']))['metrics']['feasible']
+
+
 @pytest.mark.parametrize('device',['phone','scooter','car'])
 def test_presets_conserve_and_repeat(device):
     s=Scenario(**catalog()['presets'][device])

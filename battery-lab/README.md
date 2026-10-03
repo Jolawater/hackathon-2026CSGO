@@ -87,3 +87,11 @@ Interactive schema: <http://127.0.0.1:8765/docs>.
 ```
 
 The browser check saves screenshots and its report in ignored `artifacts/`. The tests check behavior and physical invariants; they are not independent experimental validation. See [MODEL](docs/MODEL.md), [VALIDATION](docs/VALIDATION.md), [COMPETITION](docs/COMPETITION.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Everyday scenario presets / 生活场景
+
+Each device offers two editable, assumed scenarios: student/travel for phones, commute/delivery for electric two-wheelers, and commute/winter for electric cars. Selecting a card replaces device inputs and clears previous device results. Changes are labeled Customized. Saved and exported JSON retains `scenario_id` and `scenario_customized`; older files import as custom configurations. The cell-aging experiment remains independent.
+
+电单车指使用锂电池的两轮电动车；电车指纯电动汽车。场景卡解释适用人群、遇到的问题和应关注的输出；它们是待用户调研验证的演示假设。车辆预设的任务功率与每日距离、Wh/km 和辅助用电一致，冬季取暖另行计入。
+
+`GET /api/catalog` now includes `scenarios` with stable IDs, bilingual title/audience/problem/focus and full parameters, while preserving the original `presets`. Scenario metadata is descriptive and does not change the physical model. Run `python tests/scenarios_check.py` with the local server running to check all six scenarios, state clearing, customization, saved-state restoration, bilingual switching and legacy import.

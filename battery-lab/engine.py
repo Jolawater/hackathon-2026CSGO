@@ -22,6 +22,8 @@ class Task(BaseModel):
 
 
 class Scenario(BaseModel):
+    scenario_id: str | None = Field(default=None, max_length=80)
+    scenario_customized: bool = False
     device: Literal["phone", "scooter", "car"] = "phone"
     capacity_wh: float = Field(default=15, gt=0, le=1_000_000)
     soh: float = Field(default=1, gt=0, le=1)

@@ -2,7 +2,7 @@
 
 JESON branch prototype for **Test the Change Before You Make It**.
 
-本地中英双语电池决策实验室：比较充电策略、回放日常使用、运行有范围限制的参考电芯老化实验。包含手机、锂电两轮车和纯电汽车场景，以及冬季可用能量和取暖负载。
+本地中英双语电池决策实验室：比较充电策略、回放日常使用、运行有范围限制的参考电芯老化实验。包含手机、电单车和电车场景，以及冬季可用能量和取暖负载。
 
 **Start / 启动：** double-click `battery-lab/start.cmd` on Windows, then open <http://127.0.0.1:8765>.
 
