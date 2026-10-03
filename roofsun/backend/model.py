@@ -40,6 +40,7 @@ class Inputs(BaseModel):
     self_use_rate: float = Field(default=1.4, ge=0, le=5)
     self_use_share: float = Field(default=0.5, ge=0, le=1)
 
+    minimum_access_gap_m: float = Field(default=0.3, ge=0, le=3)
     minimum_row_fill_ratio: float = Field(default=0.7, ge=0, le=1)
     minimum_capacity_kw: float = Field(default=2, ge=0, le=20)
     budget: float = Field(default=0, ge=0, le=10000000)
@@ -63,7 +64,7 @@ class Inputs(BaseModel):
     def validate_inputs(self):
         if any(not math.isfinite(v) or not 0 <= v <= 80 for v in self.horizon):
             raise ValueError('Each horizon angle must be finite and between 0 and 80 degrees')
-        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw','minimum_row_fill_ratio']:
+        for name in ['width','depth','roof_rotation','house_area','price_per_kw','fixed_cost','annual_om','inverter_cost','self_use_rate','self_use_share','budget','max_payback_years','discount_rate','cost_inflation','weather_scale','extra_mass_per_module','load_limit','minimum_capacity_kw','minimum_row_fill_ratio','minimum_access_gap_m']:
             if not math.isfinite(getattr(self,name)):
                 raise ValueError('Input values must be finite')
         if self.house_area < self.width*self.depth:
@@ -83,7 +84,8 @@ class Inputs(BaseModel):
 class Configuration(BaseModel):
     tilt: float = Field(default=20, ge=0, le=40)
     azimuth: float = Field(default=180, ge=90, le=270)
-    rows: int = Field(default=3, ge=1, le=24)
+    rows: int = Field(default=2, ge=1, le=24)
+    layout_mode: str = Field(default='spread', pattern='^(spread|compact)$')
     panel_limit: int = Field(default=0, ge=0, le=2000)
 
 
@@ -116,13 +118,14 @@ def rotate_points(points, degrees):
 def layout(inputs: Inputs, config: Configuration):
     # Layout caching depends only on geometry, never on irradiance or price.
     geometry={'width':inputs.width,'depth':inputs.depth,'roof_rotation':inputs.roof_rotation,
-              'exclusions':[o.model_dump() for o in inputs.exclusions]}
+              'exclusions':[o.model_dump() for o in inputs.exclusions],
+              'house_area':inputs.house_area,'minimum_access_gap_m':inputs.minimum_access_gap_m}
     return _layout(json.dumps(geometry,sort_keys=True),config.model_dump_json())
 
 
 @lru_cache(maxsize=2048)
 def _layout(geometry, configuration):
-    inputs=Inputs(**json.loads(geometry),house_area=1500)
+    inputs=Inputs(**json.loads(geometry))
     config=Configuration.model_validate_json(configuration)
     margin=SETTINGS['model']['edge_margin_m'];epsilon=1e-8
     length,width=PANEL['length_m'],PANEL['width_m']
@@ -139,7 +142,8 @@ def _layout(geometry, configuration):
     if centres.is_empty:
         return [],[],0,'no_space'
     _,ymin,_,ymax=centres.bounds
-    if (config.rows-1)*projected>ymax-ymin+epsilon:
+    minimum_pitch=projected+inputs.minimum_access_gap_m
+    if (config.rows-1)*minimum_pitch>ymax-ymin+epsilon:
         return [],[],0,'overlap'
     vertices=list(local.exterior.coords)
     def span(y):
@@ -167,30 +171,55 @@ def _layout(geometry, configuration):
                 xs=[x for x in xs if not any(Polygon(native([[x,y+projected/2],[x+width,y+projected/2],[x+width,y-projected/2],[x,y-projected/2]])).intersection(o).area>epsilon for o in objects)]
             placements.append((float(y),xs))
         return placements
-    # Rotated roofs have narrower ends. Search pitch AND translation rather
-    # than pinning every row to the two extreme corners of the bounding box.
-    # Maximise complete modules, then prefer wider pitch and centred placement.
-    best=[];score=(-1,-1,-float('inf'))
-    pitches=[0] if config.rows==1 else np.linspace(projected,(ymax-ymin)/(config.rows-1),9)
+    def limited(placement):
+        if not config.panel_limit:return placement
+        selected=[[] for _ in placement];remaining=config.panel_limit
+        ordered=[sorted(xs,key=lambda x:abs(x+width/2-(min(xs)+max(xs)+width)/2)) if xs else [] for _,xs in placement]
+        while remaining and any(ordered):
+            for i,xs in enumerate(ordered):
+                if xs and remaining:selected[i].append(xs.pop(0));remaining-=1
+        return [(y,sorted(selected[i])) for i,(y,_) in enumerate(placement)]
+    def hull_area(placement):
+        # Convex hull of the outer row corners: rotation preserves its area.
+        points=sorted(set((x,y+sign*projected/2) for y,xs in placement if xs for x in [min(xs),max(xs)+width] for sign in [-1,1]))
+        if len(points)<3:return 0
+        def cross(o,a,b):return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0])
+        def half(seq):
+            result=[]
+            for point in seq:
+                while len(result)>1 and cross(result[-2],result[-1],point)<=0:result.pop()
+                result.append(point)
+            return result[:-1]
+        hull=half(points)+half(points[::-1])
+        return abs(sum(x1*y2-x2*y1 for (x1,y1),(x2,y2) in zip(hull,hull[1:]+hull[:1])))/2
+    best=[];score=(-1,-1,-float('inf'));fallback=[];fallback_score=(-1,-float('inf'),-1,-float('inf'))
+    # A compact layout is a coverage-limited alternative. Pitch remains an
+    # explicit tested variable and must leave the editable minimum access gap.
+    pitches=[0] if config.rows==1 else np.linspace(minimum_pitch,(ymax-ymin)/(config.rows-1),9)
+    if config.rows>1 and config.layout_mode=='compact':
+        # Include an exact coverage-boundary pitch for a rectangular row band;
+        # the final hull check uses actual rows and excludes invalid estimates.
+        central=candidate([(ymin+ymax)/2])
+        band_width=max((len(xs)*width for _,xs in central),default=width)
+        bound=(inputs.house_area*POLICY['coverage_limit']/band_width-projected)/(config.rows-1)
+        if minimum_pitch<=bound<=(ymax-ymin)/(config.rows-1):pitches=sorted(set([*pitches,bound]))
     axis_aligned=abs(math.sin(math.radians(angle*2)))<1e-9
     for pitch in pitches:
         slack=max(0,ymax-ymin-pitch*(config.rows-1))
         offsets=[slack/2] if axis_aligned else np.linspace(0,slack,17)
         for offset in offsets:
             top=ymax-float(offset)
-            placement=candidate([top-i*float(pitch) for i in range(config.rows)])
+            placement=limited(candidate([top-i*float(pitch) for i in range(config.rows)]))
             count=sum(len(xs) for _,xs in placement)
             rank=(count,float(pitch),-abs(float(offset)-slack/2))
+            area=hull_area(placement) if config.layout_mode=='compact' else 0
+            fallback_rank=(count,-area if config.layout_mode=='compact' else float(pitch),float(pitch),-abs(float(offset)-slack/2))
+            if fallback_rank>fallback_score:fallback=placement;fallback_score=fallback_rank
+            if config.layout_mode=='compact' and area>inputs.house_area*POLICY['coverage_limit']+epsilon:continue
             if rank>score:best=placement;score=rank
-    if config.panel_limit:
-        # Allocate one central module to each row in turn. This deterministic
-        # subset allows 22 x 450 W = 9.9 kW without requiring complete rows.
-        selected=[[] for _ in best];remaining=config.panel_limit
-        ordered=[sorted(xs,key=lambda x:abs(x+width/2-(min(xs)+max(xs)+width)/2)) if xs else [] for _,xs in best]
-        while remaining and any(ordered):
-            for i,xs in enumerate(ordered):
-                if xs and remaining:selected[i].append(xs.pop(0));remaining-=1
-        best=[(y,sorted(selected[i])) for i,(y,_) in enumerate(best)]
+    # Return an explicit coverage violation if no compact pitch can fit;
+    # never silently shrink the requested row count or legal covered area.
+    if not best:best=fallback
     panels=[];rows=[];polygons=[]
     for y,xs in best:
         if not xs:continue
@@ -338,6 +367,8 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
     economy=finance(inputs,capacity,monthly) if economics else {}
     result={'config':config.model_dump(),'panels_count':count,'capacity_kw':round(capacity,3),
             'actual_rows':actual_rows,'requested_rows':config.rows,
+            'row_pitch_m':round(rows[0]['y']-rows[1]['y'],4) if len(rows)>1 else None,
+            'minimum_clear_gap_m':round(min(rows[i]['y']-rows[i+1]['y'] for i in range(len(rows)-1))-PANEL['length_m']*math.cos(math.radians(config.tilt)),4) if len(rows)>1 else None,
             'annual_kwh':round(annual,1),'specific_yield':round(annual/capacity,1) if capacity else 0,
             'shading_loss_pct':round(100*(1-annual/base),1) if base else 0,
             'coverage_m2':round(coverage,2),'coverage_limit_m2':round(inputs.house_area*POLICY['coverage_limit'],2),

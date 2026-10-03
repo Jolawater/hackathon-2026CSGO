@@ -67,9 +67,9 @@ def test_coverage_failure_is_excluded_from_search():
 
 
 def test_night_and_front_row_shadows():
-    sun=sun_preview(Inputs(),Configuration(),pd.Timestamp('2025-12-21').date(),0)
+    sun=sun_preview(Inputs(minimum_access_gap_m=0),Configuration(rows=3),pd.Timestamp('2025-12-21').date(),0)
     assert sun['altitude']<0 and not sun['beam_clear']
-    day=sun_preview(Inputs(),Configuration(),pd.Timestamp('2025-12-21').date(),12)
+    day=sun_preview(Inputs(minimum_access_gap_m=0),Configuration(rows=3),pd.Timestamp('2025-12-21').date(),12)
     assert day['row_shade'][0]==0 and day['row_shade'][1]>0
 
 
@@ -152,7 +152,7 @@ def test_first_payback_does_not_promise_persistent_payback():
 
 def test_tariff_cliff_can_make_more_generation_less_profitable():
     inputs=Inputs(width=10,depth=8,house_area=150)
-    a=evaluate(inputs,Configuration(rows=3));b=evaluate(inputs,Configuration(rows=4))
+    a=evaluate(inputs,Configuration(rows=3,tilt=40));b=evaluate(inputs,Configuration(rows=4,tilt=40))
     assert a['capacity_kw']<=10<b['capacity_kw']
     assert a['fit_rate']==4 and b['fit_rate']==3
     assert b['annual_kwh']>a['annual_kwh']
@@ -292,7 +292,7 @@ def test_complete_boundary_rows_survive_all_slider_tilts(tilt):
 
 
 def test_thirty_degree_default_retains_eighteen_modules():
-    assert evaluate(Inputs(),Configuration(tilt=30))['panels_count']==18
+    assert evaluate(Inputs(minimum_access_gap_m=0),Configuration(tilt=30,rows=3))['panels_count']==18
 
 
 def test_rotated_rows_search_translation_and_pitch_instead_of_roof_corners():
@@ -388,7 +388,7 @@ def test_audit_complete_tilt_row_direction_grid_is_explicit_about_unbuildable_ro
 
 
 def test_rounded_village_roof_does_not_silently_lose_a_row():
-    r=evaluate(Inputs(width=8.06,depth=8.06,house_area=65),Configuration(tilt=25))
+    r=evaluate(Inputs(width=8.06,depth=8.06,house_area=65),Configuration(tilt=25,rows=3))
     assert r['actual_rows']==3 or 'rows_unbuildable' in r['violations']
     zero=evaluate(Inputs(width=1.5,depth=1.5),Configuration())
     assert zero['payback_A'] is None and zero['payback_years_A'] is None
@@ -404,3 +404,41 @@ def test_search_deduplicates_actual_geometry_not_requested_labels():
                            tuple((round(row['y'],8),tuple(tuple(round(v,8) for v in interval) for interval in row['intervals'])) for row in rows)))
         assert r['actual_rows']==r['requested_rows']
     assert len(set(signatures))==len(signatures)
+
+
+def test_compact_village_layout_fits_eighteen_modules_and_real_access_gap():
+    inp=Inputs(width=8.06,depth=8.06,house_area=65)
+    compact=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='compact'))
+    spread=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='spread'))
+    assert compact['compliant'] and compact['actual_rows']==3
+    assert compact['panels_count']==18 and compact['capacity_kw']==8.1
+    assert compact['coverage_m2']<=32.5 and compact['minimum_clear_gap_m']>=.3-1e-4
+    assert 'coverage' in spread['violations']
+    assert compact['specific_yield']<spread['specific_yield']
+    # 35 degrees cannot meet both 0.3 m access and this coverage limit.
+    thirty_five=evaluate(inp,Configuration(tilt=35,rows=3,layout_mode='compact'))
+    assert 'coverage' in thirty_five['violations']
+    assert evaluate(inp.model_copy(update={'minimum_access_gap_m':.2}),Configuration(tilt=35,rows=3,layout_mode='compact'))['compliant']
+
+
+def test_physical_and_financial_tradeoffs_are_supported_without_forcing_distinct_choices():
+    inp=Inputs(width=8.06,depth=8.06,house_area=65,price_per_kw=14000)
+    # Quote is a deliberately labelled synthetic test assumption, not a market price.
+    searched=search(inp)
+    fast=searched['recommendations']['payback'];value=searched['recommendations']['npv']
+    assert fast['config']!=value['config']
+    assert fast['payback_years_A']<value['payback_years_A'] and fast['npv_A']<value['npv_A']
+    two=evaluate(inp,Configuration(tilt=40,rows=2,layout_mode='compact'))
+    three=evaluate(inp,Configuration(tilt=40,rows=3,layout_mode='compact'))
+    assert three['annual_kwh']>two['annual_kwh'] and three['specific_yield']<two['specific_yield']
+
+
+def test_search_contains_both_layout_strategies_and_gap_invalidates_physical_cache():
+    from backend.decision import physical_search
+    inp=Inputs(width=8.06,depth=8.06,house_area=65)
+    result=search(inp)
+    assert {r['config']['layout_mode'] for r in result['configs']}=={'spread','compact'}
+    misses=physical_search.cache_info().misses
+    search(inp.model_copy(update={'minimum_access_gap_m':.35}))
+    assert physical_search.cache_info().misses>misses
+    assert TestClient(app).post('/api/evaluate',json={'inputs':{'minimum_access_gap_m':-.1}}).status_code==422

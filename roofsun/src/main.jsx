@@ -96,6 +96,7 @@ const defaults = {
   post_fit: false,
   self_use_rate: 1.4,
   self_use_share: 0.5,
+  minimum_access_gap_m: 0.3,
   minimum_row_fill_ratio: 0.7,
   minimum_capacity_kw: 2,
   budget: 0,
@@ -116,7 +117,13 @@ const defaults = {
   panel_source:
     "Generic 450 W engineering reference, not a verified commercial model",
 };
-const defaultConfig = { tilt: 20, azimuth: 180, rows: 3, panel_limit: 0 };
+const defaultConfig = {
+  tilt: 20,
+  azimuth: 180,
+  rows: 2,
+  layout_mode: "spread",
+  panel_limit: 0,
+};
 const presets = [
   { id: "open", en: "Open rooftop", zh: "空曠天台", inputs: { ...defaults } },
   {
@@ -729,6 +736,52 @@ function App() {
                   `香港時間 · 2025 年季節幾何示意 · 全年結果採 ${inputs.weather_year} 年氣象（${inputs.weather_year === 2024 ? "8,784" : "8,760"} 小時）`,
                 )}
               </p>
+              <div className="module-cap">
+                <label className="select-field">
+                  {t("Layout strategy", "排布方式")}
+                  <select
+                    aria-label={t("Layout strategy", "排布方式")}
+                    value={config.layout_mode || "spread"}
+                    onChange={(e) =>
+                      setConfig((c) => ({ ...c, layout_mode: e.target.value }))
+                    }
+                  >
+                    <option value="spread">
+                      {t("Spread across roof", "在可用天台深度展開")}
+                    </option>
+                    <option value="compact">
+                      {t(
+                        "Compact within coverage limit",
+                        "在覆蓋上限內緊湊排布",
+                      )}
+                    </option>
+                  </select>
+                </label>
+                <NumberField
+                  label={t(
+                    "Minimum maintenance gap (assumed)",
+                    "最小檢修間隙（假設）",
+                  )}
+                  value={inputs.minimum_access_gap_m}
+                  min={0}
+                  max={3}
+                  step={0.05}
+                  unit="m"
+                  onChange={(v) => change("minimum_access_gap_m", v)}
+                />
+                <p className="microcopy">
+                  {t(
+                    "0.3 m is an editable screening assumption, not a certified access requirement. Row gaps are horizontal clear distances; coverage includes inter-row gaps.",
+                    "0.3 m 是可調的篩選假設，並非經認證的通道要求。間隙指水平淨距；覆蓋面積包含排間空隙。",
+                  )}
+                  {ready && result.minimum_clear_gap_m != null
+                    ? t(
+                        ` Built minimum gap: ${result.minimum_clear_gap_m} m.`,
+                        ` 實際最小間隙：${result.minimum_clear_gap_m} m。`,
+                      )
+                    : ""}
+                </p>
+              </div>
               <div className="design-controls">
                 <Slider
                   id="tilt"
@@ -895,7 +948,7 @@ function App() {
                   <strong>
                     {ready
                       ? !result.panels_count
-                        ? t("Not applicable", "不適用")
+                        ? "—"
                         : payback
                           ? payback.slice(0, 7)
                           : t("Not within 25 years", "25 年內未回本")
@@ -907,7 +960,7 @@ function App() {
                   <strong>
                     {ready
                       ? !result.panels_count
-                        ? t("Not applicable", "不適用")
+                        ? "—"
                         : result[
                             inputs.post_fit
                               ? "stable_payback_B"

@@ -117,3 +117,9 @@ Do not use the illustrative preset roofs, assumed quotes or reference module as 
 ### v2 audit: explicit rows / 實際排數
 
 Every result returns requested and actual row counts. If not every requested row can be built, `rows_unbuildable` rejects the design. An editable **assumed** 70% minimum per-row module count relative to the same south-facing layout rejects severe rotated underfill; this is a packing-quality criterion, not a physical law or regulation. Explicit module caps bypass that density assumption, but never bypass the actual-row-count check. Search deduplicates by actual rows/count and physical row positions/segments, so geometrically different pitches are retained. A zero-module result has no recovery date.
+
+### Compact layouts and access / 緊湊排布與檢修
+
+Search tests both spread and coverage-limited compact layouts. Compact mode tests row pitch/translation and an additional coverage-boundary pitch; the **actual convex hull**, including gaps, must pass the coverage check. Minimum horizontal maintenance clearance defaults to **assumed 0.3 m**, is editable, and applies to both strategies. It is not a certified walkway requirement. Coverage and gap are part of the layout/physical-cache keys. If no compact configuration meets coverage, evaluation explicitly returns the failing coverage check instead of silently deleting a row.
+
+For the assumed 8.06 × 8.06 m / 65 m² roof, three rows of 18 reference modules can fit at 40° with the 0.3 m minimum gap; 35° cannot meet both constraints unless the gap assumption is reduced. At a deliberately hypothetical HK$14,000/kW quote, highest NPV and fastest sustained payback are distinct. At HK$25,000/kW they may coincide. Recommendations report the actual optimum within tested candidates; they never force different financial choices for storytelling. Total generation versus specific yield still provides a physical trade-off.

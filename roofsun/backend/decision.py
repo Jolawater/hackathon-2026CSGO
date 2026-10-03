@@ -5,7 +5,7 @@ import time
 from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION, layout
 
 PHYSICAL_KEYS = ('width','depth','roof_rotation','house_area','horizon','weather_year','weather_scale',
-                 'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions','minimum_row_fill_ratio')
+                 'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions','minimum_row_fill_ratio','minimum_access_gap_m')
 
 
 def assess(inputs, result):
@@ -35,19 +35,20 @@ def physical_search(serialized):
     rows_limit=min(24,max(6,int((max(inputs.width,inputs.depth)-1)/
                    (PANEL['length_m']*0.766))))
     results=[];seen=set();built=set()
-    def test(tilt,azimuth,rows,panel_limit=0):
-        key=(tilt,azimuth,rows,panel_limit)
+    def test(tilt,azimuth,rows,panel_limit=0,layout_mode='spread'):
+        key=(tilt,azimuth,rows,panel_limit,layout_mode)
         if key in seen:return
         seen.add(key)
-        result=evaluate(inputs,Configuration(tilt=tilt,azimuth=azimuth,rows=rows,panel_limit=panel_limit),False,economics=False)
+        result=evaluate(inputs,Configuration(tilt=tilt,azimuth=azimuth,rows=rows,panel_limit=panel_limit,layout_mode=layout_mode),False,economics=False)
         if result['panels_count'] and result['compliant']:
             panels,actual_rows,_,_=layout(inputs,Configuration(**result['config']))
             signature=(tilt,azimuth,result['actual_rows'],result['panels_count'],tuple((round(r['y'],8),tuple((round(a,8),round(b,8)) for a,b in r['intervals'])) for r in actual_rows))
             if signature not in built:results.append(result);built.add(signature)
-        if not panel_limit and result['panels_count']>22:test(tilt,azimuth,rows,22)
+        if not panel_limit and result['panels_count']>22:test(tilt,azimuth,rows,22,layout_mode)
     for tilt in [0,10,20,30,40]:
         for az in [90,120,150,180,210,240,270]:
-            for rows in range(1,rows_limit+1):test(tilt,az,rows)
+            for rows in range(1,rows_limit+1):
+                for mode in ['spread','compact']:test(tilt,az,rows,layout_mode=mode)
     # Refine directions/tilts around the best energy design for each module count.
     seeds={}
     for r in results:
@@ -57,7 +58,7 @@ def physical_search(serialized):
         c=r['config']
         for tilt in [max(0,c['tilt']-5),c['tilt'],min(40,c['tilt']+5)]:
             for az in [max(90,c['azimuth']-15),c['azimuth'],min(270,c['azimuth']+15)]:
-                test(tilt,az,c['rows'],c['panel_limit'])
+                test(tilt,az,c['rows'],c['panel_limit'],c['layout_mode'])
     return {'results': results,'tested':len(seen),'rows_limit':rows_limit,'refined_seeds':len(seeds)}
 
 
@@ -102,7 +103,7 @@ def recommend(inputs):
             'no_install':baseline,'verdict':'options_available' if recommendations else 'defer_installation',
             'search_scope':{'tilts':[0,10,20,30,40],'azimuths':[90,120,150,180,210,240,270],
                 'rows_limit':physical['rows_limit'],'refinement':'±5° tilt and ±15° azimuth around best module-count candidates',
-                'global_optimum':False,'equal_spacing':True,'layout_search':'9 pitches x 17 offsets; maximise module count, then spacing',
+                'global_optimum':False,'equal_spacing':True,'layout_search':'Spread and coverage-limited compact; 9 pitches plus coverage boundary x 17 offsets; minimum access gap enforced',
                 'module_counts':'Full layouts and explicit 22-module / 9.9 kW cap; not exhaustive over every subset'},
             'model_version':MODEL_VERSION,'physical_cache_hit':physical_search.cache_info().hits>before,
             'runtime_seconds':round(time.perf_counter()-start,3)}
