@@ -14,6 +14,7 @@ def assess(inputs, result):
     if not result['compliant']: reasons.append('physical')
     if result['capacity_kw'] < inputs.minimum_capacity_kw: reasons.append('minimum_capacity')
     if inputs.budget and result['initial_cost'] > inputs.budget: reasons.append('budget')
+    if result['annual_kwh'] + 1e-6 < inputs.monthly_demand_kwh*12*inputs.demand_coverage: reasons.append('energy_target')
     if inputs.require_profit and (result[f'net_{scenario}'] <= 0 or result[f'npv_{scenario}'] <= 0): reasons.append('profit')
     years=result[f'payback_years_{scenario}']
     if inputs.max_payback_years and (years is None or years > inputs.max_payback_years): reasons.append('payback')
@@ -43,7 +44,10 @@ def physical_search(serialized):
         if result['panels_count'] and result['compliant']:
             panels,actual_rows,_,_=layout(inputs,Configuration(**result['config']))
             signature=(tilt,azimuth,result['actual_rows'],result['panels_count'],tuple((round(r['y'],8),tuple((round(a,8),round(b,8)) for a,b in r['intervals'])) for r in actual_rows))
-            if signature not in built:results.append(result);built.add(signature)
+            if signature not in built:
+                import hashlib
+                result['layout_signature']=hashlib.sha256(repr(signature).encode()).hexdigest()
+                results.append(result);built.add(signature)
         if not panel_limit and result['panels_count']>22:test(tilt,azimuth,rows,22,layout_mode)
     for tilt in [0,10,20,30,40]:
         for az in [90,120,150,180,210,240,270]:
@@ -95,7 +99,7 @@ def recommend(inputs):
                 'npv':r[f"npv_{'B' if inputs.post_fit else 'A'}"],
                 'extra_cost_vs_lower':round(r['initial_cost']-lo['initial_cost'],2),
                 'extra_energy_vs_lower':round(r['annual_kwh']-lo['annual_kwh'],1)}}
-    rejection_counts={reason:sum(reason in r['decision']['reasons'] for r in results) for reason in ['budget','profit','payback','minimum_capacity']}
+    rejection_counts={reason:sum(reason in r['decision']['reasons'] for r in results) for reason in ['budget','profit','payback','minimum_capacity','energy_target']}
     baseline={'config':None,'panels_count':0,'capacity_kw':0,'annual_kwh':0,'initial_cost':0,'net_A':0,'net_B':0,'npv_A':0,'npv_B':0,
               'status':'baseline','reason':'No installation spending or solar generation; ordinary electricity bills are outside both comparisons.'}
     return {'configs':results,'frontier':frontier,'eligible_frontier':eligible_frontier,'recommendations':recommendations,

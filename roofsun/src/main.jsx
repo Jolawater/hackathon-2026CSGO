@@ -55,7 +55,10 @@ import "./style.css";
 import { useApi } from "./lib/api.js";
 import { fmt, money } from "./lib/format.js";
 import { NumberField, Slider, Pill } from "./components/Controls.jsx";
-import RoofScene from "./components/RoofScene.jsx";
+import RoofScene from "./components/RoofScene3D.jsx";
+import Welcome from "./components/Welcome.jsx";
+import Choices from "./components/Choices.jsx";
+import PlanBrief from "./components/PlanBrief.jsx";
 import Horizon from "./components/Horizon.jsx";
 import OwnerGuide from "./components/OwnerGuide.jsx";
 import {
@@ -85,6 +88,9 @@ const Evidence = lazy(() => import("./components/Evidence.jsx"));
 
 import roofPresets from "../data/roof_presets.json";
 const defaults = {
+  analysis_years: 25,
+  monthly_demand_kwh: 0,
+  demand_coverage: 1,
   width: 8.06,
   depth: 8.06,
   roof_rotation: 0,
@@ -127,6 +133,10 @@ const presets = roofPresets.presets.map((p) => ({
 }));
 
 const errorNames = {
+  placement_invalid: [
+    "Panels hit the roof edge or an object; reset placement",
+    "面板碰到天台邊界或物件，請還原位置",
+  ],
   no_space: ["Not enough room for a module", "空間不足以放置面板"],
   rows_unbuildable: [
     "Requested row count or assumed row density cannot be achieved",
@@ -161,8 +171,21 @@ function App() {
         )?.id || "custom",
     ),
     [tab, setTab] = useState("design");
-  const [day, setDay] = useState("2025-12-21"),
-    [hour, setHour] = useState(12),
+  const [entry, setEntry] = useState(
+    () => sessionStorage.getItem("roofsun-entry") || "",
+  );
+  const [confirmed, setConfirmed] = useState(() => ({
+    inputs: structuredClone(initialWorkspace.current.inputs),
+    config: structuredClone(initialWorkspace.current.config),
+    day: initialWorkspace.current.preview?.day || "2025-12-15",
+    hour: initialWorkspace.current.preview?.hour ?? 12,
+  }));
+  const activeInputs = confirmed.inputs,
+    activeConfig = confirmed.config;
+  const [day, setDay] = useState(
+      initialWorkspace.current.preview?.day || "2025-12-15",
+    ),
+    [hour, setHour] = useState(initialWorkspace.current.preview?.hour ?? 12),
     [topView, setTopView] = useState(false),
     [saved, setSaved] = useState(initialWorkspace.current.saved);
   const [advanced, setAdvanced] = useState(
@@ -176,17 +199,141 @@ function App() {
   const [storageError, setStorageError] = useState("");
   const [importError, setImportError] = useState("");
   const [importing, setImporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState(null);
   const [evidence, setEvidence] = useState(null);
   const importRef = useRef(null);
   const invalidArea = inputs.house_area + 1e-8 < inputs.width * inputs.depth;
   const [retry, setRetry] = useState(0);
   const metadata = useApi(`/api/meta?retry=${retry}`, undefined, 0);
-  const body = useMemo(() => ({ inputs, config }), [inputs, config]);
-  const evaluation = useApi(`/api/evaluate?retry=${retry}`, body, 180),
-    simulation = useApi(`/api/simulate?retry=${retry}`, inputs, 550),
-    sun = useApi(`/api/sun?retry=${retry}`, { ...body, day, hour }, 90);
+  const pending =
+    JSON.stringify({ inputs, config, day, hour }) !==
+      JSON.stringify(confirmed) || pendingImport !== null;
+  const body = useMemo(
+    () => ({ inputs: activeInputs, config: activeConfig }),
+    [confirmed],
+  );
+  function confirmChanges() {
+    setConfirmed(structuredClone({ inputs, config, day, hour }));
+    if (pendingImport !== null) {
+      setSaved(pendingImport);
+      setPendingImport(null);
+    }
+    setFieldReference(null);
+    setEvidence(null);
+  }
+  function cancelChanges() {
+    setPendingImport(null);
+    setInputs(structuredClone(activeInputs));
+    setConfig(structuredClone(activeConfig));
+    setDay(confirmed.day);
+    setHour(confirmed.hour);
+  }
+  function start(mode, roof) {
+    setEntry(mode);
+    sessionStorage.setItem("roofsun-entry", mode);
+    if (mode === "demo") {
+      const next = structuredClone(defaults);
+      setInputs(next);
+      setConfig(defaultConfig);
+      setConfirmed({
+        inputs: next,
+        config: defaultConfig,
+        day: "2025-12-15",
+        hour: 12,
+      });
+      setDay("2025-12-15");
+      setHour(12);
+      setPreset(presets[0].id);
+      setPendingImport(null);
+    }
+    if (roof) {
+      const next = {
+        ...defaults,
+        width: +roof.width,
+        depth: +roof.depth,
+        house_area: +roof.width * +roof.depth,
+        price_per_kw: +roof.price,
+        commissioning: roof.date,
+        exclusions: [],
+        quote_source: "User-entered initial quote",
+      };
+      setInputs(next);
+      setConfig(defaultConfig);
+      setConfirmed({ inputs: next, config: defaultConfig, day, hour });
+      setPreset("custom");
+    }
+  }
+  const evaluation = useApi(`/api/evaluate?retry=${retry}`, body, 180, !!entry),
+    simulation = useApi(
+      `/api/simulate?retry=${retry}`,
+      activeInputs,
+      550,
+      !!entry,
+    ),
+    sun = useApi(
+      `/api/sun?retry=${retry}`,
+      { ...body, day: confirmed.day, hour: confirmed.hour },
+      90,
+      !!entry,
+    );
   const result = evaluation.data,
     ready = result && !evaluation.loading && !evaluation.error;
+  const [sceneSnapshot, setSceneSnapshot] = useState(null);
+  useEffect(() => {
+    if (ready && !sun.loading && !sun.error && sun.data)
+      setSceneSnapshot({
+        inputs: activeInputs,
+        config: activeConfig,
+        result,
+        sun: sun.data,
+      });
+  }, [ready, result, sun.loading, sun.error, sun.data, confirmed]);
+  const [previewHour, setPreviewHour] = useState(12),
+    [playing, setPlaying] = useState(false),
+    [playSpeed, setPlaySpeed] = useState(1);
+  const track = useApi(
+    "/api/sun-track",
+    {
+      inputs: sceneSnapshot?.inputs || activeInputs,
+      config: sceneSnapshot?.config || activeConfig,
+      day: confirmed.day,
+    },
+    100,
+    !!entry,
+  );
+  useEffect(() => {
+    if (!playing) return;
+    let last = performance.now(),
+      frame;
+    const tick = (now) => {
+      const dt = Math.min((now - last) / 1000, 0.2);
+      last = now;
+      setPreviewHour((h) => (h + dt * playSpeed) % 24);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing, playSpeed]);
+  const displaySun = useMemo(() => {
+    const samples = track.data?.samples;
+    if (!samples?.length) return sceneSnapshot?.sun;
+    const step = Math.min(95, Math.floor(previewHour * 4)),
+      k = (previewHour - step / 4) * 4,
+      a = samples[step],
+      b = samples[step + 1];
+    const altitude = a.altitude + (b.altitude - a.altitude) * k,
+      azimuth =
+        (a.azimuth + (((b.azimuth - a.azimuth + 540) % 360) - 180) * k + 360) %
+        360,
+      horizon = a.horizon + (b.horizon - a.horizon) * k;
+    return {
+      altitude,
+      azimuth,
+      horizon,
+      beam_clear: altitude > horizon,
+      row_shade: [],
+    };
+  }, [track.data, previewHour, sceneSnapshot]);
   const suggestions = simulation.data?.recommendations;
   const curve =
     result?.cashflow?.filter(
@@ -194,7 +341,7 @@ function App() {
         i % 3 === 0 || point.date === "2033-12-31" || i === array.length - 1,
     ) || [];
   const cashTicks = niceTicks(
-    curve.map((p) => (inputs.post_fit ? p : { A: p.A, B: p.A })),
+    curve.map((p) => (activeInputs.post_fit ? p : { A: p.A, B: p.A })),
   );
   const monthly = (result?.monthly_kwh || []).map((kwh, i) => ({
     month: zh
@@ -225,22 +372,25 @@ function App() {
   }, [lang]);
   useEffect(() => {
     setStorageError(
-      persistWorkspace(inputs, config, saved)
+      persistWorkspace(activeInputs, activeConfig, saved, {
+        day: confirmed.day,
+        hour: confirmed.hour,
+      })
         ? ""
         : t(
             "Browser storage is unavailable; export your designs to keep them.",
             "瀏覽器儲存不可用，請匯出設計以保留結果。",
           ),
     );
-  }, [inputs, config, saved, lang]);
-  const payback = result?.[inputs.post_fit ? "payback_B" : "payback_A"];
+  }, [confirmed, saved, lang]);
+  const payback = result?.[activeInputs.post_fit ? "payback_B" : "payback_A"];
   function save() {
     if (!ready) return;
     setSaved((old) => [
       ...old.slice(-1),
       {
         ...result,
-        inputs: structuredClone(inputs),
+        inputs: structuredClone(activeInputs),
         saved_at: new Date().toISOString(),
         id: crypto.randomUUID(),
       },
@@ -249,24 +399,28 @@ function App() {
   const reasonTextUI = (key) =>
     ({
       budget: t("Budget", "預算"),
+      energy_target: t("Electricity target", "發電目標"),
       profit: t("Profit/NPV", "收益／淨現值"),
       payback: t("Payback", "回本"),
       minimum_capacity: t("Minimum capacity", "最小容量"),
     })[key];
-  const archive = () =>
-    buildArchive(
-      ready ? inputs : saved[0]?.inputs || inputs,
-      ready ? config : saved[0]?.config || config,
+  const archive = () => ({
+    ...buildArchive(
+      ready ? activeInputs : saved[0]?.inputs || activeInputs,
+      ready ? activeConfig : saved[0]?.config || activeConfig,
       ready ? result : saved[0] || null,
       saved,
       metadata.data,
       simulation.loading || simulation.error ? null : simulation.data,
       evidence,
       ready &&
-        fieldReference?.fingerprint === JSON.stringify({ inputs, config })
+        fieldReference?.fingerprint ===
+          JSON.stringify({ inputs: activeInputs, config: activeConfig })
         ? fieldReference.data
         : null,
-    );
+    ),
+    preview: { day: confirmed.day, hour: confirmed.hour },
+  });
   function exportSaved() {
     downloadArchive(archive());
   }
@@ -279,7 +433,11 @@ function App() {
       const value = await restoreArchive(file, defaults);
       setInputs(value.inputs);
       setConfig(value.config);
-      setSaved(value.saved);
+      setPendingImport(value.saved);
+      if (value.preview) {
+        setDay(value.preview.day);
+        setHour(value.preview.hour);
+      }
       setPreset("custom");
     } catch (error) {
       setImportError(error.message);
@@ -292,7 +450,7 @@ function App() {
     setSaved(
       pair.map((r, i) => ({
         ...r,
-        inputs: structuredClone(inputs),
+        inputs: structuredClone(activeInputs),
         saved_at: new Date().toISOString(),
         id: crypto.randomUUID(),
       })),
@@ -360,8 +518,51 @@ function App() {
         >
           <Validation t={t} />
         </Suspense>
+      ) : !entry ? (
+        <Welcome t={t} onStart={start} />
       ) : (
         <main className="workbench">
+          <div className="confirmation-bar" role="status">
+            <div>
+              <strong>
+                {pending
+                  ? t("Changes not applied", "有修改尚未套用")
+                  : t("Confirmed settings", "目前已確認的設定")}
+              </strong>
+              <small>
+                {entry === "demo"
+                  ? t(
+                      "Example inputs · these are not your roof’s results",
+                      "示例輸入 · 不代表你家的結果",
+                    )
+                  : t(
+                      "Your inputs + assumptions below; check shading and remaining costs.",
+                      "你的輸入＋下方假設；請繼續核對遮擋和其他費用。",
+                    )}
+                {pending
+                  ? " · " +
+                    t(
+                      "Results still use the last confirmed settings.",
+                      "結果仍使用上一次確認的設定。",
+                    )
+                  : ""}
+              </small>
+            </div>
+            <button onClick={confirmChanges} disabled={!pending || invalidArea}>
+              {t("Confirm and keep", "確認並保留")}
+            </button>
+            <button disabled={!pending} onClick={cancelChanges}>
+              {t("Cancel changes", "取消修改")}
+            </button>
+            <button
+              onClick={() => {
+                setEntry("");
+                sessionStorage.removeItem("roofsun-entry");
+              }}
+            >
+              {t("Start screen", "返回開始")}
+            </button>
+          </div>
           <div className="workbench-heading">
             <div>
               <span className="eyebrow">
@@ -431,11 +632,102 @@ function App() {
               )}
             </span>
           </div>
-          <OwnerGuide inputs={inputs} result={ready ? result : null} t={t}
-            onEvidence={() => {setTab("validation"); window.scrollTo(0,0);}}
-            onCompare={() => document.getElementById("choices")?.scrollIntoView({behavior:"smooth"})} />
+          <details className="region-guide card">
+            <summary>
+              {t(
+                "Can I use this outside Hong Kong?",
+                "內地或海外的天台，可以用嗎？",
+              )}
+            </summary>
+            <p>
+              {t(
+                "The sunlight and panel physics can be reused, but this edition calculates with Hong Kong weather and HK$ rules. A roof in Beijing, Singapore or London needs its own hourly sunshine, temperature, time zone, tariff, currency and building rules. Changing the building appearance is not regional calibration.",
+                "陽光照到面板的物理關係可以沿用，但這一版計算使用香港天氣及港元規則。北京、新加坡或倫敦需要各自逐時的日照、溫度、時區、電價、貨幣與建築規則；換成高樓外觀不等於完成地區校準。",
+              )}
+            </p>
+            <p>
+              {t(
+                "Outside Hong Kong: use the layout interaction as an illustration only. Energy and payback are still Hong Kong scenarios, not estimates for your location.",
+                "香港以外：可以體驗排布互動，但發電與回本仍是香港情景，不能當作當地預測。",
+              )}
+            </p>
+          </details>
+          <section className="card everyday-inputs">
+            <h2>
+              {t("Your budget and electricity goal", "你的預算與用電目標")}
+            </h2>
+            <div className="everyday-grid">
+              <NumberField
+                label={t("Installation budget", "最多願意花多少安裝費？")}
+                value={inputs.budget}
+                max={10000000}
+                unit="HK$"
+                onChange={(v) => change("budget", v)}
+              />
+              <NumberField
+                label={t("Monthly electricity use", "電費單上每月用多少度電？")}
+                value={inputs.monthly_demand_kwh || 0}
+                max={100000}
+                unit={t("kWh", "度")}
+                onChange={(v) => change("monthly_demand_kwh", v)}
+              />
+              <NumberField
+                label={t(
+                  "Share to match with solar",
+                  "希望太陽能年發電相當於用電的多少？",
+                )}
+                value={Math.round((inputs.demand_coverage ?? 1) * 100)}
+                min={0}
+                max={100}
+                unit="%"
+                onChange={(v) => change("demand_coverage", v / 100)}
+              />
+            </div>
+            <p className="microcopy">
+              {t(
+                "Budget 0 means no cap; usage 0 means unknown and no energy requirement. Use the kWh on your bill, not the money charged. This compares annual amounts only: panels do not supply electricity at night without storage or the grid.",
+                "預算填 0 代表暫不限；用電填 0 代表未知、不加入發電量要求。請填電費單上的「度數」，不是繳費金額。這裡比較全年總量：沒有儲能或電網，太陽能板不能在晚上供電。",
+              )}
+            </p>
+            <details>
+              <summary>
+                {t(
+                  "Which assumptions are still in use?",
+                  "還有哪些資料暫時是假設？",
+                )}
+              </summary>
+              <p>
+                {t(
+                  "The panel specification, roof orientation, neighbour shading, mounting load and maintenance cost need checking. Hidden detailed fields still affect the calculation; open their sections or Advanced mode to review them.",
+                  "面板規格、天台方向、鄰屋遮擋、支架重量和維護費仍需核對。收起的詳細欄位仍參與計算，可展開對應設定或進階模式查看。",
+                )}
+              </p>
+            </details>
+          </section>
+          <PlanBrief
+            inputs={activeInputs}
+            search={simulation.error ? null : simulation.data}
+            loading={simulation.loading}
+            pending={pending}
+            t={t}
+            onChoose={(c) => setConfig(c)}
+          />
+          <OwnerGuide
+            inputs={activeInputs}
+            result={ready ? result : null}
+            t={t}
+            onEvidence={() => {
+              setTab("validation");
+              window.scrollTo(0, 0);
+            }}
+            onCompare={() =>
+              document
+                .getElementById("choices")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          />
           <DecisionBanner
-            sample={preset !== "custom"}
+            sample={entry === "demo"}
             result={ready ? result : null}
             search={
               simulation.loading || simulation.error ? null : simulation.data
@@ -453,6 +745,23 @@ function App() {
               {t("Budget and screening goals", "預算及篩選目標")}
             </summary>
             <DecisionControls inputs={inputs} change={change} t={t} />
+            <NumberField
+              label={t(
+                "How many years should we compare?",
+                "想看未來多少年的收支？",
+              )}
+              value={inputs.analysis_years || 25}
+              min={1}
+              max={25}
+              unit={t("years", "年")}
+              onChange={(v) => change("analysis_years", v)}
+            />
+            <p className="microcopy">
+              {t(
+                "Like setting the end of a household account book. If costs are not recovered by then, we say so. Future weather repeats the selected historical year; this is a scenario, not a weather forecast.",
+                "就像決定家庭帳簿記到哪一年：到時還沒收回成本，就顯示未回本。未來天氣重複所選歷史年的模式，是情景推算，不是天氣預報。",
+              )}
+            </p>
           </details>
           {ready && result.warnings?.includes("village_house_area") && (
             <p role="alert" className="error-banner">
@@ -496,7 +805,7 @@ function App() {
                     setImportError("");
                     setFieldReference(null);
                     setResetCount((n) => n + 1);
-                    setDay("2025-12-21");
+                    setDay("2025-12-15");
                     setHour(12);
                     setTopView(false);
                   }}
@@ -536,39 +845,47 @@ function App() {
                   )}
                 </span>
               </div>
-              <div className="field-pair small-fields">
-                <NumberField
-                  label={t("Roof rotation", "天台旋轉")}
-                  value={inputs.roof_rotation}
-                  max={359}
-                  unit="°"
-                  onChange={(v) => change("roof_rotation", v)}
-                />
-                <NumberField
-                  label={t("House covered area", "屋宇有蓋面積")}
-                  value={inputs.house_area}
-                  min={1}
-                  max={1500}
-                  unit="m²"
-                  onChange={(v) => change("house_area", v)}
-                />
-              </div>
-              <p className="microcopy">
-                {t(
-                  "Rotation turns the roof’s north axis clockwise. House area includes the whole building, not only the usable roof.",
-                  "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
-                )}
-              </p>
-              <label className="goal-checkbox">
-                <input
-                  type="checkbox"
-                  checked={inputs.village_house_mode}
-                  onChange={(e) =>
-                    change("village_house_mode", e.target.checked)
-                  }
-                />
-                {t("Village-house screening mode", "村屋初步篩選模式")}
-              </label>
+              <details className="technical-details" open={advanced}>
+                <summary>
+                  {t(
+                    "Roof orientation and building details",
+                    "天台方向與屋宇細節",
+                  )}
+                </summary>
+                <div className="field-pair small-fields">
+                  <NumberField
+                    label={t("Roof rotation", "天台旋轉")}
+                    value={inputs.roof_rotation}
+                    max={359}
+                    unit="°"
+                    onChange={(v) => change("roof_rotation", v)}
+                  />
+                  <NumberField
+                    label={t("House covered area", "屋宇有蓋面積")}
+                    value={inputs.house_area}
+                    min={1}
+                    max={1500}
+                    unit="m²"
+                    onChange={(v) => change("house_area", v)}
+                  />
+                </div>
+                <p className="microcopy">
+                  {t(
+                    "Rotation turns the roof’s north axis clockwise. House area includes the whole building, not only the usable roof.",
+                    "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
+                  )}
+                </p>
+                <label className="goal-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={inputs.village_house_mode}
+                    onChange={(e) =>
+                      change("village_house_mode", e.target.checked)
+                    }
+                  />
+                  {t("Village-house screening mode", "村屋初步篩選模式")}
+                </label>
+              </details>
               <NeighbourInput
                 presetGeometry={
                   presets.find((p) => p.id === preset)?.neighbour_geometry
@@ -638,7 +955,15 @@ function App() {
                   onChange={(v) => change("inverter_cost", v)}
                 />
               </details>
-              <MountingInput inputs={inputs} change={change} t={t} />
+              <details className="technical-details" open={advanced}>
+                <summary>
+                  {t(
+                    "Mounting details — ask your installer",
+                    "支架細節 · 可請安裝師傅協助",
+                  )}
+                </summary>
+                <MountingInput inputs={inputs} change={change} t={t} />
+              </details>
               {advanced && (
                 <EngineeringControls inputs={inputs} change={change} t={t} />
               )}
@@ -681,70 +1006,125 @@ function App() {
               </div>
               <div className="scene-wrapper">
                 <div className="scene-status">
-                  <Pill kind={sun.data?.beam_clear ? "sunny" : "shade"}>
+                  <Pill kind={displaySun?.beam_clear ? "sunny" : "shade"}>
                     <Sun size={12} />
-                    {sun.data?.beam_clear
+                    {displaySun?.beam_clear
                       ? t("Direct sun", "直射陽光")
                       : t("Shaded / night", "遮擋／夜間")}
                   </Pill>
                   <span>
-                    {fmt(sun.data?.altitude, 1)}°{" "}
+                    {fmt(displaySun?.altitude, 1)}°{" "}
                     {t("sun elevation", "太陽高度")}
                   </span>
                 </div>
                 <RoofScene
-                  inputs={inputs}
-                  config={config}
-                  result={ready ? result : null}
-                  sun={sun.loading ? null : sun.data}
+                  inputs={sceneSnapshot?.inputs || activeInputs}
+                  config={sceneSnapshot?.config || activeConfig}
+                  onPlace={(x, y) =>
+                    setConfig((c) => ({ ...c, offset_x: x, offset_y: y }))
+                  }
+                  result={sceneSnapshot?.result || null}
+                  sun={sceneSnapshot?.sun || null}
                   t={t}
                   topView={topView}
                 />
-                {evaluation.loading && (
-                  <div className="scene-loading">
+                {(evaluation.loading || sun.loading) && (
+                  <div className="scene-update-note" role="status">
                     <LoaderCircle size={20} className="spin" />
-                    {t("Calculating layout…", "正在計算排布…")}
+                    {t(
+                      "Updating in background · previous confirmed scene remains visible",
+                      "背景更新中 · 仍顯示上次確認的畫面",
+                    )}
                   </div>
                 )}
               </div>
+              <div className="placement-fields">
+                <NumberField
+                  label={t("Move array left / right", "整組面板左右移動")}
+                  value={config.offset_x || 0}
+                  min={-30}
+                  max={30}
+                  step={0.1}
+                  unit="m"
+                  onChange={(v) => setConfig((c) => ({ ...c, offset_x: v }))}
+                />
+                <NumberField
+                  label={t("Move array forward / back", "整組面板前後移動")}
+                  value={config.offset_y || 0}
+                  min={-30}
+                  max={30}
+                  step={0.1}
+                  unit="m"
+                  onChange={(v) => setConfig((c) => ({ ...c, offset_y: v }))}
+                />
+                <button
+                  onClick={() =>
+                    setConfig((c) => ({ ...c, offset_x: 0, offset_y: 0 }))
+                  }
+                >
+                  {t("Reset placement", "還原位置")}
+                </button>
+              </div>
               <div className="time-controls">
+                <button type="button" onClick={() => setPlaying(!playing)}>
+                  {playing ? t("Pause", "暫停") : t("Play day", "播放一天")}
+                </button>
+                <select
+                  aria-label={t("Playback speed", "播放速度")}
+                  value={playSpeed}
+                  onChange={(e) => setPlaySpeed(+e.target.value)}
+                >
+                  <option value={0.25}>{t("Slow", "慢速")}</option>
+                  <option value={1}>{t("Normal", "正常")}</option>
+                  <option value={3}>{t("Fast", "快速")}</option>
+                </select>
                 <Sun size={18} />
                 <select
-                  aria-label={t("Season date", "季節日期")}
+                  aria-label={t("Preview month", "預覽月份")}
                   value={day}
                   onChange={(e) => setDay(e.target.value)}
                 >
-                  <option value="2025-03-20">
-                    {t("Spring equinox", "春分")}
-                  </option>
-                  <option value="2025-06-21">
-                    {t("Summer solstice", "夏至")}
-                  </option>
-                  <option value="2025-09-22">
-                    {t("Autumn equinox", "秋分")}
-                  </option>
-                  <option value="2025-12-21">
-                    {t("Winter solstice", "冬至")}
-                  </option>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const value = `2025-${String(i + 1).padStart(2, "0")}-15`;
+                    return (
+                      <option key={value} value={value}>
+                        {t(
+                          new Date(2025, i, 15).toLocaleString("en", {
+                            month: "long",
+                          }),
+                          `${i + 1} 月`,
+                        )}
+                      </option>
+                    );
+                  })}
                 </select>
                 <input
                   aria-label={t("Time of day", "一天中的時間")}
                   type="range"
-                  min="6"
-                  max="18"
-                  step=".25"
-                  value={hour}
-                  onChange={(e) => setHour(+e.target.value)}
+                  min="0"
+                  max="24"
+                  step=".05"
+                  value={previewHour}
+                  onChange={(e) => {
+                    setPlaying(false);
+                    setPreviewHour(+e.target.value);
+                  }}
                 />
                 <strong>
-                  {String(Math.floor(hour)).padStart(2, "0")}:
-                  {String(Math.round((hour % 1) * 60)).padStart(2, "0")}
+                  {String(Math.floor(previewHour)).padStart(2, "0")}:
+                  {String(Math.round((previewHour % 1) * 60)).padStart(2, "0")}
                 </strong>
               </div>
+              <p className="microcopy">
+                {t(
+                  "Time playback only changes the view; it does not alter the confirmed plan or annual payback. The day’s path is computed once, then interpolated smoothly.",
+                  "播放時間只改變觀察畫面，不修改已確認方案或全年回本結果。當天太陽軌跡先計算一次，再平滑播放。",
+                )}
+              </p>
               <p className="scene-caption">
                 {t(
-                  `Hong Kong time · 2025 seasonal geometry preview · annual results use ${inputs.weather_year} weather (${inputs.weather_year === 2024 ? "8,784" : "8,760"} hours)`,
-                  `香港時間 · 2025 年季節幾何示意 · 全年結果採 ${inputs.weather_year} 年氣象（${inputs.weather_year === 2024 ? "8,784" : "8,760"} 小時）`,
+                  `Hong Kong time · 2025 mid-month sun preview · annual results use ${activeInputs.weather_year} weather (${activeInputs.weather_year === 2024 ? "8,784" : "8,760"} hours)`,
+                  `香港時間 · 2025 年每月 15 日陽光示意 · 全年結果採 ${activeInputs.weather_year} 年氣象（${activeInputs.weather_year === 2024 ? "8,784" : "8,760"} 小時）`,
                 )}
               </p>
               <div className="module-cap">
@@ -903,8 +1283,8 @@ function App() {
                 </div>
                 <p>
                   {t(
-                    `Based on ${inputs.weather_year} reference weather`,
-                    `基於 ${inputs.weather_year} 年參考氣象資料`,
+                    `Based on ${activeInputs.weather_year} reference weather`,
+                    `基於 ${activeInputs.weather_year} 年參考氣象資料`,
                   )}
                 </p>
                 <div className="yield-stats">
@@ -939,7 +1319,7 @@ function App() {
               <section className="card finance-card">
                 <QuoteScreen
                   result={ready ? result : null}
-                  inputs={inputs}
+                  inputs={activeInputs}
                   t={t}
                 />
                 <div className="card-title">
@@ -947,11 +1327,11 @@ function App() {
                   <h2>{t("Investment outlook", "投資結果")}</h2>
                 </div>
                 <div className="finance-line">
-                  <span>{t("Initial investment", "初始投資")}</span>
+                  <span>{t("Initial investment", "一開始要付多少錢")}</span>
                   <strong>{ready ? money(result.initial_cost) : "—"}</strong>
                 </div>
                 <div className="finance-line">
-                  <span>{t("FiT rate / kWh", "上網電價／度")}</span>
+                  <span>{t("FiT rate / kWh", "每賣一度電可收多少")}</span>
                   <strong>{ready ? `HK$ ${result.fit_rate}` : "—"}</strong>
                 </div>
                 <div className="payback">
@@ -962,7 +1342,10 @@ function App() {
                         ? "—"
                         : payback
                           ? payback.slice(0, 7)
-                          : t("Not within 25 years", "25 年內未回本")
+                          : t(
+                              "Not reached in selected period",
+                              "所選年限內未回本",
+                            )
                       : "—"}
                   </strong>
                 </div>
@@ -973,28 +1356,37 @@ function App() {
                       ? !result.panels_count
                         ? "—"
                         : result[
-                            inputs.post_fit
+                            activeInputs.post_fit
                               ? "stable_payback_B"
                               : "stable_payback_A"
-                          ]?.slice(0, 7) || t("Not within life", "壽命內未達成")
+                          ]?.slice(0, 7) ||
+                          t(
+                            "Not reached in selected period",
+                            "所選年限內未達成",
+                          )
                       : "—"}
                   </strong>
                 </div>
                 {advanced && (
                   <div className="finance-line">
                     <span>
-                      {t("NPV at selected discount rate", "所選折現率淨現值")}
+                      {t(
+                        "NPV at selected discount rate",
+                        "考慮收錢早晚後，估計剩下多少",
+                      )}
                     </span>
                     <strong>
                       {ready
-                        ? money(result[inputs.post_fit ? "npv_B" : "npv_A"])
+                        ? money(
+                            result[activeInputs.post_fit ? "npv_B" : "npv_A"],
+                          )
                         : "—"}
                     </strong>
                   </div>
                 )}
                 <div className="finance-line">
                   <span>
-                    {t("Net cash flow to FiT end", "計劃結束時淨現金流")}
+                    {t("Balance by scheme end or selected end date", "計劃結束或所選年限前的結餘")}
                   </span>
                   <strong>{ready ? money(result.net_to_fit_end) : "—"}</strong>
                 </div>
@@ -1038,17 +1430,24 @@ function App() {
                       )}
                 </p>
                 <div className="finance-line">
-                  <span>{t("25-year net cash flow", "25 年淨現金流")}</span>
+                  <span>
+                    {t(
+                      `${activeInputs.analysis_years || 25}-year money left after costs`,
+                      `${activeInputs.analysis_years || 25} 年收支相抵後剩下的錢`,
+                    )}
+                  </span>
                   <strong
                     className={
                       ready &&
-                      (inputs.post_fit ? result.net_B : result.net_A) < 0
+                      (activeInputs.post_fit ? result.net_B : result.net_A) < 0
                         ? "negative"
                         : "positive"
                     }
                   >
                     {ready
-                      ? money(inputs.post_fit ? result.net_B : result.net_A)
+                      ? money(
+                          activeInputs.post_fit ? result.net_B : result.net_A,
+                        )
                       : "—"}
                   </strong>
                 </div>
@@ -1150,95 +1549,19 @@ function App() {
                 )}
               </span>
             </div>
-            <div className="recommendation-grid">
-              {[
-                ["npv", "Highest discounted value", "最高淨現值", Coins],
-                ["payback", "Fastest sustained payback", "最快持續回本", Leaf],
-                ["under10", "Best within 10 kW", "10 kW 內最佳", Zap],
-                ...(advanced
-                  ? [
-                      ["economy", "Lower investment", "較低投入", Coins],
-                      ["balanced", "Balanced choice", "折中選擇", Leaf],
-                      ["generation", "More generation", "較高發電量", Zap],
-                    ]
-                  : []),
-              ].map(([key, en, cn, Icon]) => {
-                const r = suggestions?.[key];
-                return (
-                  <button
-                    key={key}
-                    className={`recommendation ${key === "npv" ? "featured" : ""}`}
-                    disabled={!r || simulation.loading || !!simulation.error}
-                    onClick={() => setConfig(r.config)}
-                  >
-                    <div className="recommendation-title">
-                      <Icon size={19} />
-                      <span>{t(en, cn)}</span>
-                      <ArrowUpRight size={17} />
-                    </div>
-                    <div className="recommendation-values">
-                      <strong>
-                        {r && !simulation.loading ? fmt(r.annual_kwh) : "—"}
-                        <small> kWh / {t("yr", "年")}</small>
-                      </strong>
-                      <span>
-                        {r && !simulation.loading ? money(r.initial_cost) : "—"}
-                      </span>
-                    </div>
-                    <p>
-                      {r && !simulation.loading
-                        ? `${r.panels_count} ${t("modules", "塊面板")} · ${r.config.tilt}° · ${r.config.azimuth}° · ${r.actual_rows ?? r.config.rows} ${t("rows", "排")}`
-                        : simulation.loading
-                          ? t("Calculating…", "正在計算…")
-                          : t(
-                              "No design meets this target",
-                              "沒有方案符合此目標",
-                            )}
-                    </p>
-                    {r && !simulation.loading && (
-                      <p className="choice-reason">
-                        {key === "npv"
-                          ? t(
-                              "Highest NPV among searched designs meeting the selected goals.",
-                              "達標搜尋方案中淨現值最高。",
-                            )
-                          : key === "payback"
-                            ? t(
-                                "Earliest sustained recovery of investment; not only the first crossing of zero.",
-                                "投資最早持續回本，而非只看首次跨過零。",
-                              )
-                            : key === "under10"
-                              ? t(
-                                  "Highest NPV at ≤10 kW; includes partial rows capped at 22 modules.",
-                                  "不超過 10 kW 的達標方案中淨現值最高，包含限額 22 塊的非整排方案。",
-                                )
-                              : key === "economy"
-                                ? t(
-                                    "Lowest investment among designs meeting your goals.",
-                                    "達標方案中初始投資最低。",
-                                  )
-                                : key === "generation"
-                                  ? t(
-                                      "Most energy among designs meeting your goals.",
-                                      "達標方案中發電最多。",
-                                    )
-                                  : t(
-                                      "Closest to equal-weight cost/energy ideal among eligible frontier choices.",
-                                      "達標前沿方案中，最接近成本／發電等權理想點。",
-                                    )}
-                      </p>
-                    )}
-                    {r && !simulation.loading && (
-                      <p className="choice-details">
-                        {t("NPV", "淨現值")} {money(r.reason_details.npv)} ·{" "}
-                        {t("Sustained payback", "持續回本")}{" "}
-                        {r.reason_details.stable_payback?.slice(0, 7) || "—"}
-                      </p>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <Choices
+              suggestions={suggestions}
+              advanced={advanced}
+              loading={simulation.loading}
+              t={t}
+              config={activeConfig}
+              onChoose={(c) => {
+                setConfig(c);
+                document
+                  .querySelector(".confirmation-bar")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+            />
             <div className="no-install-option">
               <strong>{t("Baseline: do not install", "基準：不安裝")}</strong>
               <span>
@@ -1407,7 +1730,7 @@ function App() {
                   <i />
                   {t("No post-FiT income", "上網電價結束後無收入")}
                 </span>
-                {inputs.post_fit && (
+                {activeInputs.post_fit && (
                   <span>
                     <i className="gold" />
                     {t("Self-use scenario", "自用情景")}
@@ -1465,7 +1788,7 @@ function App() {
                     dot={false}
                     strokeWidth={2}
                   />
-                  {inputs.post_fit && (
+                  {activeInputs.post_fit && (
                     <Line
                       isAnimationActive={false}
                       type="monotone"
@@ -1480,19 +1803,21 @@ function App() {
             </div>
             <p className="microcopy">
               {t(
-                "HK$ · 25-year simple cash flow · replacement cost included at year 10 · break-even is the first nonnegative month, not a guarantee of staying positive.",
-                "港元 · 25 年簡單現金流 · 第 10 年計入更換費用 · 回本指首次非負月份，不代表其後一直為正。",
+                "HK$ · selected-period simple cash flow · replacement cost included at year 10 · break-even is the first nonnegative month, not a guarantee of staying positive.",
+                "港元 · 所選年限收支累計 · 第 10 年計入更換費用 · 回本指首次非負月份，不代表其後一直為正。",
               )}
             </p>
           </section>
           <RadiationEvidence
-            check={metadata.data?.irradiance_checks?.[inputs.weather_year]}
+            check={
+              metadata.data?.irradiance_checks?.[activeInputs.weather_year]
+            }
             t={t}
           />
           <MeasuredReference
             key={resetCount}
-            inputs={inputs}
-            config={config}
+            inputs={activeInputs}
+            config={activeConfig}
             t={t}
             onResult={setFieldReference}
           />
@@ -1503,8 +1828,8 @@ function App() {
               }
             >
               <Evidence
-                inputs={inputs}
-                config={config}
+                inputs={activeInputs}
+                config={activeConfig}
                 t={t}
                 onEvidence={setEvidence}
               />
@@ -1618,7 +1943,11 @@ function App() {
                           r.inputs.post_fit
                             ? "stable_payback_B"
                             : "stable_payback_A"
-                        ]?.slice(0, 7) || t("Not within life", "壽命內未達成")}
+                        ]?.slice(0, 7) ||
+                          t(
+                            "Not reached in selected period",
+                            "所選年限內未達成",
+                          )}
                       </dd>
                       <dt>{t("Shade loss", "遮擋損失")}</dt>
                       <dd>{fmt(r.shading_loss_pct, 1)}%</dd>

@@ -5,6 +5,7 @@ import { fmt, money } from "../lib/format.js";
 
 export const reasonText = (reason, t) =>
   ({
+    energy_target: t("Below your annual electricity target", "未達你的年度發電目標"),
     minimum_capacity: t(
       "Below the selected minimum practical system size",
       "低於所選最小實用系統容量",

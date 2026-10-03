@@ -77,7 +77,7 @@ export default function OwnerGuide({
             <p>
               {t(
                 "First break-even is when cumulative income first covers spending. Sustained payback also checks that later maintenance and the modeled replacement do not push the balance negative again. NPV discounts future money into today's value.",
-                "首次回本是累計收入第一次補回支出；持續回本還會檢查後續維護和模型中的更換費用，是否令結餘再次變負。淨現值（NPV）則把未來的錢折算成今天的價值。",
+                "想像你先拿出一筆安裝費，再把每次發電收入存回錢罌。「首次回本」是第一次存回本錢；「持續回本」會再看，之後付維修費會不會又不夠。這只檢查你選的年限。「淨現值」則考慮今天收到錢和多年後才收到錢的差別，方便比較。",
               )}
             </p>
             <p>

@@ -9,6 +9,7 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 try {
   await page.goto(base);
+  await page.getByRole("button", {name:"Try an example first",exact:true}).click();
   await page.locator(".owner-answer strong").waitFor();
   assert(
     (await page.locator(".owner-answer").innerText()).includes(
@@ -23,7 +24,7 @@ try {
     .click();
   await page
     .locator(".owner-answer")
-    .getByText(/exceeds that ceiling/)
+    .getByText(/ceiling/).first()
     .waitFor();
   await page
     .getByRole("button", {

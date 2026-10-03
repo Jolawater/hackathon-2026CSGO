@@ -16,6 +16,7 @@ export function readWorkspace(defaults, defaultConfig) {
         inputs: { ...defaults, ...value.inputs },
         config: value.config,
         saved: value.saved.slice(-2),
+        preview: value.preview,
       };
   } catch {
     /* An unreadable workspace leaves the original storage intact. */
@@ -26,11 +27,11 @@ export function readWorkspace(defaults, defaultConfig) {
     saved: [],
   };
 }
-export function persistWorkspace(inputs, config, saved) {
+export function persistWorkspace(inputs, config, saved, preview) {
   try {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ schema: SCHEMA, inputs, config, saved }),
+      JSON.stringify({ schema: SCHEMA, inputs, config, saved, preview }),
     );
     return true;
   } catch {
@@ -49,7 +50,7 @@ export function buildArchive(
 ) {
   return {
     schema: SCHEMA,
-    model_version: meta?.model_version || "2.2.0",
+    model_version: meta?.model_version || "2.3.0",
     generated_at: new Date().toISOString(),
     simulated: true,
     evidence_scope:
@@ -113,7 +114,16 @@ export async function restoreArchive(file, defaults) {
   const active =
     value.inputs && value.config ? await calculate(value) : saved[0];
   if (!active) throw Error("File contains no design / 檔案沒有設計");
-  return { inputs: active.inputs, config: active.config, saved };
+  const preview = value.preview;
+  if (
+    preview &&
+    (!/^2025-(0[1-9]|1[0-2])-15$/.test(preview.day) ||
+      !Number.isFinite(preview.hour) ||
+      preview.hour < 0 ||
+      preview.hour > 23.99)
+  )
+    throw Error("Invalid preview month/time");
+  return { inputs: active.inputs, config: active.config, saved, preview };
 }
 function download(content, type, name) {
   const url = URL.createObjectURL(new Blob([content], { type }));

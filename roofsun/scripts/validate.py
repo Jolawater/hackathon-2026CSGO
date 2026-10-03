@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 import pvlib
-from backend.model import Inputs, Configuration, evaluate, layout, search, shading_fractions, weather, ROOT, PANEL
+from backend.model import Inputs, Configuration, evaluate, layout, search, shading_fractions, weather, ROOT, PANEL, MODEL_VERSION
 
 checks=[]
 def record(en,zh,en_description,zh_description,observed,condition,source=None):
@@ -80,7 +80,7 @@ record('Village example dimensions and scope','村屋示例尺寸及適用範圍
        '示例尺寸在有來源的 65.03 m² 有蓋面積上限內；並非完整合法性或結構認證。',
        '; '.join(f"{p['id']}: {p['inputs']['house_area']} m²" for p in presets['presets']),
        all(p['inputs']['house_area']<=65.03 for p in presets['presets']),presets['source_url'])
-report.update(model_version='2.2.0',checks=checks,references=references,weather_years=source_metadata()['weather_years'],
+report.update(model_version=MODEL_VERSION,checks=checks,references=references,weather_years=source_metadata()['weather_years'],
               sensitivity=analysis,irradiance_check=radiation,scope='Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.')
 temporary=ROOT/'data/validation.json.tmp'
 from datetime import datetime, timezone

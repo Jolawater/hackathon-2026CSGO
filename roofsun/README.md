@@ -2,7 +2,7 @@
 
 ## JESON-ROOFTOPJIM · final-direction additions
 
-This branch starts from Jim's RoofSun 2.1.0 (427b206). It adds an owner-facing explanation of payback, panel trade-offs and the generation stress case; a linked evidence-sufficiency register; truthful pass/fail/unknown display and validation-report fingerprints. It preserves Jim's model and professional installation scope. No completed interviews, actual installer quotations or measured rooftop output are claimed.
+This branch incorporates Jim's 2.2.0 updates through cadf2e2. Version 2.3 adds explicit example/personal entry, draft-confirm-cancel inputs, annual electricity targets, plain-language plan advice, deduplicated recommendations, a movable Three.js rooftop, daily sun playback, and selectable financial periods. [Changes, scope and test commands](docs/OWNER_EXPERIENCE_2_3.md). No completed interviews, actual installer quotations or measured rooftop output are claimed.
 
 - [比赛定位、criteria 对照、三分钟脚本和提交自查](docs/COMPETITION.md)
 - [数据/论文来源、模型解释与证据是否充分](docs/EVIDENCE.md)
@@ -11,7 +11,7 @@ This branch starts from Jim's RoofSun 2.1.0 (427b206). It adds an owner-facing e
 After the standard checks below, run `node scripts/owner-browser-test.mjs` against the running server. Both browser scripts support `ROOFSUN_BROWSER_CHANNEL=msedge` for an installed Microsoft Edge. `GET /api/validation` compares saved report fingerprints with current model/input files. Re-run `python scripts/validate.py` after changing those files; a stale report is not evidence that the current implementation passed.
 
 
-A bilingual preliminary screening tool before contacting an installer for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.2.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
+A bilingual preliminary screening tool before contacting an installer for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.3.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
 
 聯絡安裝商之前的雙語初步篩選工具，供香港村屋太陽能安裝前使用。可調整排布、比較物理取捨，並按預算、持續回本及收益目標選擇方案或暫緩安裝。**結果為模擬，並非工程設計或財務建議；未聲稱實測準確率，也不能判定結構安全。**
 
@@ -36,8 +36,8 @@ For development, run the API with `--reload` and `npm run dev` in a second termi
 
 ## Product workflow / 操作流程
 
-1. Choose an illustrative roof or enter width, depth, rotation and building covered area. These areas are separate measurements. If inconsistent, the app asks you to correct them; it does **not** increase building area automatically.
-2. Open the screening-goal controls to enable budget/payback caps, edit the assumed 2 kW minimum practical system size, and require positive 25-year net cash flow **and** NPV. Unchecked caps are internally encoded as zero; the UI uses named checkboxes. These are preferences, not guarantees.
+1. Choose an illustrative roof or enter width, depth, rotation and building covered area. Changes remain drafts until Confirm and keep. These areas are separate measurements. If inconsistent, the app asks you to correct them; it does **not** increase building area automatically.
+2. Open the screening-goal controls to enable budget/payback caps, edit the assumed 2 kW minimum practical system size, and require positive selected-period net cash flow **and** NPV. Unchecked caps are internally encoded as zero; the UI uses named checkboxes. These are preferences, not guarantees.
 3. In Simple mode, enter how many floors the neighbour extends above the module plane, distance, direction and angular width. Apply converts the assumed 3 m/floor geometry into the 12-direction horizon. Advanced mode accepts compass/inclinometer measurements directly. The UI includes measurement guidance. Add up to six rectangular rooftop objects/access exclusions if needed.
 4. Adjust tilt, azimuth and rows; optionally limit the exact module count. A 22-module cap gives at most 9.9 kW for the reference 450 W module. Inspect the scene, energy, shading, preliminary coverage/load and finances. Seasonal 2025 sun geometry is a preview; annual energy uses every hour of the selected historical weather year.
 5. Compare adjacent row counts at the **same roof, direction, tilt and weather**. See total energy, specific yield, shading, extra investment and marginal energy per extra HK$1,000. Save the pair as A/B.

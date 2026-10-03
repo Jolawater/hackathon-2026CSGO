@@ -61,6 +61,19 @@ export function Slider({
         step={step}
         onChange={(e) => onChange(+e.target.value)}
       />
+      <input
+        className="slider-number"
+        aria-label={`${label} ${unit} value`}
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => {
+          if (e.target.value !== "" && Number.isFinite(+e.target.value))
+            onChange(Math.min(max, Math.max(min, +e.target.value)));
+        }}
+      />
       <span className="range-ends">
         <small>
           {min}

@@ -29,7 +29,7 @@ def cashflows(inputs, capacity, monthly, settings):
     panel,policy=settings['panel'],settings['policy']
     fit=policy['fit_small'] if capacity<=10 else policy['fit_medium'] if capacity<=200 else policy['fit_large']
     cost=inputs.price_per_kw*capacity+inputs.fixed_cost if capacity else 0
-    periods=schedule(inputs.commissioning.isoformat(),settings['finance']['life_years'],policy['fit_end'])
+    periods=schedule(inputs.commissioning.isoformat(),inputs.analysis_years,policy['fit_end'])
     energy=np.asarray(monthly)[periods['months']]*(1-panel['degradation'])**periods['age']*periods['fractions']
     spend=(inputs.annual_om/12*periods['fractions']*(1+inputs.cost_inflation)**periods['age']+
            inputs.inverter_cost*(1+inputs.cost_inflation)**10*periods['replace']) if capacity else np.zeros_like(energy)
@@ -41,7 +41,7 @@ def cashflows(inputs, capacity, monthly, settings):
     flows=[{'date':stamp,'A':float(rounded[0][k]),'B':float(rounded[1][k])} for k,stamp in enumerate(periods['dates'])]
     before=np.flatnonzero(periods['before_cutoff'])
     net_fit=curves[0][before[-1]+1] if len(before) else -cost
-    result={'initial_cost':round(cost,2),'fit_rate':fit,'net_to_fit_end':round(float(net_fit),2),'cashflow':flows}
+    result={'analysis_years':inputs.analysis_years,'initial_cost':round(cost,2),'fit_rate':fit,'net_to_fit_end':round(float(net_fit),2),'cashflow':flows}
     start=pd.Timestamp(inputs.commissioning)
     for j,name in enumerate(['A','B']):
         values=rounded[j]

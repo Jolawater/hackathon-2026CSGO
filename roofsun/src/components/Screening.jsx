@@ -83,21 +83,55 @@ export function NeighbourInput({ horizon, onChange, t, presetGeometry }) {
           ))}
         </select>
       </label>
-      <NumberField
-        label={t("Neighbour angular width", "鄰屋視角寬度")}
-        value={sector}
-        min={30}
-        max={180}
-        step={15}
-        unit="°"
-        onChange={setSector}
-      />
-      <p className="microcopy">
-        {t(
-          `Assumes 3 m per extra floor above the module plane. Centre elevation ${fmt(angle, 1)}°. Current maximum horizon ${fmt(Math.max(...horizon), 1)}°. Applying replaces the 12-direction horizon; detailed measurements remain available in Advanced mode.`,
-          `假設高於面板平面的每層為 3 m。中心仰角 ${fmt(angle, 1)}°，目前最大仰角 ${fmt(Math.max(...horizon), 1)}°。套用後會取代 12 方位天際線；進階模式可輸入實測值。`,
-        )}
-      </p>
+      <label className="select-field">
+        {t("What does the neighbour look like?", "鄰屋看起來像哪一種？")}
+        <select
+          value={[30, 60, 120].includes(sector) ? sector : "custom"}
+          onChange={(e) => {
+            if (e.target.value !== "custom") setSector(+e.target.value);
+          }}
+        >
+          <option value="30">
+            {t("A narrow building (assumed 30°)", "一座窄樓（暫按 30°）")}
+          </option>
+          <option value="60">
+            {t("A broad building (assumed 60°)", "一座較寬的樓（暫按 60°）")}
+          </option>
+          <option value="120">
+            {t("A row of buildings (assumed 120°)", "一整排樓（暫按 120°）")}
+          </option>
+          <option value="custom" disabled>
+            {t("Custom angle", "自訂角度")}
+          </option>
+        </select>
+      </label>
+      <details className="technical-details">
+        <summary>{t("Fine-tune shading measurements", "細調遮擋資料")}</summary>
+        <NumberField
+          label={t(
+            "How much of the view does it block?",
+            "鄰屋左右擋住多大範圍？",
+          )}
+          value={sector}
+          min={30}
+          max={180}
+          step={15}
+          unit="°"
+          onChange={setSector}
+        />
+        <p className="microcopy">
+          {t(
+            "Imagine looking out of a window: a narrow tower blocks a small slice; a long row of buildings is like a wide curtain. A larger angle means a wider curtain.",
+            "想像從窗口看出去：一座窄樓只擋住一小片，一整排樓就像一幅寬窗簾。角度越大，這幅窗簾越寬。",
+          )}
+        </p>
+        <p className="microcopy">
+          {t(
+            `Assumes 3 m per extra floor above the module plane. Centre elevation ${fmt(angle, 1)}°. Current maximum horizon ${fmt(Math.max(...horizon), 1)}°. Applying replaces the 12-direction horizon; detailed measurements remain available in Advanced mode.`,
+            `假設高於面板平面的每層為 3 m。中心仰角 ${fmt(angle, 1)}°，目前最大仰角 ${fmt(Math.max(...horizon), 1)}°。套用後會取代 12 方位天際線；進階模式可輸入實測值。`,
+          )}
+        </p>
+      </details>
       <button className="text-button" onClick={apply}>
         {t("Apply neighbour shading", "套用鄰屋遮擋")}
       </button>

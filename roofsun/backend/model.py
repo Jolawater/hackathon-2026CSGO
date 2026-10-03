@@ -13,7 +13,7 @@ from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "2.2.0"
+MODEL_VERSION = "2.3.0"
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 
@@ -26,6 +26,9 @@ class Exclusion(BaseModel):
 
 
 class Inputs(BaseModel):
+    monthly_demand_kwh: float = Field(default=0, ge=0, le=100000, allow_inf_nan=False)
+    demand_coverage: float = Field(default=1, ge=0, le=1, allow_inf_nan=False)
+    analysis_years: int = Field(default=25, ge=1, le=25)
     width: float = Field(default=8.06, ge=0.5, le=30)
     depth: float = Field(default=8.06, ge=0.5, le=30)
     village_house_mode: bool = True
@@ -83,6 +86,8 @@ class Inputs(BaseModel):
 
 
 class Configuration(BaseModel):
+    offset_x: float = Field(default=0, ge=-30, le=30, allow_inf_nan=False)
+    offset_y: float = Field(default=0, ge=-30, le=30, allow_inf_nan=False)
     tilt: float = Field(default=40, ge=0, le=40)
     azimuth: float = Field(default=180, ge=90, le=270)
     rows: int = Field(default=3, ge=1, le=24)
@@ -121,7 +126,19 @@ def layout(inputs: Inputs, config: Configuration):
     geometry={'width':inputs.width,'depth':inputs.depth,'roof_rotation':inputs.roof_rotation,
               'exclusions':[o.model_dump() for o in inputs.exclusions],
               'house_area':inputs.house_area,'minimum_access_gap_m':inputs.minimum_access_gap_m}
-    return _layout(json.dumps(geometry,sort_keys=True),config.model_dump_json())
+    panels, rows, area, error = _layout(json.dumps(geometry,sort_keys=True),config.model_copy(update={'offset_x':0,'offset_y':0}).model_dump_json())
+    if error or not panels or (config.offset_x == 0 and config.offset_y == 0):
+        return panels, rows, area, error
+    dx,dy=config.offset_x,config.offset_y
+    moved=[{**p,'corners':[[x+dx,y+dy] for x,y in p['corners']]} for p in panels]
+    roof=box(0.5,0.5,inputs.width-0.5,inputs.depth-0.5)
+    obstacles=[box(o.x,o.y,o.x+o.width,o.y+o.depth) for o in inputs.exclusions]
+    if any(not roof.buffer(1e-8).covers(Polygon(p['corners'])) or any(Polygon(p['corners']).intersection(o).area>1e-8 for o in obstacles) for p in moved):
+        return [],[],0,'placement_invalid'
+    lx,ly=rotate_points([[dx,dy]],config.azimuth-inputs.roof_rotation)[0]
+    moved=[{**p,'local_x':p['local_x']+lx} for p in moved]
+    shifted_rows=[{**r,'y':r['y']+ly,'intervals':[[a+lx,b+lx] for a,b in r['intervals']]} for r in rows]
+    return moved,shifted_rows,area,None
 
 
 @lru_cache(maxsize=2048)
