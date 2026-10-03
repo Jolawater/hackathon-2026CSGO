@@ -1,0 +1,332 @@
+{
+  "source": "RoofSun_输入精简方案.md §4, supplied 2026-10-03",
+  "chinese_policy": "Chinese table text preserved verbatim from the supplied document; English translated for this interface.",
+  "rows": [
+    {
+      "zh": [
+        "上网电价",
+        "≤10 kW 每度 HK$4；10–200 kW 每度 HK$3；到 2033-12-31 为止",
+        "电力公司按你发的每一度电付钱，单价按系统大小分档，计划在 2033 年底结束",
+        "来源：机电署 FAQ"
+      ],
+      "en": [
+        "Feed-in tariff",
+        "HK$4/kWh at ≤10 kW; HK$3/kWh above 10–200 kW; ends 2033-12-31",
+        "The electricity company pays for each unit you generate. The rate depends on system size, and the scheme ends in 2033.",
+        "Source: EMSD FAQ"
+      ],
+      "urls": [
+        "https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf"
+      ]
+    },
+    {
+      "zh": [
+        "覆盖面积上限",
+        "有盖面积的一半",
+        "板连同板与板之间的空隙，不能盖过屋顶面积的一半。把空隙也算进去，是我们偏保守的解读",
+        "来源：机电署 FAQ 5.3；“含空隙”为假设"
+      ],
+      "en": [
+        "Coverage limit",
+        "Half of the covered building area",
+        "Panels and the gaps between them must cover no more than half the roof. Counting the gaps is our conservative interpretation.",
+        "Source: EMSD FAQ 5.3; including gaps is an assumption"
+      ],
+      "urls": [
+        "https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf"
+      ]
+    },
+    {
+      "zh": [
+        "屋宇有盖面积",
+        "等于你输入的“长 × 阔”",
+        "真实屋子通常比可以放板的地方大，所以我们算出的上限偏小，结果偏保守",
+        "假设"
+      ],
+      "en": [
+        "Covered building area",
+        "The length × width you enter",
+        "The building is usually larger than the clear area for panels. This makes our coverage limit smaller and the result more conservative.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "天气数据",
+        "NASA 卫星逐时数据 × 0.971",
+        "卫星推算每小时的日照，再按天文台京士柏 2025 年实测总量下调约 3%",
+        "来源：NASA POWER、天文台"
+      ],
+      "en": [
+        "Weather",
+        "NASA hourly satellite data × 0.971",
+        "Hourly sunlight estimates are reduced by about 3% to match the 2025 annual total observed at HKO King’s Park.",
+        "Source: NASA POWER and HKO"
+      ],
+      "urls": [
+        "https://power.larc.nasa.gov/",
+        "https://data.weather.gov.hk/weatherAPI/cis/csvfile/KP/ALL/daily_KP_GSR_ALL.csv"
+      ]
+    },
+    {
+      "zh": [
+        "邻屋高度",
+        "每层 3 m，影响范围为正南左右各 60°",
+        "用“几层、多远”算出邻屋挡住多高的天空。香港的太阳主要从南面照过来",
+        "假设"
+      ],
+      "en": [
+        "Neighbour height",
+        "3 m per floor; 60° either side of south",
+        "We use floors and distance to estimate how much sky is blocked. Sunlight in Hong Kong mainly comes from the south.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "面板",
+        "450 W，1.76 × 1.13 m，22 kg",
+        "市面常见规格的通用代表，不是某个品牌的型号",
+        "假设"
+      ],
+      "en": [
+        "Panel",
+        "450 W, 1.76 × 1.13 m, 22 kg",
+        "A generic example of a common panel size, not a named manufacturer’s model.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "系统损耗",
+        "15%（效率 0.85）",
+        "逆变器、电线、灰尘、高温等加起来的损失",
+        "假设"
+      ],
+      "en": [
+        "System losses",
+        "15% (efficiency 0.85)",
+        "Losses from the inverter, wiring, dust and heat reduce useful electricity.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "面板老化",
+        "每年 −0.5%",
+        "面板发电能力每年慢慢下降",
+        "假设"
+      ],
+      "en": [
+        "Panel ageing",
+        "−0.5% each year",
+        "The panels gradually generate less electricity as they age.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "遮挡怎么算（Martinez 方法）",
+        "保守算法",
+        "一块板里的电池是一串串连起来的。阴影哪怕只遮住底部一小条，整串的电流也会下降，所以损失比被遮的面积还大。我们按这个较保守的方法计算",
+        "来源：pvlib 文档中的方法"
+      ],
+      "en": [
+        "Electrical shading (Martinez method)",
+        "Conservative calculation",
+        "Cells are connected in strings. A narrow strip of shade can reduce a whole string’s current, so the electrical loss can exceed the shaded area. We use this more conservative method.",
+        "Source: method documented by pvlib"
+      ],
+      "urls": [
+        "https://pvlib-python.readthedocs.io/en/v0.15.2/reference/generated/pvlib.shading.direct_martinez.html"
+      ]
+    },
+    {
+      "zh": [
+        "旁路分段",
+        "每块板 3 段",
+        "每块板分成 3 段，每段有“绕道”开关；一段被遮时会被跳过，另外两段照常发电",
+        "假设"
+      ],
+      "en": [
+        "Bypass sections",
+        "3 sections per panel",
+        "Each panel has three sections with bypass switches. A shaded section can be bypassed while the other two keep generating.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "前后排遮挡",
+        "只计实际重叠的部分",
+        "前排的影子只会落在后排正对着的那一段上",
+        "模型设定"
+      ],
+      "en": [
+        "Shade between rows",
+        "Only the overlapping part",
+        "A front row’s shadow affects only the part of the row behind it that the shadow actually overlaps.",
+        "Model setting"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "检修通道",
+        "前后排之间至少留 0.3 m",
+        "留空间让人走进去清洁和维修",
+        "假设"
+      ],
+      "en": [
+        "Maintenance gap",
+        "At least 0.3 m between rows",
+        "Space is left between rows for cleaning and maintenance.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "最小系统",
+        "2 kW",
+        "系统太小的话，扣掉固定费用就不划算，所以不推荐",
+        "假设"
+      ],
+      "en": [
+        "Minimum system",
+        "2 kW",
+        "Very small systems have fewer panels over which to spread fixed costs, so we do not recommend them.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "每排最少板数",
+        "达到朝正南时的 70%",
+        "板斜着摆时，每排至少要放到正南时的七成，避免出现一排只放一两块的奇怪方案",
+        "假设"
+      ],
+      "en": [
+        "Minimum row filling",
+        "70% of the due-south row count",
+        "Angled rows must retain at least seven tenths of the due-south panel count, to avoid rows containing only one or two panels.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "荷载",
+        "≤ 150 kg/m²，只计算板和支架",
+        "机电署对村屋天台系统平均重量的上限。台风压重块没有计算，正式安装要找结构专业人士",
+        "来源：机电署 FAQ 5.3"
+      ],
+      "en": [
+        "Load",
+        "≤150 kg/m²; panels and racks only",
+        "EMSD sets an average weight limit for village-house rooftop systems. Typhoon ballast is excluded; formal installation needs a structural professional.",
+        "Source: EMSD FAQ 5.3"
+      ],
+      "urls": [
+        "https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf"
+      ]
+    },
+    {
+      "zh": [
+        "其他费用：低 / 中 / 高",
+        "固定费用 2k / 5k / 10k；每年维护 0 / 300 / 1,000；逆变器更换 4k / 5k / 10k（在第 10 年）",
+        "设计、电力工程、申请费、清洁维护，以及中途更换一次逆变器的费用",
+        "假设（中档为现有默认值）"
+      ],
+      "en": [
+        "Other costs: low / medium / high",
+        "Setup HK$2k / 5k / 10k; annual maintenance HK$0 / 300 / 1,000; inverter HK$4k / 5k / 10k at year 10",
+        "Allowances for design, electrical work, applications, cleaning, maintenance and one inverter replacement.",
+        "Assumption (medium is the existing default)"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "折现率",
+        "4%",
+        "将来收到的钱不如今天值钱，所以每年打 4% 折扣来比较。证据页显示 0–8% 时的结果",
+        "假设"
+      ],
+      "en": [
+        "Discount rate",
+        "4%",
+        "Money received later is worth less today, so future cash flows are discounted by 4% a year. The evidence section shows results from 0–8%.",
+        "Assumption"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "NPV（净现值）",
+        "—",
+        "把 25 年所有收入减去所有支出，全部换算成今天的钱。大于 0 才划算",
+        "定义"
+      ],
+      "en": [
+        "NPV (net present value)",
+        "—",
+        "All income minus all costs over 25 years, expressed in today’s money. A positive value indicates a financial surplus under the assumptions.",
+        "Definition"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "回本",
+        "—",
+        "累计现金流转正、而且之后不再跌回负数的那个月",
+        "定义"
+      ],
+      "en": [
+        "Payback",
+        "—",
+        "The month when cumulative cash flow becomes non-negative and never falls below zero again.",
+        "Definition"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "最高可接受报价",
+        "—",
+        "报价高过这个数，25 年下来就是亏本（NPV < 0）",
+        "定义"
+      ],
+      "en": [
+        "Highest acceptable quote",
+        "—",
+        "Above this quote, the 25-year result has negative net present value.",
+        "Definition"
+      ],
+      "urls": []
+    },
+    {
+      "zh": [
+        "2033 年后自用",
+        "每度 HK$1.4，一半自用",
+        "上网电价结束后，发的电自己用，可以少付电费",
+        "假设（参考中电 2026 年平均净电价）"
+      ],
+      "en": [
+        "Self-use after 2033",
+        "HK$1.4/kWh; half the generation used",
+        "After feed-in payments end, using some electricity yourself can reduce your electricity bill.",
+        "Assumption (informed by CLP’s 2026 average net tariff)"
+      ],
+      "urls": []
+    }
+  ]
+}
