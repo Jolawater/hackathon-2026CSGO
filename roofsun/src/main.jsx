@@ -31,6 +31,7 @@ import OwnerInputs, {
   OWNER_DEFAULTS,
   neighbourHorizon,
 } from "./components/Screening.jsx";
+import Intro, { jumpTo } from "./components/Intro.jsx";
 import RoofScene from "./components/RoofScene.jsx";
 import SceneBoundary from "./components/SceneBoundary.jsx";
 import { sunFrame, sunTime } from "./lib/sunFrame.js";
@@ -226,6 +227,7 @@ function App() {
         </button>
       </header>
       <main className="app-shell">
+        <Intro t={t} onExample={onChange} />
         <div className="page-heading">
           <div>
             <span className="eyebrow">
@@ -276,7 +278,7 @@ function App() {
           </div>
         )}
         <div className="screening-grid">
-          <aside className="input-card">
+          <aside id="inputs" className="input-card">
             <div className="input-card-heading">
               <h2>{t("Your roof", "你的天台")}</h2>
               <span>{t("7 inputs", "7 項輸入")}</span>
@@ -291,6 +293,7 @@ function App() {
           </aside>
           <div className="results-column" aria-busy={calculated.loading}>
             <section
+              id="results"
               className={`conclusion-card ${verdict || "loading"}`}
               aria-live="polite"
             >
@@ -696,7 +699,7 @@ function App() {
             </div>
           </div>
         </div>
-        <div className="detail-panels">
+        <div id="trust" className="detail-panels">
           <details className="assumptions-panel">
             <summary>
               <span>{t("Assumptions & sources", "假設與來源")}</span>
