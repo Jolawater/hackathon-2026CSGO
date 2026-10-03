@@ -1,0 +1,39 @@
+{
+  "provider": "NASA POWER",
+  "source_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_SW_DWN%2CT2M&community=RE&latitude=22.5431&longitude=114.0579&start=20230101&end=20231231&format=JSON&time-standard=UTC",
+  "year": 2023,
+  "en": "Shenzhen",
+  "zh": "深圳",
+  "lat": 22.5431,
+  "lon": 114.0579,
+  "timezone": "Asia/Shanghai",
+  "currency": "CNY",
+  "hours": 8760,
+  "time_standard": "UTC",
+  "parameters": {
+    "ALLSKY_SFC_SW_DWN": {
+      "units": "Wh/m^2",
+      "longname": "All Sky Surface Shortwave Downward Irradiance"
+    },
+    "T2M": {
+      "units": "C",
+      "longname": "Temperature at 2 Meters"
+    }
+  },
+  "header": {
+    "title": "NASA/POWER Source Native Resolution Hourly Data",
+    "api": {
+      "version": "v2.10.2",
+      "name": "POWER Hourly API"
+    },
+    "sources": [
+      "SYN1DEG",
+      "MERRA2"
+    ],
+    "fill_value": -999.0,
+    "time_standard": "UTC",
+    "start": "20230101",
+    "end": "20231231"
+  },
+  "note": "Reference city grid point, not measured rooftop weather. UTC calendar year converted to local time; annual repetition is a scenario, not a forecast."
+}

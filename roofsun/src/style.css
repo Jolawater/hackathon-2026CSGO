@@ -2254,3 +2254,238 @@ body {
   pointer-events: none;
   z-index: 3;
 }
+
+.scene3d-canvas {
+  position: relative;
+}
+.scene-dimension-tooltip {
+  position: absolute;
+  z-index: 5;
+  max-width: calc(100% - 16px);
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: #183e48ed;
+  color: #fff;
+  box-shadow: 0 4px 16px #132e4220;
+  font-size: 13px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.scene-dimension-tooltip[hidden] {
+  display: none;
+}
+
+/* Direct typing is the primary numeric input; hide native stepper buttons. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.confirmation-actions {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: flex;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+}
+.confirmation-actions button {
+  border: 1px solid #b5ccc7;
+  border-radius: 999px;
+  padding: 13px 21px;
+  background: #fbfcf6;
+  color: #244c50;
+  box-shadow: 0 4px 18px #133e4925;
+  cursor: pointer;
+}
+.confirmation-actions .confirm-primary {
+  background: #245960;
+  color: white;
+  border-color: #245960;
+}
+.confirmation-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.workspace-context {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  font-size: 13px;
+  color: #59716a;
+  margin-bottom: 20px;
+}
+.plan-management summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 14px 0;
+}
+.plan-management .card-title {
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+@media (max-width: 600px) {
+  .confirmation-actions {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .confirmation-actions button {
+    padding: 12px 16px;
+  }
+  .workspace-context {
+    align-items: flex-start;
+  }
+  .workbench {
+    padding-bottom: 90px;
+  }
+}
+
+.scene-compass {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #e9f1ecdd;
+  border: 1px solid #5f898969;
+  box-shadow: 0 2px 10px #244f4d20;
+  pointer-events: none;
+}
+.compass-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: rotate(var(--bearing, 0deg));
+}
+.compass-ring span {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 700;
+  color: #375658;
+  transform: rotate(var(--counter-bearing, 0deg));
+}
+.compass-n {
+  top: 5px;
+  left: 32px;
+  color: #ad4f36 !important;
+}
+.compass-s {
+  bottom: 5px;
+  left: 32px;
+}
+.compass-e {
+  right: 6px;
+  top: 29px;
+}
+.compass-w {
+  left: 6px;
+  top: 29px;
+}
+.compass-ring i {
+  position: absolute;
+  left: 31px;
+  top: 23px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 17px solid #b56143;
+}
+.compass-ring i:after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 17px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 14px solid #54777d;
+}
+
+.professional-parameters {
+  padding: 20px 24px;
+  margin: 20px 0;
+}
+.professional-parameters > summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+.professional-parameters p {
+  line-height: 1.8;
+}
+.setup-progress {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.setup-progress button {
+  border-radius: 12px;
+  border: 1px solid #b7cdc6;
+  background: #edf4ef;
+  padding: 10px;
+  color: #335858;
+}
+.setup-progress button[aria-current="step"] {
+  background: #245960;
+  color: white;
+}
+.setup-progress span {
+  display: block;
+  font-size: 11px;
+}
+.setup-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+.setup-buttons button {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1px solid #9bb9b5;
+  background: #245960;
+  color: white;
+}
+.setup-buttons button:disabled {
+  opacity: 0.4;
+}
+.setup-summary {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 14px;
+}
+.neighbour-building {
+  padding: 16px 0;
+  border-top: 1px solid #d9e4de;
+}
+
+.regional-lab > section {
+  margin: 22px 0;
+  padding: 24px;
+}
+.regional-lab .time-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.regional-lab .time-controls input {
+  flex: 1;
+  min-width: 120px;
+}
+.regional-lab a {
+  color: #286b72;
+}
+.regional-lab button {
+  cursor: pointer;
+}
+.professional-parameters .field-pair {
+  max-width: 760px;
+}

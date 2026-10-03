@@ -4,7 +4,7 @@ import json
 import time
 from .model import Inputs, Configuration, evaluate, finance, PANEL, MODEL_VERSION, layout, scope_warnings
 
-PHYSICAL_KEYS = ('width','depth','roof_rotation','house_area','horizon','weather_year','weather_scale',
+PHYSICAL_KEYS = ('region','neighbours','usable_coverage_ratio','width','depth','roof_rotation','house_area','horizon','weather_year','weather_scale',
                  'extra_mass_per_module','load_limit','finite_rows','electrical_model','bypass_blocks','exclusions','minimum_row_fill_ratio','minimum_access_gap_m')
 
 

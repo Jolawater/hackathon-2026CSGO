@@ -10,11 +10,11 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 from .model import Evaluation, Inputs, evaluate, search, sun_preview, ROOT, SETTINGS
 
-app=FastAPI(title='RoofSun HK', version='2.3.0')
+app=FastAPI(title='RoofSun HK', version='2.4.0')
 app.add_middleware(CORSMiddleware,allow_origins=['http://127.0.0.1:5173','http://localhost:5173'],allow_methods=['GET','POST'],allow_headers=['Content-Type'])
 
 @app.get('/api/health')
-def health(): return {'status':'ok','model_version':'2.3.0','weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
+def health(): return {'status':'ok','model_version':'2.4.0','weather_available':all((ROOT/f'data/weather_{y}.csv').is_file() for y in [2023,2024,2025])}
 
 @lru_cache(maxsize=1)
 def source_metadata():
@@ -22,7 +22,21 @@ def source_metadata():
     for y in [2023,2024,2025]:
         path=ROOT/('data/weather_metadata.json' if y==2025 else f'data/weather_metadata_{y}.json')
         years[str(y)]={**json.loads(path.read_text()), 'csv_sha256':hashlib.sha256((ROOT/f'data/weather_{y}.csv').read_bytes()).hexdigest()}
-    return {'settings':SETTINGS,'model_version':'2.3.0','weather':years['2025'],'weather_years':years,'roof_presets':json.loads((ROOT/'data/roof_presets.json').read_text()),'irradiance_checks':{str(y):irradiance_check(y) for y in [2023,2024,2025]}}
+    return {'settings':SETTINGS,'model_version':'2.4.0','weather':years['2025'],'weather_years':years,'roof_presets':json.loads((ROOT/'data/roof_presets.json').read_text()),'irradiance_checks':{str(y):irradiance_check(y) for y in [2023,2024,2025]}}
+
+@app.get('/api/regions')
+def regional_metadata():
+    from .model import REGIONS
+    result={}
+    for region,location in REGIONS.items():
+        if region=='hong_kong':continue
+        years={}
+        for year in (2023,2024,2025):
+            metadata=json.loads((ROOT/f'data/weather_{region}_{year}_metadata.json').read_text(encoding='utf-8'))
+            metadata['csv_sha256']=hashlib.sha256((ROOT/f'data/weather_{region}_{year}.csv').read_bytes()).hexdigest()
+            years[str(year)]=metadata
+        result[region]={**location,'weather_years':years,'finance_scope':'User-entered constant import/export rates; disjoint self-use/export; no tax/subsidy forecast or engineering approval'}
+    return result
 
 @app.get('/api/meta')
 def meta(): return source_metadata()
@@ -32,7 +46,7 @@ def api_evaluate(request:Evaluation):
     result=evaluate(request.inputs,request.config)
     rows=request.config.rows
     counts=[rows-1,rows] if rows>1 else [1,2]
-    result['row_comparison']=[evaluate(request.inputs,request.config.model_copy(update={'rows':n}),False) for n in counts]
+    result['row_comparison']=[] if request.config.manual_panels is not None else [evaluate(request.inputs,request.config.model_copy(update={'rows':n}),False) for n in counts]
     return result
 
 @app.post('/api/simulate')
@@ -74,13 +88,15 @@ def api_sun_track(request:SunTrackRequest):
     import pandas as pd
     import numpy as np
     import pvlib
-    times=pd.date_range(pd.Timestamp(request.day,tz='Asia/Hong_Kong'),periods=97,freq='15min')
-    pos=pvlib.solarposition.get_solarposition(times,SETTINGS['location']['lat'],SETTINGS['location']['lon'])
+    from .model import REGIONS
+    loc=REGIONS[request.inputs.region]
+    times=pd.date_range(pd.Timestamp(request.day,tz=loc['timezone']),periods=97,freq='15min')
+    pos=pvlib.solarposition.get_solarposition(times,loc['lat'],loc['lon'])
     samples=[]
     for i,(alt,az) in enumerate(zip(pos.apparent_elevation,pos.azimuth)):
         horizon=float(np.interp(az,np.arange(13)*30,request.inputs.horizon+[request.inputs.horizon[0]]))
         samples.append({'hour':i/4,'altitude':float(alt),'azimuth':float(az),'horizon':horizon,'beam_clear':bool(alt>horizon)})
-    return {'day':request.day.isoformat(),'timezone':'Asia/Hong_Kong','step_minutes':15,'source':'pvlib NREL SPA; interpolated for display only','samples':samples}
+    return {'day':request.day.isoformat(),'timezone':loc['timezone'],'step_minutes':15,'source':'pvlib NREL SPA; interpolated for display only','samples':samples}
 
 @app.get('/api/validation')
 def validation():

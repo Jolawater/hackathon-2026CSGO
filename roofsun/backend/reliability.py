@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 import pvlib
-from .model import Inputs, Configuration, evaluate, weather, MODEL_VERSION
+from .model import Inputs, Configuration, evaluate, weather, MODEL_VERSION, REGIONS
 from .decision import recommend
 
 
@@ -19,20 +19,21 @@ def summary(result, inputs):
 
 def reference_case(inputs, config):
     # Single row avoids row shading; obstructing geometry is removed for both tools.
-    clean=inputs.model_copy(update={'horizon':[0]*12,'exclusions':[], 'weather_scale':1})
+    clean=inputs.model_copy(update={'horizon':[0]*12,'exclusions':[],'neighbours':[], 'weather_scale':1})
     configuration=Configuration(tilt=config.tilt,azimuth=config.azimuth,rows=1)
     ours=evaluate(clean,configuration)
     if not ours['capacity_kw']:
         return {'available':False,'capacity_kw':0,'configuration':configuration.model_dump(),
                 'reason':'No complete module fits the unobstructed reference case.',
                 'reference_kwh':0,'roofsun_kwh':0,'monthly':[],'difference_pct':None}
-    w=weather(inputs.weather_year)
+    w=weather(inputs.weather_year,inputs.region)
     frame=pd.DataFrame({'ghi':w['ghi'],'dni':w['dni'],'dhi':w['dhi'],'temp_air':w['temp'],'wind_speed':1.},index=w['times'])
     system=pvlib.pvsystem.PVSystem(surface_tilt=config.tilt,surface_azimuth=config.azimuth,
         albedo=0.2,module_parameters={'pdc0':ours['capacity_kw']*1000,'gamma_pdc':-0.0035},
         inverter_parameters={'pdc0':ours['capacity_kw']*1000/0.96},
         temperature_model_parameters=pvlib.temperature.TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass'])
-    location=pvlib.location.Location(22.45,114.16,tz='Asia/Hong_Kong')
+    loc=REGIONS[inputs.region]
+    location=pvlib.location.Location(loc['lat'],loc['lon'],tz=loc['timezone'])
     chain=pvlib.modelchain.ModelChain.with_pvwatts(system,location,transposition_model='isotropic',aoi_model='no_loss',spectral_model='no_loss')
     chain.run_model(frame)
     reference=np.nan_to_num(np.asarray(chain.results.ac))/1000
@@ -73,7 +74,7 @@ def analyse_cached(serialized):
     for year in [2023,2024,2025]:
         inp=inputs.model_copy(update={'weather_year':year})
         result=evaluate(inp,config)
-        years.append({'year':year,'hours':len(weather(year)['times']),**summary(result,inp)})
+        years.append({'year':year,'hours':len(weather(year,inputs.region)['times']),**summary(result,inp)})
         searched=recommend(inp)
         selected=searched['recommendations'].get('npv')
         ranking.append({'year':year,'config':selected['config'] if selected else None,
@@ -90,7 +91,7 @@ def analyse_cached(serialized):
         r=evaluate(inputs,config.model_copy(update={'rows':rows}))
         row_comparison.append(summary(r,inputs))
     from .reference import irradiance_check
-    return {'irradiance_check':irradiance_check(inputs.weather_year,inputs.weather_scale),'model_version':MODEL_VERSION,'base':summary(base,inputs),'scenarios':scenarios,'weather_years':years,
+    return {'irradiance_check':irradiance_check(inputs.weather_year,inputs.weather_scale) if inputs.region=='hong_kong' else None,'model_version':MODEL_VERSION,'base':summary(base,inputs),'scenarios':scenarios,'weather_years':years,
         'range':{'annual_kwh':[min(r['annual_kwh'] for r in scenarios+years),max(r['annual_kwh'] for r in scenarios+years)],
                  'npv':[min(r['npv'] for r in scenarios+years),max(r['npv'] for r in scenarios+years)]},
         'ranking':ranking,'ranking_stable':len(designs)==1,'distinct_recommendations':len(designs),

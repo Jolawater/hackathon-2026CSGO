@@ -22,12 +22,16 @@ page.on("response", async (r) => {
 });
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("request", (r) => {
-  if (r.url().includes("/api/evaluate")) requests.push(r.postDataJSON());
+  if (r.url().includes("/api/evaluate") && !r.url().includes("preview=1"))
+    requests.push(r.postDataJSON());
 });
 const button = (name) => page.getByRole("button", { name, exact: true });
 const confirm = async () => {
   const response = page.waitForResponse(
-    (r) => r.url().includes("/api/evaluate") && r.status() === 200,
+    (r) =>
+      r.url().includes("/api/evaluate") &&
+      !r.url().includes("preview=1") &&
+      r.status() === 200,
   );
   await button("Confirm and keep").click();
   return (await response).json();
@@ -77,6 +81,7 @@ try {
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }, value);
+  await page.waitForTimeout(1200);
   const trackedCanvas = page.locator(".scene3d-canvas canvas");
   await trackedCanvas.evaluate((el) => (el.dataset.retained = "yes"));
   const daytime = await trackedCanvas.screenshot();
@@ -87,6 +92,17 @@ try {
   assert(!daytime.equals(night));
   assert.equal(requests.length, countBeforeTime);
   assert.equal(await trackedCanvas.getAttribute("data-retained"), "yes");
+  const positions = [];
+  for (const hour of [9, 12, 17, 0]) {
+    await setTime(hour);
+    await page.waitForTimeout(200);
+    positions.push(await trackedCanvas.evaluate((el) => ({ ...el.dataset })));
+  }
+  assert(Number(positions[3].sunElevation) < 0);
+  assert(
+    new Set(positions.slice(0, 3).map((p) => p.sunAzimuth)).size === 3,
+    "Actual solar direction changes",
+  );
   await setTime(12);
   await button("Play day").click();
   await page.waitForTimeout(300);
@@ -97,7 +113,7 @@ try {
   const stored = await page.evaluate(() =>
     localStorage.getItem("roofsun-workspace-v2"),
   );
-  const width = page.getByRole("spinbutton", { name: "Width", exact: true });
+  const width = page.getByRole("textbox", { name: "Width", exact: true });
   // Discover the existing label without relying on translated prose.
   const roofWidth = (await width.count())
     ? width
@@ -110,9 +126,11 @@ try {
     : page.locator(".input-card input[type=number]").first();
   const editable = (await widthField.count())
     ? widthField
-    : page.getByRole("spinbutton").filter({ visible: true }).first();
+    : page.getByRole("textbox").filter({ visible: true }).first();
   const before = await editable.inputValue();
-  await editable.fill(String(Number(before) + 0.1));
+  await editable.fill("");
+  assert.equal(await editable.inputValue(), "");
+  await editable.fill(String(Number(before) - 0.05));
   await page.waitForTimeout(700);
   assert.equal(await page.locator(".hero-number").innerText(), initial);
   assert.equal(
@@ -121,6 +139,8 @@ try {
   );
   await button("Cancel changes").click();
   assert.equal(await editable.inputValue(), before);
+  await page.waitForTimeout(1000);
+  await trackedCanvas.evaluate((el) => (el.dataset.retained = "yes"));
   await page.route("**/api/evaluate*", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 900));
     await route.continue();
@@ -140,8 +160,8 @@ try {
     await page.evaluate(() => localStorage.getItem("roofsun-workspace-v2")),
     stored,
   );
-  await button("Advanced mode").click();
-  const years = page.getByRole("spinbutton", {
+  await page.locator(".professional-parameters > summary").click();
+  const years = page.getByRole("textbox", {
     name: "How many years should we compare?",
     exact: true,
   });
@@ -159,7 +179,7 @@ try {
   await month.selectOption("2025-06-15");
   await button("Confirm and keep").click();
   await page
-    .getByRole("spinbutton", { name: "Move array left / right", exact: true })
+    .getByRole("textbox", { name: "Move array left / right", exact: true })
     .fill("25");
   const invalid = await confirm();
   assert(invalid.violations.includes("placement_invalid"));
@@ -198,6 +218,8 @@ try {
   await page.unroute("**/api/simulate*");
   const canvas = page.locator(".scene3d-canvas canvas"),
     bounds = await canvas.boundingBox();
+  await canvas.scrollIntoViewIfNeeded();
+  const bearing1 = await page.locator(".scene-compass").getAttribute("style");
   const shot1 = await canvas.screenshot();
   await page.mouse.move(bounds.x + bounds.width * 0.5, bounds.y + 200);
   await page.mouse.down();
@@ -208,6 +230,10 @@ try {
   await page.waitForTimeout(400);
   const shot2 = await canvas.screenshot();
   assert(!shot1.equals(shot2), "Orbit drag changes rendered viewpoint");
+  assert.notEqual(
+    await page.locator(".scene-compass").getAttribute("style"),
+    bearing1,
+  );
   const save = page.getByRole("button", { name: /Save.*comparison/i }).first();
   if (await save.count()) await save.click();
   const artifacts =
@@ -221,11 +247,6 @@ try {
     .locator(".scene3d")
     .screenshot({ path: join(artifacts, "scene.png") });
   await button("繁中").click();
-  assert(
-    (await page.locator(".confirmation-bar").innerText()).includes(
-      "確認並保留",
-    ),
-  );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: join(artifacts, "mobile.png"),

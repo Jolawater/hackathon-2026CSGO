@@ -52,7 +52,7 @@
       "name_zh": "配置搜索結果",
       "description_en": "Coarse search plus local refinement; only physically feasible configurations meeting decision goals enter recommendations.",
       "description_zh": "粗搜尋加局部細化，只有物理可行且符合決策目標的配置才可推薦。",
-      "observed": "feasible=100; frontier=7; measured runtime=2.59s",
+      "observed": "feasible=100; frontier=7; measured runtime=2.55s",
       "passed": true,
       "source_url": null
     },
@@ -127,11 +127,12 @@
     "shading_loss_pct": 3.9
   },
   "scope": "Cross-model consistency and scenario analysis only. No measured rooftop accuracy, probability or P90 claim.",
-  "model_version": "2.3.0",
+  "model_version": "2.4.0",
   "references": [
     {
       "available": true,
       "configuration": {
+        "manual_panels": null,
         "offset_x": 0,
         "offset_y": 0,
         "tilt": 0.0,
@@ -215,6 +216,7 @@
     {
       "available": true,
       "configuration": {
+        "manual_panels": null,
         "offset_x": 0,
         "offset_y": 0,
         "tilt": 20.0,
@@ -298,6 +300,7 @@
     {
       "available": true,
       "configuration": {
+        "manual_panels": null,
         "offset_x": 0,
         "offset_y": 0,
         "tilt": 40.0,
@@ -570,9 +573,10 @@
       "scope": "Independent radiation-input check, not measured PV yield or calibration. NASA POWER is a grid point at 22.45 N, 114.16 E; HKO is a different station at King's Park. Annual differences include location, source, rounding and UTC/local-calendar boundaries. Historical normals and one recent year have different periods. No automatic correction, inferred bias, P90 or field-accuracy claim. Same-year HKO observations for 2023 and 2024 have not yet been incorporated.",
       "measured_pv_case_available": false
     },
-    "model_version": "2.3.0",
+    "model_version": "2.4.0",
     "base": {
       "config": {
+        "manual_panels": null,
         "offset_x": 0.0,
         "offset_y": 0.0,
         "tilt": 40.0,
@@ -605,6 +609,7 @@
       {
         "id": "base",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -636,6 +641,7 @@
       {
         "id": "weather_minus_15",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -669,6 +675,7 @@
       {
         "id": "weather_minus_10",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -702,6 +709,7 @@
       {
         "id": "weather_plus_10",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -733,6 +741,7 @@
       {
         "id": "quote_minus_20",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -764,6 +773,7 @@
       {
         "id": "quote_plus_20",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -798,6 +808,7 @@
       {
         "id": "horizon_plus_5",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -829,6 +840,7 @@
       {
         "id": "horizon_minus_5",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -860,6 +872,7 @@
       {
         "id": "delay_6_months",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -893,6 +906,7 @@
       {
         "id": "electrical_alternative",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -924,6 +938,7 @@
       {
         "id": "row_geometry_alternative",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -955,6 +970,7 @@
       {
         "id": "quote_30000",
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -992,6 +1008,7 @@
         "year": 2023,
         "hours": 8760,
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1024,6 +1041,7 @@
         "year": 2024,
         "hours": 8784,
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1058,6 +1076,7 @@
         "year": 2025,
         "hours": 8760,
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1101,6 +1120,7 @@
       {
         "year": 2023,
         "config": {
+          "manual_panels": null,
           "offset_x": 0,
           "offset_y": 0,
           "tilt": 15.0,
@@ -1115,6 +1135,7 @@
       {
         "year": 2024,
         "config": {
+          "manual_panels": null,
           "offset_x": 0,
           "offset_y": 0,
           "tilt": 15.0,
@@ -1129,6 +1150,7 @@
       {
         "year": 2025,
         "config": {
+          "manual_panels": null,
           "offset_x": 0,
           "offset_y": 0,
           "tilt": 15.0,
@@ -1155,6 +1177,7 @@
       {
         "scenario": "horizon_plus_5",
         "config": {
+          "manual_panels": null,
           "offset_x": 0,
           "offset_y": 0,
           "tilt": 15.0,
@@ -1169,6 +1192,7 @@
       {
         "scenario": "delay_6_months",
         "config": {
+          "manual_panels": null,
           "offset_x": 0,
           "offset_y": 0,
           "tilt": 15.0,
@@ -1192,6 +1216,7 @@
     "row_comparison": [
       {
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1222,6 +1247,7 @@
       },
       {
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1252,6 +1278,7 @@
       },
       {
         "config": {
+          "manual_panels": null,
           "offset_x": 0.0,
           "offset_y": 0.0,
           "tilt": 40.0,
@@ -1288,6 +1315,7 @@
     "reference": {
       "available": true,
       "configuration": {
+        "manual_panels": null,
         "offset_x": 0,
         "offset_y": 0,
         "tilt": 40.0,
@@ -1450,25 +1478,39 @@
     "scope": "Independent radiation-input check, not measured PV yield or calibration. NASA POWER is a grid point at 22.45 N, 114.16 E; HKO is a different station at King's Park. Annual differences include location, source, rounding and UTC/local-calendar boundaries. Historical normals and one recent year have different periods. No automatic correction, inferred bias, P90 or field-accuracy claim. Same-year HKO observations for 2023 and 2024 have not yet been incorporated.",
     "measured_pv_case_available": false
   },
-  "generated_at": "2026-10-03T07:32:03.539296+00:00",
+  "generated_at": "2026-10-03T08:20:57.054091+00:00",
   "input_sha256": {
     "backend/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "backend/app.py": "938869834f4fc083b2342471b52e60c49a3d04f1bcaa4043dd151e582866aed3",
-    "backend/decision.py": "0e7d06c471b1b33a1765ae88c026e7eb725ae8126aff0a57bbb380078934e465",
-    "backend/finance.py": "2143518c0edd915f884e02129c48c363732d4204f5466e00f7d09fbb24237f3f",
-    "backend/model.py": "83fc81a51d53725bcdb90f3b25ae4eb0937b23e1247337982627fb0c9e38b4ae",
+    "backend/app.py": "2216197aa63c734efc903bcc1c8c3462d591cc1f40a840b9d2713d2ae68f17f0",
+    "backend/decision.py": "e250e374fe43567a086ec416e2b9e66bcfa19d1548224fff0526f4463736133f",
+    "backend/finance.py": "90cb50e113ffaf5177ace45caa3039835a75bf819d501c09dc966a33bd83bb20",
+    "backend/manual_layout.py": "7c15332fd67cdacdffa4d2cfafdb736c74096d1ac46895b2383de07a7754cc69",
+    "backend/model.py": "a373a8666902f06146791ef495109c71104ac74faa649d2943af2c00fdab948b",
     "backend/reference.py": "c04a1bf253fdb379950cd2df5538df27d63b161342ad1913514854c40d7a8005",
-    "backend/reliability.py": "3d7309302485a3d4ec4f65733a0766db03e1315d76da964b7e4d25b4dee8cca7",
-    "backend/validation_status.py": "753e0f4cede1a22dd880f2eb1526d0cd74e197ead84fa4ef61455c66b82f7070",
+    "backend/reliability.py": "131bbfb5ea9e9e2e8c2ad32a2afda4d431e49e9e5f8c898c7e8c6d000e0b6d9f",
+    "backend/validation_status.py": "e014f18e559502402103bfd0e97ac616c62bc0ae1fb3489d3c5b920158d7c13f",
     "data/hko_reference.json": "1c3390bb96661f674ce232a2568115938e980dbe036616a7a44f368e5606d596",
+    "data/regions.json": "b3b0d33c4d3786909981ed203b4dac079b6cbd914e235b1e0f8a6472e72256f3",
     "data/roof_presets.json": "2324b9dbafc6252abac88cc9c9baf7ce131b3a9960ce0898bd84f556bf1d0c7f",
     "data/settings.json": "f31b410dee41d4a6cc99cdf3f7f483a86b0e37b31632922d42431ebce1e7a47e",
     "data/weather_2023.csv": "8ff92d8706128a1fab75116749e1d1eb3b7fac237ceec2d1bb92dbb994d42d65",
     "data/weather_2024.csv": "301a99958e046624e4c81c24e287a6b6ac516e08ee5e1ef818180b6af85212d4",
     "data/weather_2025.csv": "3ca01afc8bdf5ce30a593f0743ab6c45966eeebbfe5454d34fb266a3d7a40f27",
+    "data/weather_london_2023.csv": "fdf4db1838567c49fadfa6487ba543625b478d366e180b9c8c31f2fc9c194616",
+    "data/weather_london_2023_metadata.json": "577fa2b3fd045bb8dbc818130db244f912a0282db6d65f7ee730874488d0f92e",
+    "data/weather_london_2024.csv": "b04b75e931ac452343a758d50b602572ac020b63e4050ba826f02128bd1328b0",
+    "data/weather_london_2024_metadata.json": "151858c3b9e3378988a44578690c00a9632da706a1f86589d3da7dd73ddd2445",
+    "data/weather_london_2025.csv": "493ba03e91d61d1226532cfe30c050720ccdab7cf056e2d41e94480e3ec7c205",
+    "data/weather_london_2025_metadata.json": "7dcb43f1a5b877242ad3e7c425a7d23a7b1742bef53c407ee23572c5efe0fc18",
     "data/weather_metadata.json": "6816476c45015cab3577f6fc86d10a5bff7bce06390c73c362b132e038ba5816",
     "data/weather_metadata_2023.json": "e7e282095c1874e3bede47bbe83c199c40fe9112b3a3aa418ec33e1cbe8460c7",
     "data/weather_metadata_2024.json": "eae56e1180a0ad6665f1bdfc3f33b464cdbaee78b94f711fa291a228b072625e",
+    "data/weather_shenzhen_2023.csv": "b195d218b6e098ae828a6f588e37bf1475f2decc9b8ab7faafebccd193733ada",
+    "data/weather_shenzhen_2023_metadata.json": "e5167266035fec2ba5ca56a0857fd689abe03d7ab0940e7e63b147f3e6e5a308",
+    "data/weather_shenzhen_2024.csv": "7c44631dee7f36a01e3596f3e4d95999cdf8a8773c89cf011cb264ac8901032f",
+    "data/weather_shenzhen_2024_metadata.json": "9b95576ed518ed0767f5a757406dab08de117a2f1e0b6af205209bb228faa6b0",
+    "data/weather_shenzhen_2025.csv": "7e11a28fd43210c06ed7ae92f0a59e5e15c36a7ea36be6142fc2138344b7b517",
+    "data/weather_shenzhen_2025_metadata.json": "a95a25b890bdcaf20d88771f402e2865e2f008a3242cec6d564852fe2f14df5c",
     "scripts/validate.py": "7a84eeefca337ad8c99ea895132ea300570a78ae7450cfb41b71786254d0392f"
   }
 }

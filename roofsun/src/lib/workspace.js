@@ -50,7 +50,7 @@ export function buildArchive(
 ) {
   return {
     schema: SCHEMA,
-    model_version: meta?.model_version || "2.3.0",
+    model_version: meta?.model_version || "2.4.0",
     generated_at: new Date().toISOString(),
     simulated: true,
     evidence_scope:
@@ -93,6 +93,10 @@ export async function restoreArchive(file, defaults) {
       throw Error("A plan is missing inputs / 方案缺少輸入");
     const inputs = { ...defaults, ...plan.inputs },
       config = plan.config;
+    if (inputs.region && inputs.region !== "hong_kong")
+      throw Error(
+        "Open the matching city workspace for this plan / 請在對應城市打開方案",
+      );
     const response = await fetch("/api/evaluate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

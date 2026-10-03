@@ -56,9 +56,11 @@ import { useApi } from "./lib/api.js";
 import { fmt, money } from "./lib/format.js";
 import { NumberField, Slider, Pill } from "./components/Controls.jsx";
 import RoofScene from "./components/RoofScene3D.jsx";
+import RegionalLab from "./components/RegionalLab.jsx";
 import Welcome from "./components/Welcome.jsx";
 import Choices from "./components/Choices.jsx";
 import PlanBrief from "./components/PlanBrief.jsx";
+import NeighbourBuildings from "./components/NeighbourBuildings.jsx";
 import Horizon from "./components/Horizon.jsx";
 import OwnerGuide from "./components/OwnerGuide.jsx";
 import {
@@ -171,6 +173,14 @@ function App() {
         )?.id || "custom",
     ),
     [tab, setTab] = useState("design");
+  const [regional, setRegional] = useState(() => {
+    try {
+      const r = JSON.parse(sessionStorage.getItem("roofsun-region-entry"));
+      return r ? { ...r, restore: true } : null;
+    } catch {
+      return null;
+    }
+  });
   const [entry, setEntry] = useState(
     () => sessionStorage.getItem("roofsun-entry") || "",
   );
@@ -229,6 +239,14 @@ function App() {
     setHour(confirmed.hour);
   }
   function start(mode, roof) {
+    if (roof?.region && roof.region !== "hong_kong") {
+      setRegional(roof);
+      sessionStorage.setItem("roofsun-region-entry", JSON.stringify(roof));
+      setEntry("");
+      return;
+    }
+    setRegional(null);
+    sessionStorage.removeItem("roofsun-region-entry");
     setEntry(mode);
     sessionStorage.setItem("roofsun-entry", mode);
     if (mode === "demo") {
@@ -255,7 +273,12 @@ function App() {
         price_per_kw: +roof.price,
         commissioning: roof.date,
         exclusions: [],
-        quote_source: "User-entered initial quote",
+        quote_source: roof.example_quote
+          ? "Illustrative assumption; user selected example"
+          : "User-entered initial quote",
+        budget: Number(roof.budget || 0),
+        monthly_demand_kwh: Number(roof.monthly_demand_kwh || 0),
+        max_payback_years: Number(roof.max_payback_years ?? 7),
       };
       setInputs(next);
       setConfig(defaultConfig);
@@ -268,26 +291,35 @@ function App() {
       `/api/simulate?retry=${retry}`,
       activeInputs,
       550,
-      !!entry,
+      !!entry && !regional,
     ),
     sun = useApi(
       `/api/sun?retry=${retry}`,
       { ...body, day: confirmed.day, hour: confirmed.hour },
       90,
-      !!entry,
+      !!entry && !regional,
     );
   const result = evaluation.data,
     ready = result && !evaluation.loading && !evaluation.error;
   const [sceneSnapshot, setSceneSnapshot] = useState(null);
+  const preview = useApi(
+    "/api/evaluate?preview=1",
+    { inputs, config },
+    250,
+    !!entry && !regional && !invalidArea,
+  );
   useEffect(() => {
-    if (ready && !sun.loading && !sun.error && sun.data)
-      setSceneSnapshot({
-        inputs: activeInputs,
-        config: activeConfig,
-        result,
-        sun: sun.data,
-      });
-  }, [ready, result, sun.loading, sun.error, sun.data, confirmed]);
+    if (!preview.loading && !preview.error && preview.data && !invalidArea)
+      setSceneSnapshot({ inputs, config, result: preview.data, sun: sun.data });
+  }, [
+    preview.loading,
+    preview.error,
+    preview.data,
+    inputs,
+    config,
+    invalidArea,
+    sun.data,
+  ]);
   const [previewHour, setPreviewHour] = useState(12),
     [playing, setPlaying] = useState(false),
     [playSpeed, setPlaySpeed] = useState(1);
@@ -296,10 +328,10 @@ function App() {
     {
       inputs: sceneSnapshot?.inputs || activeInputs,
       config: sceneSnapshot?.config || activeConfig,
-      day: confirmed.day,
+      day,
     },
     100,
-    !!entry,
+    !!entry && !regional,
   );
   useEffect(() => {
     if (!playing) return;
@@ -362,6 +394,24 @@ function App() {
         ][i],
     kwh,
   }));
+  function moveOnePanel(index, dx, dy) {
+    const panels = sceneSnapshot?.result?.panels;
+    if (!panels?.length) return;
+    const positions = panels.map((p) => ({
+      x: p.corners.reduce((sum, c) => sum + c[0], 0) / 4,
+      y: p.corners.reduce((sum, c) => sum + c[1], 0) / 4,
+    }));
+    positions[index] = {
+      x: +(positions[index].x + dx).toFixed(3),
+      y: +(positions[index].y + dy).toFixed(3),
+    };
+    setConfig((c) => ({
+      ...sceneSnapshot.config,
+      manual_panels: positions,
+      offset_x: 0,
+      offset_y: 0,
+    }));
+  }
   const change = (key, value) => {
     setPreset("custom");
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -518,43 +568,52 @@ function App() {
         >
           <Validation t={t} />
         </Suspense>
+      ) : regional ? (
+        <RegionalLab
+          region={regional.region}
+          initial={regional}
+          t={t}
+          onBack={() => {
+            setRegional(null);
+            sessionStorage.removeItem("roofsun-region-entry");
+          }}
+        />
       ) : !entry ? (
         <Welcome t={t} onStart={start} />
       ) : (
         <main className="workbench">
-          <div className="confirmation-bar" role="status">
-            <div>
-              <strong>
-                {pending
-                  ? t("Changes not applied", "有修改尚未套用")
-                  : t("Confirmed settings", "目前已確認的設定")}
-              </strong>
-              <small>
-                {entry === "demo"
-                  ? t(
-                      "Example inputs · these are not your roof’s results",
-                      "示例輸入 · 不代表你家的結果",
-                    )
-                  : t(
-                      "Your inputs + assumptions below; check shading and remaining costs.",
-                      "你的輸入＋下方假設；請繼續核對遮擋和其他費用。",
-                    )}
-                {pending
-                  ? " · " +
-                    t(
-                      "Results still use the last confirmed settings.",
-                      "結果仍使用上一次確認的設定。",
-                    )
-                  : ""}
-              </small>
+          {pending && (
+            <div
+              className="confirmation-actions"
+              role="group"
+              aria-label={t("Unsaved changes", "尚未確認的修改")}
+            >
+              <button onClick={cancelChanges}>
+                {t("Cancel changes", "取消修改")}
+              </button>
+              <button
+                className="confirm-primary"
+                onClick={confirmChanges}
+                disabled={invalidArea}
+              >
+                {t("Confirm and keep", "確認並保留")}
+              </button>
             </div>
-            <button onClick={confirmChanges} disabled={!pending || invalidArea}>
-              {t("Confirm and keep", "確認並保留")}
-            </button>
-            <button disabled={!pending} onClick={cancelChanges}>
-              {t("Cancel changes", "取消修改")}
-            </button>
+          )}
+          <div className="workspace-context">
+            <span>
+              {entry === "demo"
+                ? t(
+                    "Example inputs · not your rooftop result",
+                    "示例輸入 · 不代表你家的結果",
+                  )
+                : t(
+                    "Your confirmed inputs and stated assumptions",
+                    "你的確認資料與已列明假設",
+                  )}
+            </span>
             <button
+              className="text-button"
               onClick={() => {
                 setEntry("");
                 sessionStorage.removeItem("roofsun-entry");
@@ -611,26 +670,6 @@ function App() {
                 )}
               </small>
             </div>
-          </div>
-          <div className="mode-toggle view-toggle">
-            <button
-              className={!advanced ? "active" : ""}
-              onClick={() => setAdvanced(false)}
-            >
-              {t("Simple mode", "簡單模式")}
-            </button>
-            <button
-              className={advanced ? "active" : ""}
-              onClick={() => setAdvanced(true)}
-            >
-              {t("Advanced mode", "進階模式")}
-            </button>
-            <span className="microcopy">
-              {t(
-                "Roof → shading → quote → decision",
-                "天台 → 遮擋 → 報價 → 決策",
-              )}
-            </span>
           </div>
           <details className="region-guide card">
             <summary>
@@ -698,12 +737,148 @@ function App() {
               </summary>
               <p>
                 {t(
-                  "The panel specification, roof orientation, neighbour shading, mounting load and maintenance cost need checking. Hidden detailed fields still affect the calculation; open their sections or Advanced mode to review them.",
-                  "面板規格、天台方向、鄰屋遮擋、支架重量和維護費仍需核對。收起的詳細欄位仍參與計算，可展開對應設定或進階模式查看。",
+                  "The panel specification, roof orientation, neighbour shading, mounting load and maintenance cost need checking. Hidden detailed fields still affect the calculation; open their sections or detailed analysis to review them.",
+                  "面板規格、天台方向、鄰屋遮擋、支架重量和維護費仍需核對。收起的詳細欄位仍參與計算，可展開對應設定或詳細分析查看。",
                 )}
               </p>
             </details>
           </section>
+          <details
+            className="professional-parameters card"
+            onToggle={(e) => {
+              if (e.target === e.currentTarget)
+                setAdvanced(e.currentTarget.open);
+            }}
+          >
+            <summary>
+              {t("More professional parameter adjustments", "更專業的參數調整")}
+            </summary>
+            <p>
+              {t(
+                "These inputs need measurements or installer knowledge. Defaults still affect results; they are assumptions, not verified conditions.",
+                "這些資料通常需要測量或安裝人員協助。預設值仍參與計算，只是假設，不代表已核實。",
+              )}
+            </p>
+            <details className="technical-details" open={advanced}>
+              <summary>
+                {t(
+                  "Roof orientation and building details",
+                  "天台方向與屋宇細節",
+                )}
+              </summary>
+              <div className="field-pair small-fields">
+                <NumberField
+                  label={t("Roof rotation", "天台旋轉")}
+                  value={inputs.roof_rotation}
+                  max={359}
+                  unit="°"
+                  onChange={(v) => change("roof_rotation", v)}
+                />
+                <NumberField
+                  label={t("House covered area", "屋宇有蓋面積")}
+                  value={inputs.house_area}
+                  min={1}
+                  max={1500}
+                  unit="m²"
+                  onChange={(v) => change("house_area", v)}
+                />
+              </div>
+              <p className="microcopy">
+                {t(
+                  "Rotation turns the roof’s north axis clockwise. House area includes the whole building, not only the usable roof.",
+                  "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
+                )}
+              </p>
+              <label className="goal-checkbox">
+                <input
+                  type="checkbox"
+                  checked={inputs.village_house_mode}
+                  onChange={(e) =>
+                    change("village_house_mode", e.target.checked)
+                  }
+                />
+                {t("Village-house screening mode", "村屋初步篩選模式")}
+              </label>
+            </details>
+            <details className="technical-details" open={advanced}>
+              <summary>
+                {t(
+                  "Mounting details — ask your installer",
+                  "支架細節 · 可請安裝師傅協助",
+                )}
+              </summary>
+              <MountingInput inputs={inputs} change={change} t={t} />
+            </details>
+            {advanced && (
+              <EngineeringControls inputs={inputs} change={change} t={t} />
+            )}
+            <details className="goals-details" open={advanced}>
+              <summary>
+                {t("Budget and screening goals", "預算及篩選目標")}
+              </summary>
+              <DecisionControls inputs={inputs} change={change} t={t} />
+              <NumberField
+                label={t(
+                  "How many years should we compare?",
+                  "想看未來多少年的收支？",
+                )}
+                value={inputs.analysis_years || 25}
+                min={1}
+                max={25}
+                unit={t("years", "年")}
+                onChange={(v) => change("analysis_years", v)}
+              />
+              <p className="microcopy">
+                {t(
+                  "Like setting the end of a household account book. If costs are not recovered by then, we say so. Future weather repeats the selected historical year; this is a scenario, not a weather forecast.",
+                  "就像決定家庭帳簿記到哪一年：到時還沒收回成本，就顯示未回本。未來天氣重複所選歷史年的模式，是情景推算，不是天氣預報。",
+                )}
+              </p>
+            </details>
+            <NeighbourInput
+              presetGeometry={
+                presets.find((p) => p.id === preset)?.neighbour_geometry
+              }
+              key={resetCount}
+              horizon={inputs.horizon}
+              onChange={(v) => change("horizon", v)}
+              t={t}
+            />
+            {advanced && (
+              <Horizon
+                values={inputs.horizon}
+                onChange={(v) => change("horizon", v)}
+                t={t}
+              />
+            )}
+            <details className="advanced-finance">
+              <summary>
+                {t("Maintenance & other costs", "維護及其他費用")}
+                <ChevronDown size={13} />
+              </summary>
+              <div className="field-pair">
+                <NumberField
+                  label={t("Fixed costs", "固定費用")}
+                  value={inputs.fixed_cost}
+                  max={1000000}
+                  onChange={(v) => change("fixed_cost", v)}
+                />
+                <NumberField
+                  label={t("Annual maintenance", "每年維護")}
+                  value={inputs.annual_om}
+                  max={100000}
+                  onChange={(v) => change("annual_om", v)}
+                />
+              </div>
+              <NumberField
+                label={t("Inverter replacement", "逆變器更換費")}
+                value={inputs.inverter_cost}
+                max={100000}
+                onChange={(v) => change("inverter_cost", v)}
+              />
+            </details>
+            <NeighbourBuildings inputs={inputs} change={change} t={t} />
+          </details>
           <PlanBrief
             inputs={activeInputs}
             search={simulation.error ? null : simulation.data}
@@ -740,29 +915,6 @@ function App() {
                 ?.scrollIntoView({ behavior: "smooth" })
             }
           />
-          <details className="goals-details" open={advanced}>
-            <summary>
-              {t("Budget and screening goals", "預算及篩選目標")}
-            </summary>
-            <DecisionControls inputs={inputs} change={change} t={t} />
-            <NumberField
-              label={t(
-                "How many years should we compare?",
-                "想看未來多少年的收支？",
-              )}
-              value={inputs.analysis_years || 25}
-              min={1}
-              max={25}
-              unit={t("years", "年")}
-              onChange={(v) => change("analysis_years", v)}
-            />
-            <p className="microcopy">
-              {t(
-                "Like setting the end of a household account book. If costs are not recovered by then, we say so. Future weather repeats the selected historical year; this is a scenario, not a weather forecast.",
-                "就像決定家庭帳簿記到哪一年：到時還沒收回成本，就顯示未回本。未來天氣重複所選歷史年的模式，是情景推算，不是天氣預報。",
-              )}
-            </p>
-          </details>
           {ready && result.warnings?.includes("village_house_area") && (
             <p role="alert" className="error-banner">
               {t(
@@ -845,63 +997,6 @@ function App() {
                   )}
                 </span>
               </div>
-              <details className="technical-details" open={advanced}>
-                <summary>
-                  {t(
-                    "Roof orientation and building details",
-                    "天台方向與屋宇細節",
-                  )}
-                </summary>
-                <div className="field-pair small-fields">
-                  <NumberField
-                    label={t("Roof rotation", "天台旋轉")}
-                    value={inputs.roof_rotation}
-                    max={359}
-                    unit="°"
-                    onChange={(v) => change("roof_rotation", v)}
-                  />
-                  <NumberField
-                    label={t("House covered area", "屋宇有蓋面積")}
-                    value={inputs.house_area}
-                    min={1}
-                    max={1500}
-                    unit="m²"
-                    onChange={(v) => change("house_area", v)}
-                  />
-                </div>
-                <p className="microcopy">
-                  {t(
-                    "Rotation turns the roof’s north axis clockwise. House area includes the whole building, not only the usable roof.",
-                    "旋轉角以天台北軸順時針計算。有蓋面積指整幢屋宇，並非只計可放板區域。",
-                  )}
-                </p>
-                <label className="goal-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={inputs.village_house_mode}
-                    onChange={(e) =>
-                      change("village_house_mode", e.target.checked)
-                    }
-                  />
-                  {t("Village-house screening mode", "村屋初步篩選模式")}
-                </label>
-              </details>
-              <NeighbourInput
-                presetGeometry={
-                  presets.find((p) => p.id === preset)?.neighbour_geometry
-                }
-                key={resetCount}
-                horizon={inputs.horizon}
-                onChange={(v) => change("horizon", v)}
-                t={t}
-              />
-              {advanced && (
-                <Horizon
-                  values={inputs.horizon}
-                  onChange={(v) => change("horizon", v)}
-                  t={t}
-                />
-              )}
               <div className="input-divider" />
               <div className="section-label">
                 {t("SYSTEM QUOTE", "系統報價")}
@@ -929,44 +1024,6 @@ function App() {
                   }}
                 />
               </label>
-              <details className="advanced-finance">
-                <summary>
-                  {t("Maintenance & other costs", "維護及其他費用")}
-                  <ChevronDown size={13} />
-                </summary>
-                <div className="field-pair">
-                  <NumberField
-                    label={t("Fixed costs", "固定費用")}
-                    value={inputs.fixed_cost}
-                    max={1000000}
-                    onChange={(v) => change("fixed_cost", v)}
-                  />
-                  <NumberField
-                    label={t("Annual maintenance", "每年維護")}
-                    value={inputs.annual_om}
-                    max={100000}
-                    onChange={(v) => change("annual_om", v)}
-                  />
-                </div>
-                <NumberField
-                  label={t("Inverter replacement", "逆變器更換費")}
-                  value={inputs.inverter_cost}
-                  max={100000}
-                  onChange={(v) => change("inverter_cost", v)}
-                />
-              </details>
-              <details className="technical-details" open={advanced}>
-                <summary>
-                  {t(
-                    "Mounting details — ask your installer",
-                    "支架細節 · 可請安裝師傅協助",
-                  )}
-                </summary>
-                <MountingInput inputs={inputs} change={change} t={t} />
-              </details>
-              {advanced && (
-                <EngineeringControls inputs={inputs} change={change} t={t} />
-              )}
               <div className="reference-module">
                 <Layers size={17} />
                 <div>
@@ -1018,22 +1075,40 @@ function App() {
                   </span>
                 </div>
                 <RoofScene
+                  onMovePanel={moveOnePanel}
+                  onRotate={(angle) =>
+                    setConfig((c) => ({ ...c, azimuth: angle }))
+                  }
                   inputs={sceneSnapshot?.inputs || activeInputs}
                   config={sceneSnapshot?.config || activeConfig}
                   onPlace={(x, y) =>
                     setConfig((c) => ({ ...c, offset_x: x, offset_y: y }))
                   }
                   result={sceneSnapshot?.result || null}
-                  sun={sceneSnapshot?.sun || null}
+                  sun={displaySun || sceneSnapshot?.sun || null}
                   t={t}
                   topView={topView}
                 />
-                {(evaluation.loading || sun.loading) && (
+                {!preview.loading &&
+                  (preview.error || preview.data?.violations?.length > 0) && (
+                    <p className="error-banner" role="alert">
+                      {preview.error ||
+                        preview.data.violations
+                          .map((v) => (errorNames[v] ? t(...errorNames[v]) : v))
+                          .join(" · ")}{" "}
+                      ·{" "}
+                      {t(
+                        "Draft preview only. Reset placement or cancel to recover the previous layout.",
+                        "這是草稿預覽。可還原位置或取消修改，恢復原排布。",
+                      )}
+                    </p>
+                  )}
+                {(preview.loading || track.loading) && (
                   <div className="scene-update-note" role="status">
                     <LoaderCircle size={20} className="spin" />
                     {t(
-                      "Updating in background · previous confirmed scene remains visible",
-                      "背景更新中 · 仍顯示上次確認的畫面",
+                      "Updating preview · previous scene remains visible",
+                      "正在更新預覽 · 暫時保留上一個畫面",
                     )}
                   </div>
                 )}
@@ -1059,7 +1134,12 @@ function App() {
                 />
                 <button
                   onClick={() =>
-                    setConfig((c) => ({ ...c, offset_x: 0, offset_y: 0 }))
+                    setConfig((c) => ({
+                      ...c,
+                      offset_x: 0,
+                      offset_y: 0,
+                      manual_panels: null,
+                    }))
                   }
                 >
                   {t("Reset placement", "還原位置")}
@@ -1188,8 +1268,8 @@ function App() {
                   id="azimuth"
                   label={t("Panel direction", "面板朝向")}
                   value={config.azimuth}
-                  min={90}
-                  max={270}
+                  min={0}
+                  max={359}
                   step={15}
                   unit="°"
                   onChange={(v) => setConfig((c) => ({ ...c, azimuth: v }))}
@@ -1386,7 +1466,10 @@ function App() {
                 )}
                 <div className="finance-line">
                   <span>
-                    {t("Balance by scheme end or selected end date", "計劃結束或所選年限前的結餘")}
+                    {t(
+                      "Balance by scheme end or selected end date",
+                      "計劃結束或所選年限前的結餘",
+                    )}
                   </span>
                   <strong>{ready ? money(result.net_to_fit_end) : "—"}</strong>
                 </div>
@@ -1558,7 +1641,7 @@ function App() {
               onChoose={(c) => {
                 setConfig(c);
                 document
-                  .querySelector(".confirmation-bar")
+                  .querySelector(".confirmation-actions")
                   ?.scrollIntoView({ behavior: "smooth" });
               }}
             />
@@ -1836,51 +1919,54 @@ function App() {
             </Suspense>
           </div>
           <section className="card saved-card" id="saved-plans">
-            <div className="card-title">
-              <h2>{t("Your side-by-side comparison", "並排比較你的方案")}</h2>
-              <button
-                className="text-button"
-                onClick={exportSaved}
-                disabled={
-                  (!ready && !saved.length) ||
-                  !metadata.data ||
-                  metadata.loading ||
-                  !!metadata.error
-                }
-              >
-                <Download size={14} />
-                {t("Export JSON", "匯出 JSON")}
-              </button>
-              <button
-                className="text-button"
-                disabled={
-                  !ready ||
-                  !metadata.data ||
-                  metadata.loading ||
-                  !!metadata.error
-                }
-                onClick={() => downloadReport(archive(), lang === "zh")}
-              >
-                {t("Download report", "下載報告")}
-              </button>
-              <button
-                className="text-button"
-                onClick={() => importRef.current?.click()}
-                disabled={importing}
-              >
-                {importing
-                  ? t("Recalculating…", "正在重新計算…")
-                  : t("Import JSON", "載入 JSON")}
-              </button>
-              <input
-                ref={importRef}
-                type="file"
-                accept=".json,application/json"
-                aria-label={t("Import design file", "載入設計檔案")}
-                hidden
-                onChange={importPlans}
-              />
-            </div>
+            <details className="plan-management">
+              <summary>{t("Plan management", "方案管理")}</summary>
+              <div className="card-title">
+                <h2>{t("Your side-by-side comparison", "並排比較你的方案")}</h2>
+                <button
+                  className="text-button"
+                  onClick={exportSaved}
+                  disabled={
+                    (!ready && !saved.length) ||
+                    !metadata.data ||
+                    metadata.loading ||
+                    !!metadata.error
+                  }
+                >
+                  <Download size={14} />
+                  {t("Download plan backup", "下載方案備份")}
+                </button>
+                <button
+                  className="text-button"
+                  disabled={
+                    !ready ||
+                    !metadata.data ||
+                    metadata.loading ||
+                    !!metadata.error
+                  }
+                  onClick={() => downloadReport(archive(), lang === "zh")}
+                >
+                  {t("Download report", "下載報告")}
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() => importRef.current?.click()}
+                  disabled={importing}
+                >
+                  {importing
+                    ? t("Recalculating…", "正在重新計算…")
+                    : t("Open saved plan", "打開已儲存方案")}
+                </button>
+                <input
+                  ref={importRef}
+                  type="file"
+                  accept=".json,application/json"
+                  aria-label={t("Import design file", "載入設計檔案")}
+                  hidden
+                  onChange={importPlans}
+                />
+              </div>
+            </details>
             <p className="microcopy">
               {t(
                 "Design inputs and saved A/B plans persist on this browser. Imports are recalculated with the current model; exported results are never trusted as new calculations.",

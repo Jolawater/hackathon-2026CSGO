@@ -27,6 +27,7 @@ def schedule(commissioning, life_years, fit_end):
 
 def cashflows(inputs, capacity, monthly, settings):
     panel,policy=settings['panel'],settings['policy']
+    local=inputs.region!='hong_kong'
     fit=policy['fit_small'] if capacity<=10 else policy['fit_medium'] if capacity<=200 else policy['fit_large']
     cost=inputs.price_per_kw*capacity+inputs.fixed_cost if capacity else 0
     periods=schedule(inputs.commissioning.isoformat(),inputs.analysis_years,policy['fit_end'])
@@ -35,6 +36,13 @@ def cashflows(inputs, capacity, monthly, settings):
            inputs.inverter_cost*(1+inputs.cost_inflation)**10*periods['replace']) if capacity else np.zeros_like(energy)
     income=energy*fit*periods['fit_fraction']
     after=energy*(1-periods['fit_fraction'])*inputs.self_use_rate*inputs.self_use_share
+    if local:
+        # Self-used electricity and exported electricity are disjoint quantities.
+        self_energy=energy*inputs.local_self_use_share
+        if inputs.monthly_demand_kwh>0:self_energy=np.minimum(self_energy,inputs.monthly_demand_kwh*periods['fractions'])
+        income=self_energy*inputs.import_rate+(energy-self_energy)*inputs.export_rate
+        after=np.zeros_like(income)
+        fit=inputs.export_rate
     increments=[income-spend,income+after-spend]
     curves=[np.concatenate(([-cost],-cost+np.cumsum(flow))) for flow in increments]
     rounded=[np.round(c,2) for c in curves]

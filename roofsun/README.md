@@ -2,6 +2,8 @@
 
 ## JESON-ROOFTOPJIM · final-direction additions
 
+Version 2.4 adds guided setup, live draft previews, direct panel rotation/placement, a camera-following compass, hover dimensions, and Shenzhen/London reference scenarios. See [2.4 changes and scope](docs/OWNER_EXPERIENCE_2_4.md).
+
 This branch incorporates Jim's 2.2.0 updates through cadf2e2. Version 2.3 adds explicit example/personal entry, draft-confirm-cancel inputs, annual electricity targets, plain-language plan advice, deduplicated recommendations, a movable Three.js rooftop, daily sun playback, and selectable financial periods. [Changes, scope and test commands](docs/OWNER_EXPERIENCE_2_3.md). No completed interviews, actual installer quotations or measured rooftop output are claimed.
 
 - [比赛定位、criteria 对照、三分钟脚本和提交自查](docs/COMPETITION.md)
@@ -11,7 +13,7 @@ This branch incorporates Jim's 2.2.0 updates through cadf2e2. Version 2.3 adds e
 After the standard checks below, run `node scripts/owner-browser-test.mjs` against the running server. Both browser scripts support `ROOFSUN_BROWSER_CHANNEL=msedge` for an installed Microsoft Edge. `GET /api/validation` compares saved report fingerprints with current model/input files. Re-run `python scripts/validate.py` after changing those files; a stale report is not evidence that the current implementation passed.
 
 
-A bilingual preliminary screening tool before contacting an installer for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.3.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
+A bilingual preliminary screening tool before contacting an installer for Hong Kong village-house solar rooftops. Built for HacKU 2026 Deep Technology Problem 3: **Test the Change Before You Make It**. Product/model version **2.4.0**. Code lives in `roofsun/` on **`Jim's-RoofSun-HK`**; this work does not merge or deploy the repository's other projects.
 
 聯絡安裝商之前的雙語初步篩選工具，供香港村屋太陽能安裝前使用。可調整排布、比較物理取捨，並按預算、持續回本及收益目標選擇方案或暫緩安裝。**結果為模擬，並非工程設計或財務建議；未聲稱實測準確率，也不能判定結構安全。**
 

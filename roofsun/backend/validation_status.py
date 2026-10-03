@@ -5,7 +5,7 @@ from pathlib import Path
 
 def fingerprints(root: Path):
     paths = list((root / 'backend').glob('*.py'))
-    paths += [root / 'scripts/validate.py', root / 'data/settings.json', root / 'data/hko_reference.json', root / 'data/roof_presets.json']
+    paths += [root / 'scripts/validate.py', root / 'data/settings.json', root / 'data/regions.json', root / 'data/hko_reference.json', root / 'data/roof_presets.json']
     paths += list((root / 'data').glob('weather*'))
     return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted(paths) if p.is_file()}

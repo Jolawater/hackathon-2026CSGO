@@ -1,0 +1,5 @@
+{
+  "hong_kong": {"en":"Hong Kong","zh":"香港","lat":22.45,"lon":114.16,"timezone":"Asia/Hong_Kong","currency":"HKD"},
+  "shenzhen": {"en":"Shenzhen","zh":"深圳","lat":22.5431,"lon":114.0579,"timezone":"Asia/Shanghai","currency":"CNY"},
+  "london": {"en":"London","zh":"倫敦","lat":51.5074,"lon":-0.1278,"timezone":"Europe/London","currency":"GBP"}
+}

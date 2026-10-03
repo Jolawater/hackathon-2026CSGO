@@ -13,7 +13,8 @@ from shapely.geometry import Polygon, LineString, box
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTINGS = json.loads((ROOT/'data/settings.json').read_text())
-MODEL_VERSION = "2.3.0"
+MODEL_VERSION = "2.4.0"
+REGIONS=json.loads((ROOT/'data/regions.json').read_text(encoding='utf-8'))
 PANEL, POLICY = SETTINGS['panel'], SETTINGS['policy']
 
 
@@ -25,7 +26,25 @@ class Exclusion(BaseModel):
     height: float = Field(default=1, ge=0, le=6)
 
 
+class Neighbour(BaseModel):
+    x: float = Field(ge=-200,le=200,allow_inf_nan=False)
+    y: float = Field(ge=-200,le=200,allow_inf_nan=False)
+    width: float = Field(gt=0,le=100,allow_inf_nan=False)
+    depth: float = Field(gt=0,le=100,allow_inf_nan=False)
+    height: float = Field(gt=0,le=100,allow_inf_nan=False)
+
+class PanelPosition(BaseModel):
+    x: float = Field(ge=-30,le=60,allow_inf_nan=False)
+    y: float = Field(ge=-30,le=60,allow_inf_nan=False)
+
 class Inputs(BaseModel):
+    region: str = Field(default='hong_kong',pattern='^(hong_kong|shenzhen|london)$')
+    neighbours: list[Neighbour] = Field(default_factory=list,max_length=6)
+    import_rate: float = Field(default=0,ge=0,le=10,allow_inf_nan=False)
+    export_rate: float = Field(default=0,ge=0,le=10,allow_inf_nan=False)
+    local_self_use_share: float = Field(default=0.5,ge=0,le=1,allow_inf_nan=False)
+    usable_coverage_ratio: float = Field(default=.5,gt=0,le=1,allow_inf_nan=False)
+
     monthly_demand_kwh: float = Field(default=0, ge=0, le=100000, allow_inf_nan=False)
     demand_coverage: float = Field(default=1, ge=0, le=1, allow_inf_nan=False)
     analysis_years: int = Field(default=25, ge=1, le=25)
@@ -77,6 +96,8 @@ class Inputs(BaseModel):
             raise ValueError('Commissioning date must be between 2026 and 2033')
         if self.quote_date:
             date.fromisoformat(self.quote_date)
+        for n in self.neighbours:
+            if box(n.x,n.y,n.x+n.width,n.y+n.depth).intersection(box(0,0,self.width,self.depth)).area>1e-8:raise ValueError('Neighbour buildings must be outside the rooftop; use rooftop objects for structures on the roof')
         for rect in self.exclusions:
             if not all(math.isfinite(v) for v in [rect.x, rect.y, rect.width, rect.depth, rect.height]):
                 raise ValueError('Obstacle dimensions must be finite')
@@ -86,10 +107,11 @@ class Inputs(BaseModel):
 
 
 class Configuration(BaseModel):
+    manual_panels: list[PanelPosition] | None = Field(default=None,max_length=200)
     offset_x: float = Field(default=0, ge=-30, le=30, allow_inf_nan=False)
     offset_y: float = Field(default=0, ge=-30, le=30, allow_inf_nan=False)
     tilt: float = Field(default=40, ge=0, le=40)
-    azimuth: float = Field(default=180, ge=90, le=270)
+    azimuth: float = Field(default=180, ge=0, le=359)
     rows: int = Field(default=3, ge=1, le=24)
     layout_mode: str = Field(default='compact', pattern='^(spread|compact)$')
     panel_limit: int = Field(default=0, ge=0, le=2000)
@@ -100,12 +122,13 @@ class Evaluation(BaseModel):
     config: Configuration = Field(default_factory=Configuration)
 
 
-@lru_cache(maxsize=3)
-def weather(year=2025):
-    df = pd.read_csv(ROOT/f'data/weather_{year}.csv')
+@lru_cache(maxsize=9)
+def weather(year=2025,region='hong_kong'):
+    loc=REGIONS[region]
+    df = pd.read_csv(ROOT/(f'data/weather_{year}.csv' if region=='hong_kong' else f'data/weather_{region}_{year}.csv'))
     t = pd.DatetimeIndex(pd.to_datetime(df.timestamp, utc=True)) + pd.Timedelta(minutes=30)
-    t = t.tz_convert('Asia/Hong_Kong')
-    pos = pvlib.solarposition.get_solarposition(t, SETTINGS['location']['lat'], SETTINGS['location']['lon'])
+    t = t.tz_convert(loc['timezone'])
+    pos = pvlib.solarposition.get_solarposition(t, loc['lat'], loc['lon'])
     ghi = df.ghi_wm2.to_numpy(float)
     dni_dhi = pvlib.irradiance.erbs(ghi,pos.zenith.to_numpy(), t.dayofyear)
     # Only daylight irradiance enters the physical model; hourly data is kept intact.
@@ -122,10 +145,13 @@ def rotate_points(points, degrees):
 
 
 def layout(inputs: Inputs, config: Configuration):
+    if config.manual_panels is not None:
+        from .manual_layout import manual_layout
+        return manual_layout(inputs,config,PANEL)
     # Layout caching depends only on geometry, never on irradiance or price.
     geometry={'width':inputs.width,'depth':inputs.depth,'roof_rotation':inputs.roof_rotation,
               'exclusions':[o.model_dump() for o in inputs.exclusions],
-              'house_area':inputs.house_area,'minimum_access_gap_m':inputs.minimum_access_gap_m}
+              'house_area':inputs.house_area if inputs.region=='hong_kong' else inputs.house_area*inputs.usable_coverage_ratio/.5,'minimum_access_gap_m':inputs.minimum_access_gap_m}
     panels, rows, area, error = _layout(json.dumps(geometry,sort_keys=True),config.model_copy(update={'offset_x':0,'offset_y':0}).model_dump_json())
     if error or not panels or (config.offset_x == 0 and config.offset_y == 0):
         return panels, rows, area, error
@@ -321,7 +347,7 @@ def obstacle_clearance(inputs, config, panels, w):
 
     This is a centre-point approximation, not a partial-module shading solution.
     """
-    if not inputs.exclusions:
+    if not inputs.exclusions and not inputs.neighbours:
         return None
     alpha=np.radians(w['altitude']); angle=np.radians(w['azimuth']-inputs.roof_rotation)
     vectors=[np.cos(alpha)*np.sin(angle),np.cos(alpha)*np.cos(angle),np.sin(alpha)]
@@ -330,7 +356,7 @@ def obstacle_clearance(inputs, config, panels, w):
     for panel in panels:
         origin=[sum(p[0] for p in panel['corners'])/4,sum(p[1] for p in panel['corners'])/4,z]
         blocked=np.zeros(len(alpha),bool)
-        for o in inputs.exclusions:
+        for o in [*inputs.exclusions,*inputs.neighbours]:
             lower=[o.x,o.y,0];upper=[o.x+o.width,o.y+o.depth,o.height]
             entry=np.full(len(alpha),-np.inf);leave=np.full(len(alpha),np.inf)
             for a in range(3):
@@ -346,14 +372,14 @@ def obstacle_clearance(inputs, config, panels, w):
 
 
 @lru_cache(maxsize=512)
-def plane_irradiance(tilt, azimuth, year, scale):
-    w=weather(year)
+def plane_irradiance(tilt, azimuth, year, scale, region='hong_kong'):
+    w=weather(year,region)
     return pvlib.irradiance.get_total_irradiance(tilt,azimuth,w['zenith'],w['azimuth'],w['dni']*scale,w['ghi']*scale,w['dhi']*scale,
               albedo=SETTINGS['model']['albedo'],model='isotropic')
 
 
 def scope_warnings(inputs):
-    return ['village_house_area'] if inputs.village_house_mode and inputs.house_area>POLICY['village_house_area_limit_m2'] else []
+    return ['village_house_area'] if inputs.region=='hong_kong' and inputs.village_house_mode and inputs.house_area>POLICY['village_house_area_limit_m2'] else []
 
 
 def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True):
@@ -362,20 +388,20 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
     violations=[]
     if error: violations.append(error)
     actual_rows=len(rows)
-    if actual_rows != config.rows: violations.append('rows_unbuildable')
+    if config.manual_panels is None and actual_rows != config.rows: violations.append('rows_unbuildable')
     # Assumed packing-quality threshold; not a physical/regulatory law.
     # Explicit partial-row caps opt out of this density check, not row-count checks.
-    if not config.panel_limit and config.azimuth != 180 and inputs.minimum_row_fill_ratio:
+    if config.manual_panels is None and not config.panel_limit and config.azimuth != 180 and inputs.minimum_row_fill_ratio:
         _, south_rows, _, _=layout(inputs,config.model_copy(update={'azimuth':180}))
         if len(south_rows)==config.rows and any(r['count'] < inputs.minimum_row_fill_ratio*south_rows[i]['count']-1e-8 for i,r in enumerate(rows)):
             if 'rows_unbuildable' not in violations: violations.append('rows_unbuildable')
-    if coverage>inputs.house_area*POLICY['coverage_limit']+1e-6: violations.append('coverage')
+    if coverage>inputs.house_area*(POLICY['coverage_limit'] if inputs.region=='hong_kong' else inputs.usable_coverage_ratio)+1e-6: violations.append('coverage')
     load=count*(PANEL['mass_kg']+PANEL['rack_mass_kg']+inputs.extra_mass_per_module)/coverage if coverage else 0
     if load>inputs.load_limit: violations.append('load')
-    w=weather(inputs.weather_year); horizon=np.interp(w['azimuth'],np.arange(13)*30,inputs.horizon+[inputs.horizon[0]])
+    w=weather(inputs.weather_year,inputs.region); horizon=np.interp(w['azimuth'],np.arange(13)*30,inputs.horizon+[inputs.horizon[0]])
     beam_clear=w['altitude']>horizon
     svf=float(np.mean(np.cos(np.radians(inputs.horizon))**2))
-    irrad=plane_irradiance(config.tilt,config.azimuth,inputs.weather_year,inputs.weather_scale)
+    irrad=plane_irradiance(config.tilt,config.azimuth,inputs.weather_year,inputs.weather_scale,inputs.region)
     direct=np.maximum(0,np.nan_to_num(irrad['poa_direct']))
     diffuse=np.maximum(0,np.nan_to_num(irrad['poa_sky_diffuse']))*svf+np.maximum(0,np.nan_to_num(irrad['poa_ground_diffuse']))
     shade=finite_shading(w['altitude'],w['azimuth'],config,rows) if inputs.finite_rows else shading_fractions(w['altitude'],w['azimuth'],config.tilt,config.azimuth,rows)
@@ -400,12 +426,12 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
     annual=float(power.sum()); base=float(baseline.sum())
     economy=finance(inputs,capacity,monthly) if economics else {}
     result={'config':config.model_dump(),'panels_count':count,'capacity_kw':round(capacity,3),
-            'actual_rows':actual_rows,'requested_rows':config.rows,
+            'actual_rows':actual_rows,'requested_rows':config.rows,'region':inputs.region,'currency':REGIONS[inputs.region]['currency'],
             'row_pitch_m':round(rows[0]['y']-rows[1]['y'],4) if len(rows)>1 else None,
             'minimum_clear_gap_m':round(min(rows[i]['y']-rows[i+1]['y'] for i in range(len(rows)-1))-PANEL['length_m']*math.cos(math.radians(config.tilt)),4) if len(rows)>1 else None,
             'annual_kwh':round(annual,1),'specific_yield':round(annual/capacity,1) if capacity else 0,
             'shading_loss_pct':round(100*(1-annual/base),1) if base else 0,
-            'coverage_m2':round(coverage,2),'coverage_limit_m2':round(inputs.house_area*POLICY['coverage_limit'],2),
+            'coverage_m2':round(coverage,2),'coverage_limit_m2':round(inputs.house_area*(POLICY['coverage_limit'] if inputs.region=='hong_kong' else inputs.usable_coverage_ratio),2),
             'load_kg_m2':round(load,2),'load_limit_kg_m2':inputs.load_limit,'weather_year':inputs.weather_year,'model_version':MODEL_VERSION,'compliant':not violations,'violations':violations,
             'warnings':scope_warnings(inputs),
             'monthly_kwh':monthly,**economy}
@@ -423,8 +449,9 @@ def search(inputs):
 
 
 def sun_preview(inputs,config,day,hour):
-    t=pd.DatetimeIndex([pd.Timestamp(f'{day} 00:00',tz='Asia/Hong_Kong')+pd.Timedelta(hours=hour)])
-    pos=pvlib.solarposition.get_solarposition(t,SETTINGS['location']['lat'],SETTINGS['location']['lon'])
+    loc=REGIONS[inputs.region]
+    t=pd.DatetimeIndex([pd.Timestamp(f'{day} 00:00',tz=loc['timezone'])+pd.Timedelta(hours=hour)])
+    pos=pvlib.solarposition.get_solarposition(t,loc['lat'],loc['lon'])
     alt=float(pos.apparent_elevation.iloc[0]);az=float(pos.azimuth.iloc[0])
     h=float(np.interp(az,np.arange(13)*30,inputs.horizon+[inputs.horizon[0]]))
     _,rows,_,_=layout(inputs,config)
