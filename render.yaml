@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: roofsun-jeson
+    runtime: docker
+    repo: https://github.com/Jolawater/hackathon-2026CSGO
+    branch: main
+    dockerfilePath: ./roofsun/Dockerfile
+    dockerContext: ./roofsun
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: PYTHONUTF8
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"

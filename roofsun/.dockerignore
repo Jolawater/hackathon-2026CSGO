@@ -1,0 +1,10 @@
+node_modules
+dist
+.venv
+.pytest_cache
+pytest-cache-files-*
+__pycache__
+**/__pycache__
+*.pyc
+artifacts
+.git
