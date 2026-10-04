@@ -12,9 +12,7 @@ Built for **HacKU 2026 · Deep Tech · Problem Statement 3, “Test the Change B
 
 | | |
 |---|---|
-| 🌐 Live demo | <!-- TODO: replace before submission; quick-tunnel URLs change on restart --> https://reports-sofa-directory-layer.trycloudflare.com |
-| 🎬 3-minute video | <!-- TODO --> _link to be added_ |
-| 📊 Pitch deck | <!-- TODO --> _link to be added_ |
+| 🌐 Live demo | https://reports-sofa-directory-layer.trycloudflare.com |
 | 📁 Source code | [`roofsun/`](roofsun/) (frontend, backend, data, tests) |
 
 ---
@@ -186,6 +184,7 @@ Every fixed value is listed, with its source, in the in-app **假設與來源 / 
 - future tariff changes;
 - tax and financing.
 
+**Simplifications:**
 - Neighbours are simplified as constant-height facades (at most 3). The sky-view factor treats diffuse-light blocking the same in every direction, so northern losses may be overstated.
 - Each roof side is limited to 10 m. Village houses are at most 65.03 m², and larger roofs make the layout search slow without changing the 9.9 kW recommendation.
 
@@ -231,14 +230,12 @@ Every fixed value is listed, with its source, in the in-app **假設與來源 / 
 
 All code was written during HacKU 2026 (2–4 October 2026). The commit history is kept unedited.
 
-- **Main history:** branch `Jim's-RoofSun-HK` (model, backend, frontend and tests).
-- **Neighbours in every direction, landing screen, performance and layout overhaul, Docker/Render deployment:** developed on branch [`JESON`](https://github.com/Jolawater/hackathon-2026CSGO/tree/JESON), then cherry-picked onto this history with original authors and dates kept.
-- **Final integration:** branch `Ricky` (roof-size cap and per-input calculation locks), merged into `main` for submission.
-- **3D rooftop scene:** prototyped on branch [`JESON-ROOFTOPJIM`](https://github.com/Jolawater/hackathon-2026CSGO/tree/JESON-ROOFTOPJIM) (up to `51854cf`), then ported into `roofsun/src/components/RoofScene3D.jsx` in commit `a05e5ad`.
+- **Model, backend, frontend and tests:** developed on the team's working branches, now all part of `main`.
+- **3D rooftop scene:** prototyped separately (commit `51854cf`, tag `archive/JESON-ROOFTOPJIM`), then ported into `roofsun/src/components/RoofScene3D.jsx` in commit `a05e5ad`.
+- **Neighbours in every direction, landing screen, performance and layout overhaul, Docker/Render files:** cherry-picked into `main` with original authors and dates kept.
+- **Earlier directions** (water heater, battery lab, NitroClock) were explored before the team settled on RoofSun HK. They are kept only as `archive/*` tags and are **not part of this submission**.
 
-**Other branches.** The team changed direction twice before settling on RoofSun HK. The other branches (`Andy`, `Jim's-codex/water-heater-model`, `JESON`, `nitroclock`, `Ricky`, `Jim`) are earlier explorations and are **not part of this submission**.
-
-**AI tools.** <!-- TODO: confirm wording with the team --> Parts of the code were written with AI coding assistants (e.g. OpenAI Codex), under the team's direction and review.
+**AI tools.** As the handbook permits, parts of the code were written with AI coding assistants (OpenAI Codex and Anthropic Claude), under the team's direction and review.
 
 ---
 

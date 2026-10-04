@@ -4,7 +4,7 @@
 
 香港村屋太陽能的雙語篩選網站，為 HacKU 2026 Deep Tech Problem 3「Test the Change Before You Make It」製作。只有一個介面、七組業主輸入，沒有專業模式。結果屬模擬，並非工程設計或財務建議；不代表已通過結構或法規審批。
 
-A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. This JESON edition starts from `Jim's-RoofSun-HK` commit `a05e5ad`; it is delivered on **JESON only**, preserving the other projects already on JESON. Jim's branch is not modified. The physical, packing and financial equations remain intact; the existing neighbour facade projection now accepts up to three compass directions. Conservative scenario A shuts down after FiT; self-use scenario B retains its previous cash-flow calculation.
+A single bilingual interface answers whether the selected quote could pay back, suggests a layout, and shows what changes when another row is added. The physical, packing and financial equations are unchanged from the v3 model; the neighbour facade projection accepts up to three compass directions. Conservative scenario A shuts down after FiT; self-use scenario B retains its previous cash-flow calculation.
 
 本版新增「裝板之前，先試一次」介紹首屏、三個可計算示例、四周鄰屋輸入，以及結果／排布／回本／證據的章節導航。3D 接近畫面才載入、離屏暫停；伺服器啟動時預熱示例。完整驗收、限制及回滾說明見 [JESON 改版紀錄](docs/JESON_NEIGHBOURS_INTRO_REVIEW.md)。
 
@@ -32,7 +32,7 @@ Windows PowerShell 請先設 `$env:PYTHONUTF8='1'`，再執行 Python 指令，�
 
 | # | 問題 / Question | 換算 / Mapping |
 |---|---|---|
-| 1 | 可放板長方形的長、闊 / Clear rectangle length and width | `roof` → `depth`, `width`; `house_area = width × depth`; `exclusions = []` |
+| 1 | 可放板長方形的長、闊 / Clear rectangle length and width | `roof` → `depth`, `width` (1–10 m each); `house_area = width × depth`; `exclusions = []` |
 | 2 | 正門朝向 / Front-door direction | Eight compass buttons → `roof_rotation` = 0, 45, …, 315° |
 | 3 | 四周鄰屋方向、高出幾層、相距幾米 / Surrounding neighbours: direction, floors and distance | `neighbours` (1–3) → maximum of 12-sector horizons; assumed 3 m/floor and ±60° around each chosen direction; 0 floors means no obstruction |
 | 4 | 每千瓦安裝報價 / Installation quote per kW | `price_per_kw`; HK$20k/25k/30k buttons are **assumed reference prices**, not market quotations |
@@ -90,7 +90,7 @@ The physical equations remain unchanged: pvlib NREL SPA; Erbs decomposition; iso
 
 FiT source: [EMSD introduction](https://re.emsd.gov.hk/tc_chi/fit/int/fit_int.html) and [EMSD FAQ](https://re.emsd.gov.hk/tc_chi/fit/faq/files/260710_FAQ_FIT%20%28TC%29.pdf). Existing whole-system tiers are ≤10 kW HK$4/kWh; >10–200 kW HK$3; >200 kW HK$2.5, through 2033-12-31. Coverage includes gaps under the existing conservative interpretation. The 65.03 m² village-house scope warning uses [Lands Department guide, Part A printed page 3](https://www.landsd.gov.hk/tc/images/doc/Building%20NT%20Exempted%20Houses_c.pdf); it is a warning, not a legal or structural approval.
 
-未考慮：颱風風荷載、壓重／錨固工程、一般灰塵假設以外的污染、東西北鄰屋、非長方形天台、群組式或樓梯屋頂安裝、完整串聯／MPPT、逆變器削峰、電價調整、稅項及融資。No prediction of structural safety, field accuracy, future tariffs or guaranteed payback is made.
+未考慮：颱風風荷載、壓重／錨固工程、一般灰塵假設以外的污染、鄰屋實際形狀（按等高立面近似）、非長方形天台、群組式或樓梯屋頂安裝、完整串聯／MPPT、逆變器削峰、電價調整、稅項及融資。No prediction of structural safety, field accuracy, future tariffs or guaranteed payback is made.
 
 Search remains coarse plus local refinement, over both spread/compact layouts; it includes the existing 22-module/9.9 kW cap candidates but does not exhaust every possible arrangement. Actual row counts, boundary tolerance, coverage and assumed access/fill limits retain their existing checks.
 
@@ -129,7 +129,7 @@ The cumulative cash-flow chart requests the selected configuration from `/api/ev
 
 ### 3D winter-solstice preview / 冬至 3D 預覽
 
-Only `RoofScene3D.jsx` is adapted from `JESON-ROOFTOPJIM@51854cf`; that branch was **not merged**. Three.js **0.180.0** loads in a separate lazy chunk. WebGL creation/context loss or a failed lazy import falls back to the retained SVG. Playback never starts automatically, including reduced-motion systems.
+`RoofScene3D.jsx` is adapted from the 3D prototype at `51854cf` (archived as tag `archive/JESON-ROOFTOPJIM`). Three.js **0.180.0** loads in a separate lazy chunk. WebGL creation/context loss or a failed lazy import falls back to the retained SVG. Playback never starts automatically, including reduced-motion systems.
 
 `/api/screen` returns **145 five-minute pvlib samples** over 06:00–18:00 HK time on 2025-12-21. A 12-second requestAnimationFrame playback interpolates unit sunlight directions; amber highlighting and the shaded-panel count use the **nearest backend sample**, with row-shade fractions and horizon beam visibility. `/api/evaluate.winter_solstice_noon` exposes that same instantaneous preview separately from annual `row_losses`. Nighttime has no directly shaded panels. The corner overlay shows time, elevation, azimuth and the shaded-module count; compass directions follow the camera and roof rotation.
 
