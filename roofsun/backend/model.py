@@ -106,7 +106,8 @@ def weather(year=2025):
     dni_dhi = pvlib.irradiance.erbs(ghi,pos.zenith.to_numpy(), t.dayofyear)
     # Only daylight irradiance enters the physical model; hourly data is kept intact.
     day = pos.apparent_elevation.to_numpy() > 0
-    return dict(times=t, altitude=pos.apparent_elevation.to_numpy(), azimuth=pos.azimuth.to_numpy(),
+    # month is precomputed once: evaluate() groups generation by month hundreds of times per search.
+    return dict(times=t, month=t.month.to_numpy(), altitude=pos.apparent_elevation.to_numpy(), azimuth=pos.azimuth.to_numpy(),
                 zenith=pos.zenith.to_numpy(), ghi=np.where(day,ghi,0),
                 dni=np.where(day,np.nan_to_num(dni_dhi['dni']),0),
                 dhi=np.where(day,np.nan_to_num(dni_dhi['dhi']),0), temp=df.temp_c.to_numpy(float))
@@ -380,7 +381,7 @@ def evaluate(inputs: Inputs, config: Configuration, details=True, economics=True
         production=p(poa)*row['count']; unshaded=p(base)*row['count']
         power+=production;baseline+=unshaded
         row_losses.append(round(100*(1-production.sum()/unshaded.sum()),1) if unshaded.sum()>0 else 0)
-    monthly=[round(float(power[w['times'].month==m].sum()),2) for m in range(1,13)]
+    monthly=[round(float(power[w['month']==m].sum()),2) for m in range(1,13)]
     annual=float(power.sum()); base=float(baseline.sum())
     economy=finance(inputs,capacity,monthly) if economics else {}
     result={'config':config.model_dump(),'panels_count':count,'capacity_kw':round(capacity,3),
